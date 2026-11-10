@@ -3,8 +3,8 @@
 **Status:** Replaces `Moss_and_Bell_Detailed_Build_Plan.md` as the working plan. The v1 file stays for reference.
 **Built by:** an AI coding agent (Codex, Claude Code or similar) as engineer; the owner as director and tastemaker.
 **Kind of project:** personal passion project. No commercial pressure, no monetization.
-**Engine:** Godot 4 (latest stable at project start, pinned), GDScript, 3D scenes, Compatibility renderer.
-**Platforms:** phone and PC as equals from the first playable build. Browser is optional later.
+**Tech:** TypeScript + three.js + esbuild, starting from the engine of **Lanternfall** (the owner's own game in `arutt99/eGiAdMfElS/games/lanternfall`). Ships as one offline HTML file that can be installed as a web app.
+**Platforms:** phone and PC as equals from the first playable build, both in the browser. App-store builds are optional later.
 
 ---
 
@@ -112,7 +112,7 @@ Only places 0 and 1 are in the first complete version. The others show the patte
 - **Settings:** "Time: follow my clock / always day / choose" and "Season: follow calendar / choose". People who only play late at night, or who want to see autumn in April, can.
 - **Absence never costs anything.** Coming back after time away shows gentle changes: leaves to sweep, a visiting animal, a new season. No streaks, no daily rewards.
 - **Collections stay fair.** Seasonal findables are a nice extra and never block progress. "Choose season" makes them all reachable.
-- Engineering: one `WorldClock` service supplies `time_of_day (0–1)` and `season`. Everything else reads from it, and a debug override lets you test any moment.
+- Engineering: one clock module (`core/clock.ts`) supplies `time_of_day (0–1)` and `season`. Everything else reads from it, and a debug override lets you test any moment.
 
 ---
 
@@ -126,33 +126,39 @@ Only places 0 and 1 are in the first complete version. The others show the patte
 | Menu | Small corner button | Esc / Start |
 | Camera zoom | Pinch (two presets) | Mouse wheel / bumpers |
 
-- Landscape on both. Logical resolution 1280×720 with expand scaling, safe-area aware on phones.
-- Touch targets at least 48 dp. Nothing depends on hover or right-click.
-- **Every phase gate is checked on a real Android phone and on PC.** iOS builds need a Mac; plan them for Phase 6 and keep the code iOS-safe throughout.
-- Performance target: steady 60 fps on PC and a mid-range phone at the first place. Fall back to 30 fps on low-end devices.
+- Landscape on both, with a "turn sideways" screen on phones held upright (as Lanternfall does). Safe-area aware.
+- Touch targets at least 48 px. Nothing depends on hover or right-click. Reuse Lanternfall's touch handling and its "last input was a finger" switch for prompt wording.
+- **Every phase gate is checked in a real phone browser (iPhone Safari and/or Android Chrome) and on PC.**
+- Installable as a web app (manifest and icon, like Lanternfall) and playable offline from the single built file. Wrapping it for the app stores (e.g. with Capacitor) is a later, optional step.
+- Performance: reuse Lanternfall's quality tiers (Low to Ultra: pixel ratio, shadows, grass count, particles, painterly pass), with the default picked by device. Target a steady 60 fps on PC and a mid-range phone on Medium.
 
 ---
 
 ## 7. Art direction
 
-### 7.1 Decision status: **not yet chosen.** Default: 3D with a painted look.
-The three candidates are compared in the art-direction sample page (published separately):
-1. **2D painterly:** hand-painted sprites and the strongest storybook look, but every building stage and season must be painted. This fights the open-ended, seasonal, multi-place vision.
-2. **3D soft low-poly:** cheapest and most flexible, but reads as a toy and looks closest to My Little Universe.
-3. **3D painted look (default):** simple 3D models with banded toon shading, soft ink outlines, a paper-grain overlay and a watercolor-like palette. Seasons and time of day come from light and palette changes, and journeys reuse a kit of pieces.
+### 7.1 Decision: **Lanternfall's inked storybook look, warmed for a Zen garden.**
+Lanternfall's rendering is the base: painterly materials with brush-stroke albedo and three cel-shaded tones, ink outline shells, clumped toon foliage, wind sway, stylized water with lily pads, a paint and bloom post-process with a color grade, ambient particles, and a high tilted camera over a floating island. (This replaces the three style samples and the hand-painted reference image, which helped get here.)
 
-Phase 0–1 builds in neutral graybox 3D, which suits options 2 and 3. **Phase 2 is a style spike** that renders the real first building in options 2 and 3 on a phone (and a 2D mock if the owner still wants to see it), then **locks the style** at its gate. Choosing 2D at that point means switching the world to 2D nodes; the data, save, clock and loop systems carry over unchanged.
+| Keep from Lanternfall | Shift for Moss & Bell |
+|---|---|
+| Cel shading, ink outlines, brush texture, clumped foliage | Cherry, maple and bamboo models alongside the greens; moss on stone |
+| Water shader, lily pads, shorelines | Lotus flowers, koi, stepping stones across water |
+| High tilted camera over a floating island with visible edges | The island **grows outward** as the place is restored |
+| Winding dirt paths | Stepping-stone paths and raked gravel (a gravel shader with rake lines) |
+| Biome lighting presets and ambient particles | Presets become **time-of-day keyframes** and **seasons** (petals, pollen, fireflies, maple leaves, snow) |
+| A warm point of light (the lantern) | Cedar, paper and lantern-amber buildings; purple accents become plum and cherry pink |
+| Night as the theme ("the long dark") | Day is the default; night is one gentle mood of the real clock |
 
-### 7.2 Look and feel (applies to any style)
-- A living storybook: warm, soft, low contrast, readable silhouettes.
-- Starting palette: moss `#779777`, fern `#A3B591`, cedar `#846B50`, light wood `#D9C39D`, warm paper `#F2E4C8`, stone `#9D9C8B`, mist water `#8CACAE`, lantern `#F4C98A`, plum accent `#D8A2A1`, roof slate `#5F6B6A`.
-- A fixed, tilted camera (about 35–45° down, narrow FOV) that follows with damping. Not rotatable in the first version.
-- An original caretaker: small, round, loose robe, satchel. Readable at phone size.
+### 7.2 Look and feel
+- A living storybook: warm, soft, readable silhouettes. Readability at phone size beats detail.
+- Starting palette for the home valley in spring daylight: moss `#779777`, fern `#A3B591`, cedar `#846B50`, light wood `#D9C39D`, warm paper `#F2E4C8`, stone `#9D9C8B`, water `#5ED1C7`→`#1B6D94` (Lanternfall's meadow water), lantern `#F4C98A`, cherry `#E9A9B8`, plum `#8E6FA8`, roof slate `#5F6B6A`. These are tuned in the place's preset data, not hard-coded.
+- The camera follows the caretaker with damping, high enough on a phone to see the satchel, nearby nodes and the build site together. Pinch or wheel zooms between two presets. No free rotation in the first version, unlike Lanternfall.
+- An original caretaker built in code: small, round, loose robe, hair bun, and a **wicker basket on the back that visibly fills** with branches and stones. The basket is Moss & Bell's answer to "I'm carrying stuff".
 - Use fewer ambient effects, done well: petals, water shimmer, lantern sway, mist, fireflies at night.
 - **Distinct from the inspiration:** no stack of items on the character's back, no bright saturated toy palette, no copied UI shapes or terminology.
 
 ### 7.3 Asset reality
-The agent builds with original placeholders (primitives, simple models, procedural materials) under stable file names. Every placeholder is listed in `docs/ART_PIPELINE.md` with its dimensions, pivot, scale, poly budget, source and license. No assets pulled from web searches. Final art (commissioned, an asset pack or generated with clear rights) comes in through that pipeline later and never blocks gameplay work.
+Like Lanternfall, **every model is built in code** (canopy blobs, trunks, pine tiers, building parts) and textures come from canvases. There are no model files to make, buy or license, which suits an AI agent: it can build and tune art directly, and the owner judges it on screen. `docs/ART_PIPELINE.md` records the style rules: scale (1 unit = 1 m), outline widths, the tone bands, the palette per place and season, poly budgets, and how to add a new procedural model. If any external file (a sound, a font) is ever added, its source and license go there too.
 
 ---
 
@@ -168,61 +174,71 @@ The agent builds with original placeholders (primitives, simple models, procedur
 
 ## 9. Architecture
 
-### 9.1 Principles
-- **Content is data.** Places, materials, buildings, stages, decorations, animals, poems and seasonal palettes are Godot `Resource` (`.tres`) definitions with stable string IDs. Balance numbers live only in data.
+### 9.1 Start from Lanternfall's engine
+Copy (don't link) these parts of `games/lanternfall` into the new project in Phase 0, then adapt them. Lanternfall stays untouched.
+
+| Lanternfall file(s) | Reused for |
+|---|---|
+| `render/engine.ts` | Renderer, quality tiers, post-process chain (paint, bloom, grade), outline-free shadow pass, graphics context loss handling |
+| `render/materials.ts`, `render/style.ts` | Painterly materials: brush texture, cel tones, rim light, wind, outline shells |
+| `render/mb.ts`, `render/decor-models.ts` | Procedural mesh building: canopies, trunks, pines, rocks. Base for cherry, maple, bamboo and building parts |
+| `render/stage.ts`, `render/biomes.ts` | Island terrain, water, grass, sky and fog. Biome presets become place + time-of-day + season presets |
+| `render/vfx.ts` | Particles: petals, dust bursts, fireflies, gather sparkles |
+| `render/hero-models.ts` | Starting point for the procedural caretaker and animals |
+| `audio/synth-kit.ts`, `audio/audio.ts` | Synth sound and music with musical scales: gathering tones on a pentatonic scale, the bell, ambience |
+| `core/save.ts`, `core/util.ts`, `ui/touch.ts` | Versioned save, seeded random, touch and input detection |
+| `scripts/*.mjs`, `tsconfig.json`, `manifest.webmanifest` | Build to one HTML file, local server, test runner, installable web app |
+
+Not reused: the tower-defense simulation, towers, enemies, spells, tech tree and battle UI.
+
+### 9.2 Principles
+- **Content is data.** Places, materials, buildings, stages, decorations, animals, poems and presets live in typed TypeScript data files under `src/data/` with stable string IDs, as Lanternfall's `data/` does. Balance numbers live only there. A validation step at boot (and in tests) reports bad data clearly.
+- **Simulation apart from rendering.** As in Lanternfall, `src/sim` holds the game rules and runs headless with no three.js, so tests and bots use the real rules.
 - **Store facts, derive the rest.** The save stores facts (materials delivered per site, places discovered, items found, decorations placed, settings). Restoration level, unlocked sites, map entries and animal presence are **derived from those facts on load**. That makes "an objective replays after reload" or "duplicate build" impossible by construction.
 - **No timers in saved state.** Node regrowth is not saved; nodes start full on load. Building growth is per deposit, so there is no "mid-construction" state.
-- **Signals over polling**; small scenes, small scripts; typed GDScript where it helps readability.
+- **Events over polling**; small modules; strict TypeScript.
 
-### 9.2 Services (autoloads)
-| Service | Responsibility |
+### 9.3 Modules
+| Module | Responsibility |
 |---|---|
-| `GameState` | Satchel contents, site deposits, discovered places, collection, decorations. The only place facts change. Emits signals. |
-| `Content` | Loads and validates all definitions at boot and reports bad data clearly. |
-| `Progress` | Pure functions that derive restoration, unlocks and animal presence from `GameState` + `Content`. Easy to unit test. |
-| `WorldClock` | Real or overridden time of day and season. Debug override. |
-| `SaveManager` | Versioned JSON in `user://`, written to a temp file then renamed. Safe fallback on corrupt or missing saves, migration hook per version. Autosaves on every completed deposit batch, place change and app pause/background (important on phones). |
-| `AudioManager` | Buses, the beat clock for gathering and deposit notes, non-repeating one-shots. |
-| `PlaceLoader` | Loads and unloads place scenes, handles trail transitions and map travel, and positions the player. |
-
-### 9.3 Scenes
-```text
-Main
-├── PlaceRoot            (current place scene: HomeValley.tscn, BambooGrove.tscn, ...)
-│   ├── Terrain / Water / Props (props carry restoration tags)
-│   ├── GatherNodes      (GatherNode.tscn instances)
-│   ├── BuildSites       (BuildSite.tscn instances, staged meshes)
-│   ├── SitSpots, PoemStones, RitualSpots
-│   ├── Animals
-│   └── Exits            (trail ends → PlaceLoader)
-├── Player               (CharacterBody3D, proximity sensor Area3D)
-├── CameraRig
-├── Lighting             (driven by WorldClock: sun, sky, fog, palette params)
-└── UI (CanvasLayer)     HUD chip, context button, joystick, map, collection book, settings
-```
+| `sim/state.ts` | Satchel contents, site deposits, discovered places, collection, decorations. The only place facts change. Emits events. |
+| `sim/progress.ts` | Pure functions that derive restoration, unlocks and animal presence from state + data. Easy to unit test. |
+| `sim/loop.ts` | The beat clock, gathering, depositing and node regrowth, driven by a movement input. Headless. |
+| `sim/pacing-bot.ts` | A headless bot that walks the loop on each place map and reports cycle and building times, like Lanternfall's balance bot. It checks the 30–90 s cycle target automatically. |
+| `core/clock.ts` | Real or overridden time of day and season. Debug override. |
+| `core/save.ts` | Versioned JSON in `localStorage` with a migration hook per version and a safe fallback on corrupt data. Autosaves on every completed deposit batch, place change and when the page is hidden (important on phones). Asks the browser for persistent storage, and offers **export and import of the save as text** in Settings, because browsers can clear site data. |
+| `render/*` | Lanternfall's engine plus place builders, the restoration layer, the time and season lighting blend, buildings that grow in stages |
+| `render/places/*.ts` | One builder per place: terrain shape, water, paths, prop layout, nodes, sites, sit spots, exits |
+| `audio/*` | Buses, the beat-synced gathering and deposit notes, ambience layers, the bell |
+| `ui/*` | HUD chip, context button, joystick, travel map, collection book, settings |
 
 ### 9.4 One proximity rule
-The player has one sensor. Each frame it picks **one** target by priority: build site you're standing on > gather node in range > context interactable (sit, poem, bell, map). Gather nodes and build sites act automatically. Context interactables show the context button. Everything proximity-based extends one base script, `Proximity.gd` (Area3D), with `priority`, `is_available()`, `on_enter()`, `on_tick()` and `on_exit()`.
+The player has one sensor. Each frame it picks **one** target by priority: build site you're standing on > gather node in range > context interactable (sit, poem, bell, map). Gather nodes and build sites act automatically. Context interactables show the context button. Everything proximity-based implements one interface in `sim/proximity.ts`: `priority`, `radius`, `isAvailable()`, `onEnter()`, `onTick()` and `onExit()`.
 
 ### 9.5 Example definitions
-```gdscript
-# data/buildings/meditation_hall.tres  (BuildingDef)
-id = "meditation_hall"
-place = "home_valley"
-cost = { "wood": 14, "stone": 10 }
-requires = ["gravel_garden"]
-stages = 5
-restoration_value = 0.3
+```ts
+// src/data/buildings.ts
+export const BUILDINGS: Record<BuildingId, BuildingDef> = {
+  meditation_hall: {
+    name: 'Meditation Hall',
+    place: 'home_valley',
+    cost: { wood: 14, stone: 10 },
+    requires: ['gravel_garden'],
+    stages: 5,
+    restoration: 0.3,
+  },
+  // ...
+};
 ```
 ```json
-{ "save_version": 1,
+{ "v": 1,
   "deposits": { "small_shelter": { "wood": 6 }, "meditation_hall": { "wood": 9, "stone": 2 } },
   "satchel": { "wood": 3 },
-  "discovered_places": ["home_valley"],
+  "places": ["home_valley"],
   "collection": ["poem_first_light", "animal_deer"],
   "decorations": [],
-  "current_place": "home_valley", "player_pos": [4.0, 0.0, 2.5],
-  "settings": { "time_mode": "clock", "season_mode": "calendar", "hemisphere": "north", "master": 0.8 } }
+  "at": { "place": "home_valley", "x": 4.0, "z": 2.5 },
+  "settings": { "time": "clock", "season": "calendar", "hemisphere": "north", "quality": "medium", "master": 0.8 } }
 ```
 
 ### 9.6 Starting balance (home valley; edit freely in data)
@@ -244,27 +260,28 @@ The home valley alone takes about 10–15 minutes including walking and sitting,
 
 There is **one** sequence. Each phase ends at a gate the owner checks by playing. The agent does one phase per session unless the owner says otherwise, then reports and stops.
 
-### Phase 0: Toolchain and graybox
-- Godot project at the repo root, version pinned in `project.godot` and the README.
-- **Headless Godot for the agent:** a setup script that downloads the pinned Linux editor binary, so the agent can import, run tests and export inside its container. GUT as the test framework. A GitHub Actions workflow runs import + tests on every push.
-- Input abstraction (move vector + context action) with keyboard, gamepad and touch joystick.
-- A graybox home valley: ground, water, a few box and cylinder trees and rocks, a capsule player, the camera rig.
+### Phase 0: Fork the engine
+- New TypeScript project at the root of this repo (`zen`), with the build, serve and test scripts, `tsconfig.json` and manifest copied from Lanternfall (see 9.1).
+- Copy and trim Lanternfall's engine: renderer, quality tiers, painterly materials, outlines, post-process, terrain, water, sky, particles, synth audio, save, touch. Remove everything tower-defense.
+- A first home island in Lanternfall's look: terrain, a pond, a few trees and rocks, sky and fog from one daytime preset. A placeholder caretaker capsule and the follow camera.
+- Input: one move vector (keyboard, gamepad, touch joystick) plus one context action.
+- GitHub Actions runs `npm run typecheck`, `npm test` and `npm run build` on every push.
 - `AGENTS.md` (see Appendix A), `README.md`, `TASKS.md`, `docs/ART_PIPELINE.md`, `docs/CHANGELOG.md`.
-- **Gate:** the project opens and runs on PC; an Android debug build installs and you can walk around with the joystick; CI is green.
+- **Gate:** the built `index.html` opens on PC and in a phone browser, looks like Lanternfall's world, holds frame rate on Medium on the phone, and the capsule walks around with the joystick. CI is green.
 
 ### Phase 1: The feel
 - 8-way movement with good acceleration and stopping, collisions, camera follow with damping.
-- Automatic gathering on the beat with pentatonic notes, node rest and regrowth, a visible satchel, the HUD chip.
-- One build site (the shelter) with automatic deposit and staged growth from graybox pieces, a completion bell, and a first restoration response (mist lifts).
-- Saving and loading of deposits, satchel and position; autosave on app pause.
-- Unit tests: gather awards, satchel cap, deposit never exceeds cost, derived progress, save round trip, corrupt save fallback.
-- **Gate:** on a phone, someone new to the game gathers and builds the shelter without being told how, and keeps gathering afterwards. Quitting mid-deposit and reopening keeps exactly what was delivered.
+- Automatic gathering on the beat with pentatonic notes, node rest and regrowth, the basket filling, the HUD chip.
+- One build site (the shelter) with automatic deposit and staged growth from simple procedural parts, a completion bell, and a first restoration response (mist lifts).
+- Saving and loading of deposits, satchel and position; autosave when the page is hidden.
+- The headless loop in `sim/` with unit tests: gather awards, satchel cap, deposit never exceeds cost, derived progress, save round trip, corrupt save fallback. A first pacing-bot run reports the cycle time.
+- **Gate:** on a phone, someone new to the game gathers and builds the shelter without being told how, and keeps gathering afterwards. Closing the tab mid-deposit and reopening keeps exactly what was delivered.
 
-### Phase 2: Style spike and lock
-- Lighting rig driven by `WorldClock` (debug slider for time of day).
-- The shelter, one tree, one rock and the caretaker in **option 3** (toon ramp + outlines + paper grain) and **option 2** (flat-shaded low-poly). If the owner asks, also a quick 2D mock.
-- Measure fps on the phone for each.
-- **Gate:** the owner picks the style. It's recorded in this plan, and `docs/ART_PIPELINE.md` gets the rules: scale, pivots, poly budget, palette, outline width, shader parameters.
+### Phase 2: Warm the look
+- The Zen kit as procedural models: cherry, maple and bamboo; mossy stones; stone lanterns; rope and post fences; raked gravel; stepping stones; lotus. Building parts (posts, beams, walls, tiled roof) that buildings assemble from in stages.
+- The real caretaker model (robe, bun, wicker basket that fills) and the deer.
+- Presets for time of day (dawn, day, golden hour, dusk, night) blended from the clock, with a debug slider.
+- **Gate:** the owner approves the look on their phone next to Lanternfall: clearly the same hand, clearly a different, calmer place. `docs/ART_PIPELINE.md` records the rules.
 
 ### Phase 3: Home grows
 - All home-valley buildings except the tea house, the restoration system across the valley, real-clock time of day with settings, sit-and-watch, rituals (bell, rake, lanterns at dusk), poem stones and caretaker notes, the deer.
@@ -272,7 +289,7 @@ There is **one** sequence. Each phase ends at a gate the owner checks by playing
 - **Gate:** from a fresh save the home valley is completable in about 10–15 minutes; before and after look clearly different; the game reads with sound muted.
 
 ### Phase 4: The first journey
-- The trail out of the valley to the bamboo grove (walked the first time), `PlaceLoader` transitions, the bamboo material, wind shrine restoration, the crane, grove poem stones and sit spots.
+- The trail out of the valley to the bamboo grove (walked the first time), place transitions, the bamboo material, wind shrine restoration, the crane, grove poem stones and sit spots.
 - The travel map, unlocked after the first visit. The tea house at home.
 - **Gate:** walk to the grove, restore the shrine, bring bamboo home, build the tea house, travel back by map. Reloading at any point lands you somewhere sensible with nothing lost.
 
@@ -285,8 +302,8 @@ There is **one** sequence. Each phase ends at a gate the owner checks by playing
 
 ### Phase 6: Polish and share
 - Audio pass 2, settings and accessibility (reduced motion, text size, high-contrast prompts, remappable keys), performance pass on a low-end phone.
-- Windows and Android release builds, iOS if a Mac is available, web export as an option.
-- **Gate:** a friend installs it on their phone or PC and plays from start to finish with no help.
+- Hosting: publish the built file (for example on GitHub Pages, or next to Lanternfall in the owner's games collection), installable as a web app. App-store wrapping only if wanted.
+- **Gate:** a friend opens the link on their phone or PC, adds it to their home screen, and plays from start to finish with no help.
 
 ### Later (one at a time, each its own small plan)
 Riverbank, mountain pass and further journeys · quiet residents · more rituals · weather moments (rain, snowfall) · more decorations · a photo mode (fits "sit and watch").
@@ -294,8 +311,8 @@ Riverbank, mountain pass and further journeys · quiet residents · more rituals
 ---
 
 ## 11. Definition of done (every phase)
-- The phase's features work in a fresh run on **PC and Android**.
-- Import is clean, tests pass, CI is green. When something couldn't be run, the report says so plainly.
+- The phase's features work in a fresh run on **a PC browser and a phone browser**.
+- Typecheck, tests and build pass, and CI is green. A browser smoke test (Playwright, as Lanternfall's `tests/lanternfall.browser.cjs` does) loads the game at phone and laptop sizes. When something couldn't be run, the report says so plainly.
 - No soft-locks on the usual path. Save, quit and resume works at any point.
 - `README.md`, `TASKS.md` and `docs/CHANGELOG.md` are updated.
 - The report includes changed files, what to try, test results, known gaps, a screenshot or short clip where possible, and the proposed next phase.
@@ -306,7 +323,9 @@ Riverbank, mountain pass and further journeys · quiet residents · more rituals
 
 | Decision | Current default | Decided at |
 |---|---|---|
-| Art style | 3D painted look | Phase 2 gate |
+| Art style | **Decided:** Lanternfall's inked storybook look, warmed | Fine-tuned at the Phase 2 gate |
+| Where the code lives | The `zen` repo, with the engine copied from Lanternfall | Phase 0 (alternative: a `games/moss-and-bell` folder next to Lanternfall) |
+| Shared engine with Lanternfall | Copy now, adapt freely | Revisit only if both games keep changing the same engine code |
 | When quiet residents arrive | After the first complete version | After Phase 6 |
 | Exact poem and note text | Placeholders | Owner writes during Phase 3–4 |
 | Second journey destination | Riverbank | After Phase 6 |
@@ -321,9 +340,11 @@ Riverbank, mountain pass and further journeys · quiet residents · more rituals
 # Agent rules for Moss & Bell
 - Read Moss_and_Bell_Plan_v2.md (the plan) and TASKS.md before changing anything.
 - Work on ONE phase per session (current phase is in TASKS.md). Stop at the gate and report.
-- Keep the game runnable at every commit. Run: <import command>, <test command>.
+- Keep the game runnable at every commit. Run: npm run typecheck, npm test, npm run build.
 - Balance numbers live in data/ only. Save facts, derive everything else.
-- Every proximity interaction extends Proximity.gd.
+- Game rules live in src/sim and never import three.js.
+- Every proximity interaction implements the interface in src/sim/proximity.ts.
+- Models are built in code; follow docs/ART_PIPELINE.md for scale, outlines and palette.
 - No external assets without source + license logged in docs/ART_PIPELINE.md.
 - Never claim a test, build, or device check that you did not actually run.
 - Report: changed files, how to try it, test results, gaps, next step.
@@ -337,6 +358,6 @@ Riverbank, mountain pass and further journeys · quiet residents · more rituals
 - The world runs on the real-world clock and calendar, with settings.
 - The game is open-ended (decorating, collections, seasons, new journeys) instead of a 15–25 minute slice with an ending.
 - Animal friends now, quiet residents later, instead of a dialogue-driven visitor.
-- 3D is the default rendering path; the art style is locked at a dedicated spike phase.
+- Built on the owner's Lanternfall engine (three.js + TypeScript) instead of Godot: its inked storybook look, procedural models, phone support, save and synth audio carry over.
 - One phase sequence replaces the three overlapping numbering schemes, and v1's references to files that don't exist are gone.
 - Saved facts with derived progress, and no saved timers, remove whole classes of save and duplicate-purchase bugs.
