@@ -136,22 +136,36 @@ Only places 0 and 1 are in the first complete version. The others show the patte
 
 ## 7. Art direction
 
-### 7.1 Decision: **Lanternfall's inked storybook look, warmed for a Zen garden.**
-Lanternfall's rendering is the base: painterly materials with brush-stroke albedo and three cel-shaded tones, ink outline shells, clumped toon foliage, wind sway, stylized water with lily pads, a paint and bloom post-process with a color grade, ambient particles, and a high tilted camera over a floating island. (This replaces the three style samples and the hand-painted reference image, which helped get here.)
+### 7.1 Decision: **the painted storybook reference is the target; Lanternfall's engine is the toolkit.**
+The target look is the owner's reference image: a soft, hand-painted storybook Japanese garden. **It is not Lanternfall's look.** Lanternfall supplies the technology (painterly materials, procedural models, post-processing, phone performance), and those tools are retuned toward the reference. The two games should look related at most, never the same.
 
-| Keep from Lanternfall | Shift for Moss & Bell |
+**The reference image, described** (keep it as `docs/art-reference.jpg` if the owner adds it to the repo):
+- Warm afternoon light, low contrast, gentle and slightly desaturated colors. Nothing is deep or saturated.
+- Visible brushwork everywhere: ground, stone, wood and foliage look painted (gouache or watercolor), with soft color variation inside each shape.
+- Linework is soft, thin and **warm brown**, not black, and it is absent on distant or soft things such as foliage edges, ground and mist.
+- A chibi caretaker: big head, dark hair in a bun, cream top, brown hakama-style trousers, sandals, and a woven wicker basket on the back. Simple dot-and-line face.
+- A Japanese garden vocabulary: a cherry tree with pink blossom and falling petals, a stone lantern with warm glow, moss on rocks, raked gravel circles around a mossy stone, stepping stones on packed earth, a lotus pond with lily pads and a stone edge, low wooden and rope fences, and a wooden hall with a tiled roof, paper lanterns and a noren curtain with a lotus.
+- Soft depth: the background goes hazy and lighter. Shadows are soft and warm, never black.
+
+**Lanternfall vs. the target, so the agent knows what to change:**
+
+| Lanternfall today | Moss & Bell target (the reference) |
 |---|---|
-| Cel shading, ink outlines, brush texture, clumped foliage | Cherry, maple and bamboo models alongside the greens; moss on stone |
-| Water shader, lily pads, shorelines | Lotus flowers, koi, stepping stones across water |
-| High tilted camera over a floating island with visible edges | The island **grows outward** as the place is restored |
-| Winding dirt paths | Stepping-stone paths and raked gravel (a gravel shader with rake lines) |
-| Biome lighting presets and ambient particles | Presets become **time-of-day keyframes** and **seasons** (petals, pollen, fireflies, maple leaves, snow) |
-| A warm point of light (the lantern) | Cedar, paper and lantern-amber buildings; purple accents become plum and cherry pink |
-| Night as the theme ("the long dark") | Day is the default; night is one gentle mood of the real clock |
+| Deep, saturated greens and teal water | Warm, light, slightly desaturated greens; soft jade water |
+| Dark ink outlines on everything | Thin warm-brown lines on characters and buildings only, or none; no outlines on foliage and ground |
+| Hard three-tone cel bands | Softer shading: wider, blended tone steps with brush texture doing most of the work |
+| Night, fireflies, the long dark | Warm daylight by default; night is one gentle mood of the real clock |
+| Dense, chunky forest from high up | Open garden spaces, readable props, lots of room to walk |
+| Purple fantasy mushrooms | Cherry blossom, moss, lotus, stone lanterns |
+| Heroic fantasy proportions | Chibi caretaker and animals with big heads and soft round shapes |
+
+**What carries over from Lanternfall unchanged:** the procedural model builders, brush texture and wind, the post-process chain (retuned), water and lily pads, particles, quality tiers, touch, save and audio.
+
+**Retuning checklist for Phase 2:** raise brush texture strength; soften the tone ramp; change outline color to warm brown, thin it, and limit it to characters and buildings; warm the color grade and lower saturation; add a paper-grain overlay and gentle haze with distance; lighten shadows and tint them warm; a lighter, warmer palette.
 
 ### 7.2 Look and feel
-- A living storybook: warm, soft, readable silhouettes. Readability at phone size beats detail.
-- Starting palette for the home valley in spring daylight: moss `#779777`, fern `#A3B591`, cedar `#846B50`, light wood `#D9C39D`, warm paper `#F2E4C8`, stone `#9D9C8B`, water `#5ED1C7`→`#1B6D94` (Lanternfall's meadow water), lantern `#F4C98A`, cherry `#E9A9B8`, plum `#8E6FA8`, roof slate `#5F6B6A`. These are tuned in the place's preset data, not hard-coded.
+- A living storybook, matching the reference image: warm, soft, painted, readable silhouettes. Readability at phone size beats detail.
+- Starting palette for the home valley in spring daylight: moss `#779777`, fern `#A3B591`, cedar `#846B50`, light wood `#D9C39D`, warm paper `#F2E4C8`, stone `#9D9C8B`, soft jade water `#9CC7B8`→`#5E968E`, lantern `#F4C98A`, cherry `#E9A9B8`, plum `#8E6FA8`, roof slate `#5F6B6A`. These are tuned in the place's preset data, not hard-coded.
 - The camera follows the caretaker with damping, high enough on a phone to see the satchel, nearby nodes and the build site together. Pinch or wheel zooms between two presets. No free rotation in the first version, unlike Lanternfall.
 - An original caretaker built in code: small, round, loose robe, hair bun, and a **wicker basket on the back that visibly fills** with branches and stones. The basket is Moss & Bell's answer to "I'm carrying stuff".
 - Use fewer ambient effects, done well: petals, water shimmer, lantern sway, mist, fireflies at night.
@@ -263,11 +277,11 @@ There is **one** sequence. Each phase ends at a gate the owner checks by playing
 ### Phase 0: Fork the engine
 - New TypeScript project at the root of this repo (`zen`), with the build, serve and test scripts, `tsconfig.json` and manifest copied from Lanternfall (see 9.1).
 - Copy and trim Lanternfall's engine: renderer, quality tiers, painterly materials, outlines, post-process, terrain, water, sky, particles, synth audio, save, touch. Remove everything tower-defense.
-- A first home island in Lanternfall's look: terrain, a pond, a few trees and rocks, sky and fog from one daytime preset. A placeholder caretaker capsule and the follow camera.
+- A first home island using the engine's painterly pipeline: terrain, a pond, a few trees and rocks, sky and fog from one daytime preset. A placeholder caretaker capsule and the follow camera.
 - Input: one move vector (keyboard, gamepad, touch joystick) plus one context action.
 - GitHub Actions runs `npm run typecheck`, `npm test` and `npm run build` on every push.
 - `AGENTS.md` (see Appendix A), `README.md`, `TASKS.md`, `docs/ART_PIPELINE.md`, `docs/CHANGELOG.md`.
-- **Gate:** the built `index.html` opens on PC and in a phone browser, looks like Lanternfall's world, holds frame rate on Medium on the phone, and the capsule walks around with the joystick. CI is green.
+- **Gate:** the built `index.html` opens on PC and in a phone browser, the island renders with the engine's painterly pipeline (Lanternfall's look is fine for now; Phase 2 retunes it), holds frame rate on Medium on the phone, and the capsule walks around with the joystick. CI is green.
 
 ### Phase 1: The feel
 - 8-way movement with good acceleration and stopping, collisions, camera follow with damping.
@@ -281,7 +295,8 @@ There is **one** sequence. Each phase ends at a gate the owner checks by playing
 - The Zen kit as procedural models: cherry, maple and bamboo; mossy stones; stone lanterns; rope and post fences; raked gravel; stepping stones; lotus. Building parts (posts, beams, walls, tiled roof) that buildings assemble from in stages.
 - The real caretaker model (robe, bun, wicker basket that fills) and the deer.
 - Presets for time of day (dawn, day, golden hour, dusk, night) blended from the clock, with a debug slider.
-- **Gate:** the owner approves the look on their phone next to Lanternfall: clearly the same hand, clearly a different, calmer place. `docs/ART_PIPELINE.md` records the rules.
+- Apply the retuning checklist from 7.1 so the world moves from Lanternfall's look to the painted reference.
+- **Gate:** the owner holds a phone screenshot next to the reference image and says it's the same world. It should not look like Lanternfall. `docs/ART_PIPELINE.md` records the final shader values and rules.
 
 ### Phase 3: Home grows
 - All home-valley buildings except the tea house, the restoration system across the valley, real-clock time of day with settings, sit-and-watch, rituals (bell, rake, lanterns at dusk), poem stones and caretaker notes, the deer.
@@ -323,7 +338,7 @@ Riverbank, mountain pass and further journeys · quiet residents · more rituals
 
 | Decision | Current default | Decided at |
 |---|---|---|
-| Art style | **Decided:** Lanternfall's inked storybook look, warmed | Fine-tuned at the Phase 2 gate |
+| Art style | **Decided:** the painted storybook reference image, built with Lanternfall's engine (not Lanternfall's look) | Matched to the reference at the Phase 2 gate |
 | Where the code lives | The `zen` repo, with the engine copied from Lanternfall | Phase 0 (alternative: a `games/moss-and-bell` folder next to Lanternfall) |
 | Shared engine with Lanternfall | Copy now, adapt freely | Revisit only if both games keep changing the same engine code |
 | When quiet residents arrive | After the first complete version | After Phase 6 |
@@ -345,6 +360,7 @@ Riverbank, mountain pass and further journeys · quiet residents · more rituals
 - Game rules live in src/sim and never import three.js.
 - Every proximity interaction implements the interface in src/sim/proximity.ts.
 - Models are built in code; follow docs/ART_PIPELINE.md for scale, outlines and palette.
+- The art target is the painted reference (plan section 7.1), NOT Lanternfall's look.
 - No external assets without source + license logged in docs/ART_PIPELINE.md.
 - Never claim a test, build, or device check that you did not actually run.
 - Report: changed files, how to try it, test results, gaps, next step.
@@ -358,6 +374,6 @@ Riverbank, mountain pass and further journeys · quiet residents · more rituals
 - The world runs on the real-world clock and calendar, with settings.
 - The game is open-ended (decorating, collections, seasons, new journeys) instead of a 15–25 minute slice with an ending.
 - Animal friends now, quiet residents later, instead of a dialogue-driven visitor.
-- Built on the owner's Lanternfall engine (three.js + TypeScript) instead of Godot: its inked storybook look, procedural models, phone support, save and synth audio carry over.
+- Built on the owner's Lanternfall engine (three.js + TypeScript) instead of Godot. Its tools carry over (procedural models, painterly shaders, phone support, save, synth audio), retuned toward the painted reference image rather than Lanternfall's own look.
 - One phase sequence replaces the three overlapping numbering schemes, and v1's references to files that don't exist are gone.
 - Saved facts with derived progress, and no saved timers, remove whole classes of save and duplicate-purchase bugs.
