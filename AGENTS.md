@@ -1,0 +1,13 @@
+# Agent rules for Moss & Bell
+- Read Moss_and_Bell_Plan_v2.md (the plan) and TASKS.md before changing anything.
+- Work on ONE phase per session (current phase is in TASKS.md). Stop at the gate and report.
+- Keep the game runnable at every commit. Run: npm run typecheck, npm test, npm run build.
+- Balance numbers live in data/ only. Save facts, derive everything else.
+- Game rules live in src/sim and never import three.js.
+- Every proximity interaction implements the interface in src/sim/proximity.ts.
+- Models are built in code; follow docs/ART_PIPELINE.md for scale, outlines and palette.
+- The art target is the painted reference (plan section 7.1, docs/art-reference.jpg), NOT Lanternfall's look. It is not final yet.
+- ART DECISIONS: before building on an undecided art decision point (plan 7.4, A1–A7), STOP and warn the owner: what must be decided, options with screenshots, what gets expensive to change afterwards, and your recommendation. Never lock one silently.
+- No external assets without source + license logged in docs/ART_PIPELINE.md.
+- Never claim a test, build, or device check that you did not actually run.
+- Report: changed files, how to try it, test results, gaps, next step.

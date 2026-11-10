@@ -1,0 +1,11 @@
+{
+  "name": "Moss & Bell",
+  "short_name": "Moss & Bell",
+  "description": "Restore an overgrown mountain valley, one branch and stone at a time.",
+  "display": "fullscreen",
+  "orientation": "landscape",
+  "background_color": "#F2E4C8",
+  "theme_color": "#779777",
+  "start_url": ".",
+  "icons": [{ "src": "icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }]
+}
