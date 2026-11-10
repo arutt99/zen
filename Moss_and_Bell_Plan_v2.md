@@ -168,7 +168,8 @@ caretakers and what you restore, not through quests or dialogue (pillar 5 and th
 **Kept from the earlier reference (`docs/art-reference.jpg`):** the Japanese garden vocabulary (cherry blossom
 and falling petals, stone lanterns with warm glow, moss on rocks, raked gravel, stepping stones, a lotus pond
 with a stone edge, low wooden and rope fences, a wooden hall with a tiled roof, paper lanterns and a noren
-curtain) and the caretaker's look (bun, cream top, brown hakama, wicker basket). Proportions are A4.
+curtain) and the caretaker's look (bun, cream top, brown hakama, wicker basket), in chibi proportions (A4). Buildings are
+rustic timber by default (A5): log posts, thatched roofs, woven screens, rope lashings.
 
 **Not carried over from the earlier target:** soft blended bands, warm-brown thin lines, paper grain, haze
 and the desaturated palette. Painted and Painted+ stay in the switcher only until the Phase 2 gate closes.
@@ -205,8 +206,8 @@ The owner wants to see options before committing. So the look is built to be **t
 | A1 | **2D vs 3D world.** | Every system that draws or places things depends on it | **Decided: 3D** (owner, 2026-11-10) |
 | A2 | **Camera angle, height and zoom range** | Sets how big every model, path and build site must be, and what's readable on a phone | **Decided: camera A, Classic ~40°** (owner, 2026-11-10) |
 | A3 | **World scale and spacing:** how big the caretaker is versus trees, buildings and walking space | Every place layout and the collision setup are built around it | **Decided: Medium caretaker, 1.8 m** (owner, 2026-11-10) |
-| A4 | **Character proportions and style** (chibi vs taller, how faces are drawn) | All animation, the basket, animals and later residents follow it | Phase 2 gate |
-| A5 | **Building kit style:** the part set buildings are assembled from (posts, beams, roofs) and how a partly built building looks | Every building and every partial state is made from it | Phase 2 gate |
+| A4 | **Character proportions and style** (chibi vs taller, how faces are drawn) | All animation, the basket, animals and later residents follow it | **Decided: chibi** (owner, 2026-11-10) |
+| A5 | **Building kit style:** the part set buildings are assembled from (posts, beams, roofs) and how a partly built building looks | Every building and every partial state is made from it | **Decided: rustic timber is the default style**; every building is built in timber first. Temple (and later styles) become a free, per-building style choice in Phase 5, which the kit already allows (same part ids in every style). Timber gets a detail pass, roofs first, before Phase 3's buildings (owner, 2026-11-10) |
 | A6 | **Shading family:** painted-soft vs inked-cel vs another | Models are tuned against it; switching late means re-tuning every model | **Decided: Lanternfall+** (inked-cel, grounded, rich detail; owner, 2026-11-10) |
 | A7 | **Final palette per season** | Many places and props get tuned to it; cheap per item, costly in total | Phase 5 gate |
 
@@ -355,6 +356,7 @@ There is **one** sequence. Each phase ends at a gate the owner checks by playing
 - A few seasonal findables per place.
 - The collection book (poems, animals, seasonal finds), wordless where possible.
 - Decorating v1: place, rotate and remove decorations on decoration-allowed ground at home. Decorations come from shrines and buildings, never from purchases.
+- **Building styles** (A5, owner 2026-11-10): choose a style per building, free and changeable (timber by default; temple and later styles as options). Whether you pick at the build site or restyle afterwards is decided here. Each extra style means modelling every building once more.
 - **Art decision point A7 (seasonal palettes) is due at this gate.**
 - **Gate:** setting the season to each of the four makes both places look clearly different; decorations persist; nothing seasonal blocks progress.
 
@@ -381,7 +383,7 @@ Riverbank, mountain pass and further journeys · quiet residents · more rituals
 
 | Decision | Current default | Decided at |
 |---|---|---|
-| Art style | **Decided: Lanternfall+** (A6, owner, 2026-11-10). A4 (characters), A5 (building kit) and A7 (seasonal palettes) still open | Art decision points A1–A7 in 7.4 |
+| Art style | **Decided: Lanternfall+** (A6), **chibi** (A4), **timber by default** with per-building styles later (A5), all owner 2026-11-10. A7 (seasonal palettes) still open | Art decision points A1–A7 in 7.4 |
 | Phone budget for Lanternfall+ | Set aside: PC first (owner, 2026-11-10). Phones need a trimmed detail level and a frame-rate check | Before release to phones (Phase 6 at the latest) |
 | Chapter 1 opening (walk in vs start at the gate) | Not decided | Phase 3 layout |
 | A mindfulness edition (section 13) | Noted, not planned | After the game's first complete version |

@@ -1,5 +1,11 @@
 # Changelog
 
+## Phase 2 gate decisions (2026-11-10)
+- **A4 decided: chibi** (locked). **A5 decided: rustic timber is the default building style**; temple stays as a
+  future per-building style choice (Phase 5). A timber detail pass, roofs first, is queued for a future session.
+- The Art trial menu is hidden (`?trial` shows it); the game always opens in Lanternfall+, chibi and timber.
+  The default saved kit is now timber.
+
 ## Decisions and direction (2026-11-10)
 - **A6 decided: Lanternfall+.** Plan 7.1 rewritten (Lanternfall's crisp inked look, grounded and richly
   detailed; Moss & Bell reads as Lanternfall's sibling on purpose). AGENTS.md's art rule and

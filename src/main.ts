@@ -65,7 +65,8 @@ function boot(): void {
   if (recovered) console.warn(`[save] started fresh: ${recovered}`);
   void navigator.storage?.persist?.().catch(() => undefined);
   // The look is chosen before anything is drawn: shaders are compiled for one look (src/data/looks.ts).
-  save.settings.look = useLook(save.settings.look).id;
+  // A6 is decided (Lanternfall+); other looks only with `?trial` (Settings) or `?look=` (screenshots, tests).
+  save.settings.look = useLook(new URLSearchParams(location.search).has('trial') ? save.settings.look : 'lanternfallplus').id;
 
   let engine: Engine;
   try {
@@ -105,7 +106,14 @@ function boot(): void {
 
   // --- views of the loop
   const characterOf = (id: string): CharacterStyleId => (CHARACTER_STYLES as readonly string[]).includes(id) ? id as CharacterStyleId : 'chibi';
-  const kitOf = (id: string): KitStyleId => (KIT_STYLES as readonly string[]).includes(id) ? id as KitStyleId : 'temple';
+  const kitOf = (id: string): KitStyleId => (KIT_STYLES as readonly string[]).includes(id) ? id as KitStyleId : 'timber';
+  // Phase 2 gate (owner, 2026-11-10): A4 chibi (locked) and A5 timber by default. The trial menu is hidden
+  // (`?trial` shows it again for comparisons), so an older save's trial picks fall back to the decisions.
+  const trial = new URLSearchParams(location.search).has('trial');
+  if (!trial) {
+    save.settings.character = 'chibi';
+    save.settings.kit = 'timber';
+  }
   save.settings.character = characterOf(save.settings.character);
   save.settings.kit = kitOf(save.settings.kit);
   let caretaker = new CaretakerView(characterOf(save.settings.character));
@@ -238,6 +246,7 @@ function boot(): void {
   const timeRange = $('time-at') as HTMLInputElement;
   const timeLabel = $('time-label');
   const fill = (sel: HTMLSelectElement, items: [string, string][]) => { sel.innerHTML = items.map(([v, t]) => `<option value="${v}">${t}</option>`).join(''); };
+  ($('art-trial') as HTMLElement).hidden = !trial;
   fill(lookSel, LOOK_IDS.map((id) => [id, LOOKS[id].name]));
   fill(charSel, CHARACTER_STYLES.map((id) => [id, CARETAKER[id].name]));
   fill(kitSel, KIT_STYLES.map((id) => [id, KIT_STYLE_INFO[id].name]));
