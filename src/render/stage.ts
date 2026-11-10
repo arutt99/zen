@@ -12,7 +12,8 @@
 import * as THREE from 'three';
 import { BUILDINGS } from '../data/buildings';
 import { contactField, footprintOf, type Footprint } from './contact';
-import { f, fine, look } from './look';
+import { f, fine, look, rich } from './look';
+import { dressingGeos, dressingPlan, DRESS_KINDS, Life, staticLamps } from './rich';
 import { clamp, DataUtilsHalf, fbm, makeRng, smoothstep } from '../core/util-render';
 import type { IslandWorld } from '../sim/island';
 import type { PlacePreset as Biome } from '../data/presets';
@@ -25,7 +26,7 @@ const colorOf = (hex: number) => new THREE.Color(hex);
 const LIGHT_SHAFTS = false as boolean;
 /** Lanternfall's counts are tuned for its 140 x 104 m battlefields. */
 const LANTERNFALL_AREA = 70 * 52;
-import { albedoGlsl, Mats, paint, shared, celPatch, inked } from './materials';
+import { albedoGlsl, LAMP_GLSL, LAMPS, Mats, paint, shared, celPatch, inked } from './materials';
 import { MB } from './mb';
 
 const TERRAIN_FRAG_HEAD = /* glsl */ `
@@ -114,11 +115,37 @@ const WATER_FRAG = /* glsl */ `
       float foam = smoothstep(0.7, 0.98, wave) * smoothstep(0.26, 0.04, depth) * 0.7;
       foam += smoothstep(0.08, 0.0, depth);
       col = mix(col, uFoam * 0.8, clamp(foam, 0.0, 1.0) * 0.6);
+      RICH_WATER
       alpha = smoothstep(0.0, 0.3, depth) * 0.42 + 0.56;
     }
     float d = length(cameraPosition - vW);
     float fog = 1.0 - exp(-d * d * uFogDensity * uFogDensity);
     gl_FragColor = vec4(mix(col, uFog, fog), alpha);
+  }
+`;
+
+/**
+ * Lanternfall+ pond: the grassy bank mirrored softly near the shore, slow inked ripple rings spreading
+ * from a few spots (a fish rising, a drop from a leaf), and an inked line where water meets ground.
+ */
+const RICH_WATER_GLSL = /* glsl */ `
+  {
+    col = mix(col, uBank, (1.0 - smoothstep(0.1, 0.9, depth)) * 0.3 * (1.0 - fres));
+    for (int i = 0; i < 5; i++) {
+      vec3 rp = uRipples[i];
+      float age = mod(t + rp.z, 7.0);
+      float rad = age * 0.32;
+      float dd = length(vW.xz - rp.xy);
+      float fadeR = (1.0 - smoothstep(1.0, 2.1, rad)) * smoothstep(0.0, 0.3, age);
+      float w1 = fwidth(dd) * 1.4;
+      float ring = 1.0 - smoothstep(w1, w1 * 2.2, abs(dd - rad));
+      float ring2 = 1.0 - smoothstep(w1, w1 * 2.2, abs(dd - rad * 0.72));
+      col = mix(col, uInk, ring * fadeR * 0.55);
+      col = mix(col, uFoam, ring2 * fadeR * 0.35);
+    }
+    float rim = h - uLevel;
+    float wl = fwidth(rim) * 1.6;
+    col = mix(col, uInk, (1.0 - smoothstep(wl, wl * 2.0, abs(rim - 0.045))) * 0.85);
   }
 `;
 
@@ -217,6 +244,16 @@ const AMBIENT_FRAG = /* glsl */ `
   }
 `;
 
+/** Lanternfall+: spots in the pond that send out ripple rings now and then (x, z, time offset). */
+function ripples(w: IslandWorld): THREE.Vector3[] {
+  const p = w.place.pond;
+  const rng = makeRng(w.seed + 404);
+  return Array.from({ length: 5 }, (_, i) => {
+    const a = rng() * Math.PI * 2, r = Math.sqrt(rng()) * p.r * 0.55;
+    return new THREE.Vector3(p.x + Math.cos(a) * r, p.z + Math.sin(a) * r, i * 1.4 + rng());
+  });
+}
+
 export class Stage {
   scene = new THREE.Scene();
   biome: Biome;
@@ -267,6 +304,7 @@ export class Stage {
     this.buildGrass();
     this.buildRoadside();
     if (fine() && world.hasWater) this.buildPondEdge();
+    if (rich()) this.buildRich();
     this.buildIslets();
     // Lanternfall's light shafts belonged to its classic style; no look uses them yet (kept for a later preset).
     if (LIGHT_SHAFTS && q.rays && b.rays > 0) this.buildRays(sunDir);
@@ -516,7 +554,8 @@ export class Stage {
          vPWorld = (modelMatrix * vec4(transformed, 1.0)).xyz;
          vPNormal = normal;`,
       );
-      s.fragmentShader = TERRAIN_FRAG_HEAD + celPatch(s.fragmentShader)
+      if (rich()) { s.uniforms.uLamps = shared.uLamps; s.uniforms.uGlow = shared.uGlow; }
+      s.fragmentShader = TERRAIN_FRAG_HEAD + (rich() ? LAMP_GLSL : '') + celPatch(s.fragmentShader)
         .replace('#include <color_fragment>', /* glsl */ `
           #include <color_fragment>
           vec2 fuv = (vPWorld.xz + uExt) / (2.0 * uExt);
@@ -597,6 +636,7 @@ export class Stage {
             }
             float rimF = pow(1.0 - saturate(dot(normalize(vViewPosition), normal)), 4.0);
             totalEmissiveRadiance += uRim * rimF * diffuseColor.rgb * 0.5;
+            ${rich() ? 'totalEmissiveRadiance += lampLight(vPWorld, diffuseColor.rgb);' : ''}
           }
         `);
     };
@@ -615,7 +655,8 @@ export class Stage {
       transparent: true,
       depthWrite: false,
       vertexShader: WATER_VERT,
-      fragmentShader: WATER_FRAG,
+      fragmentShader: WATER_FRAG.replace('RICH_WATER', rich() ? RICH_WATER_GLSL : '')
+        .replace('uniform float uTime, uLava, uFogDensity, uLevel;', 'uniform float uTime, uLava, uFogDensity, uLevel;\n  uniform vec3 uRipples[5];\n  uniform vec3 uBank, uInk;'),
       uniforms: this.waterU = {
         uBrush: shared.uBrush,
         uTime: shared.uTime,
@@ -631,6 +672,9 @@ export class Stage {
         uLava: { value: 0 },
         uFogDensity: { value: b.fogDensity },
         uLevel: { value: w.waterLevel },
+        uRipples: { value: ripples(w) },
+        uBank: { value: colorOf(b.groundA).multiplyScalar(0.55) },
+        uInk: { value: new THREE.Color(0.05, 0.06, 0.07) },
       },
     });
     this.track(mat);
@@ -745,6 +789,7 @@ export class Stage {
       const ink = geo.flat ? null : geo.ink ?? 'nature';
       const solid = this.instanced(geo.solid, Mats.std, mats, cols, !geo.floats, ink);
       if (geo.flat) solid.castShadow = false;
+      if (geo.floats && rich()) this.floaters.push({ mesh: solid, base: mats.map((m) => m.clone()) });
       if (geo.leaf) this.instanced(geo.leaf, Mats.stdFoliage, mats, cols, true, ink ?? 'nature');
       if (geo.glow) this.instanced(geo.glow, Mats.glow, mats, undefined, false);
     }
@@ -869,8 +914,14 @@ export class Stage {
         pads.push(M.clone());
         if (rng() < 0.22) fl.push(M.clone());
       }
-      if (pads.length) this.instanced(padGeo, Mats.std, pads, undefined, false);
-      if (fl.length) this.instanced(flowerGeo, Mats.std, fl, undefined, false);
+      if (pads.length) {
+        const pm = this.instanced(padGeo, Mats.std, pads, undefined, false);
+        if (rich()) this.floaters.push({ mesh: pm, base: pads.map((m) => m.clone()) });
+      }
+      if (fl.length) {
+        const fm = this.instanced(flowerGeo, Mats.std, fl, undefined, false);
+        if (rich()) this.floaters.push({ mesh: fm, base: fl.map((m) => m.clone()) });
+      }
     }
   }
 
@@ -1101,6 +1152,50 @@ export class Stage {
     for (const i of this.islets) {
       i.obj.position.y = i.y + Math.sin(time * 0.3 + i.phase) * 0.9;
     }
+    if (this.life) {
+      this.life.update(time, smoothstep(0.75, 0.95, shared.uLight.value));
+      // Lotus and lily pads ride a slow swell.
+      for (const fl of this.floaters) {
+        fl.base.forEach((b, i) => {
+          this.bobP.setFromMatrixPosition(b);
+          const ph = this.bobP.x * 0.7 + this.bobP.z * 0.9;
+          this.bobM.makeRotationY(Math.sin(time * 0.3 + ph) * 0.06).premultiply(this.bobT.makeTranslation(0, Math.sin(time * 0.9 + ph) * 0.012, 0));
+          fl.mesh.setMatrixAt(i, this.bobM2.multiplyMatrices(b, this.bobM));
+        });
+        fl.mesh.instanceMatrix.needsUpdate = true;
+      }
+    }
+  }
+
+  // --- Lanternfall+ (rich detail): ground dressing, life, lantern light.
+  private life: Life | null = null;
+  private floaters: { mesh: THREE.InstancedMesh; base: THREE.Matrix4[] }[] = [];
+  private bobP = new THREE.Vector3();
+  private bobM = new THREE.Matrix4();
+  private bobM2 = new THREE.Matrix4();
+  private bobT = new THREE.Matrix4();
+  /** How many of the shared lantern-light slots the stone lanterns use; buildings fill the rest. */
+  lampCount = 0;
+
+  private buildRich() {
+    const b = this.biome;
+    const plan = dressingPlan(this.world);
+    const geos = dressingGeos([colorOf(b.rockA).getHex(), colorOf(b.rockB).getHex()]);
+    for (const k of DRESS_KINDS) {
+      const list = plan[k];
+      if (!list.mats.length) continue;
+      const g = geos[k];
+      this.track(g.geo);
+      const mesh = this.instanced(g.geo, Mats.std, list.mats, list.tints.map((t) => new THREE.Color(t, t, t)), g.shadow, g.ink);
+      mesh.castShadow = g.shadow;
+    }
+    this.life = new Life(this.world);
+    this.scene.add(this.life.group);
+    this.disposables.push(this.life);
+    const lamps = staticLamps(this.world).slice(0, LAMPS);
+    lamps.forEach((l, i) => shared.uLamps.value[i]!.copy(l));
+    for (let i = lamps.length; i < LAMPS; i++) shared.uLamps.value[i]!.set(0, 0, 0, 0);
+    this.lampCount = lamps.length;
   }
 
   dispose() {

@@ -34,7 +34,8 @@ test('lanternfall+ is lanternfall\'s shading, lines and color with painted+\'s l
   assert.deepEqual(lp.post, l.post, 'no grain');
   assert.deepEqual(lp.haze, l.haze, 'no haze');
   assert.deepEqual(lp.ground, l.ground);
-  assert.equal(lp.detail, pp.detail);
+  assert.equal(pp.detail, 'fine');
+  assert.equal(lp.detail, 'rich');
   assert.ok(lp.light.ao > 0 && lp.light.contact > 0);
 });
 
@@ -78,4 +79,34 @@ test('painted+ builds finer models: rounder stones, clustered crowns, a finer la
   // Budget: a clustered oak stays well under what a phone can instance a few dozen times.
   assert.ok(finer.oak! < 60000, `oak vertices ${finer.oak}`);
   useLook('painted');
+});
+
+test('lanternfall+ rich detail: inked marks, leafy crowns, a swaying lantern, dressing and lantern light', async () => {
+  const { dressingPlan, staticLamps, DRESS_KINDS } = await import('../src/render/rich');
+  const { IslandWorld } = await import('../src/sim/island');
+  const { PLACES } = await import('../src/data/places');
+  const count = (g: THREE.BufferGeometry) => g.getAttribute('position').count;
+  useLook('paintedplus');
+  const oakFine = count(decorGeo('oak').leaf!);
+  useLook('lanternfallplus');
+  const oak = decorGeo('oak');
+  assert.ok(count(oak.leaf!) > oakFine * 0.8, 'leafy crown keeps its detail');
+  // Trunks carry bark marks; the kit's posts wood; stones stone.
+  const codes = (g: THREE.BufferGeometry) => new Set(Array.from({ length: count(g) }, (_, i) => g.getAttribute('aMark').getW(i)));
+  assert.ok(codes(oak.solid).has(3), 'bark on the trunk');
+  assert.ok(codes(decorGeo('rock').solid).has(4), 'stone on rocks');
+  assert.ok(codes(partGeo('shelter_kit', 'post_back_left', 'temple').solid).has(2), 'wood on posts');
+  const roof = partGeo('shelter_kit', 'roof', 'temple');
+  assert.ok(roof.swing && count(roof.swing.glow) > 0, 'the hanging lantern is its own swaying piece');
+  const world = new IslandWorld(PLACES.home_valley);
+  const plan = dressingPlan(world);
+  for (const k of DRESS_KINDS) assert.ok(plan[k].mats.length > 0, `dressing ${k}`);
+  assert.ok(plan.edge.mats.length > 60, `path edging ${plan.edge.mats.length}`);
+  // Nothing dressed inside a build site.
+  const site = PLACES.home_valley.sites[0]!;
+  const p = new THREE.Vector3();
+  for (const k of DRESS_KINDS) for (const m of plan[k].mats) assert.ok(Math.hypot(p.setFromMatrixPosition(m).x - site.x, p.z - site.z) > 3, `${k} clear of the site`);
+  assert.ok(staticLamps(world).length >= 2, 'stone lanterns light the night');
+  useLook('painted');
+  assert.equal(decorGeo('rock').solid.getAttribute('aMark'), undefined, 'no marks outside lanternfall+');
 });

@@ -2,12 +2,20 @@
 // Painted+ (2026-11-10): build() bakes ambient occlusion into the vertex colors when the look asks for it.
 // Model builder: composes primitives with vertex colors into one merged geometry.
 import * as THREE from 'three';
-import { anyOutline, look } from './look';
+import { anyOutline, look, rich } from './look';
 import { bakeAO, type AOOptions } from './ao';
 import { mergeGeometries, mergeVertices } from 'three/addons/utils/BufferGeometryUtils.js';
 import { fbm } from '../core/util';
 
 export type Col = number | [number, number];
+
+/** Inked surface marks (Lanternfall+): drawn in the shader along each part's long axis. */
+export type MarkKind = 'wood' | 'bark' | 'stone';
+/**
+ * Codes stored in the `aMark` attribute's w. 1 = none, so geometry without the attribute (WebGL's default
+ * vertex attribute is (0, 0, 0, 1)) also reads as unmarked.
+ */
+export const MARK_CODE: Record<MarkKind | 'none', number> = { none: 1, wood: 2, bark: 3, stone: 4 };
 
 export interface PartOpts {
   p?: [number, number, number];
@@ -24,6 +32,8 @@ export interface PartOpts {
   puff?: number;
   /** Welds shared corners first, so the shape shades smoothly (rounded stones, Painted+). */
   smooth?: boolean;
+  /** Inked surface marks for this part (Lanternfall+); defaults to the builder's `setMark`. */
+  mark?: MarkKind | 'none';
 }
 
 const tmpColor = new THREE.Color();
@@ -33,6 +43,8 @@ const tmpQ = new THREE.Quaternion();
 const tmpE = new THREE.Euler();
 const tmpV = new THREE.Vector3();
 const tmpS = new THREE.Vector3();
+const tmpS2 = new THREE.Vector3();
+const tmpA = new THREE.Vector3();
 
 let wobbleSeed = 1;
 
@@ -61,6 +73,13 @@ function addInkData(g: THREE.BufferGeometry) {
 
 export class MB {
   private parts: THREE.BufferGeometry[] = [];
+  private markDefault: MarkKind | 'none' = 'none';
+
+  /** Marks every following part (until changed) as wood, bark or stone (Lanternfall+ inked marks). */
+  setMark(kind: MarkKind | 'none'): this {
+    this.markDefault = kind;
+    return this;
+  }
 
   add(geo: THREE.BufferGeometry, col: Col, o: PartOpts = {}) {
     let g = geo;
@@ -131,6 +150,19 @@ export class MB {
     if (typeof s === 'number') tmpS.set(s, s, s);
     else tmpS.set(s[0], s[1], s[2]);
     tmpM.compose(tmpV, tmpQ, tmpS);
+    if (rich()) {
+      // The part's long axis (before it is turned into place) is the direction its grain runs.
+      const mk = o.mark ?? this.markDefault;
+      const sz = bb.getSize(tmpS2);
+      sz.multiply(tmpS);
+      const ax = sz.x >= sz.y && sz.x >= sz.z ? tmpA.set(1, 0, 0) : sz.y >= sz.z ? tmpA.set(0, 1, 0) : tmpA.set(0, 0, 1);
+      ax.applyQuaternion(tmpQ);
+      const mark = new Float32Array(pos.count * 4);
+      for (let i = 0; i < pos.count; i++) {
+        mark[i * 4] = ax.x; mark[i * 4 + 1] = ax.y; mark[i * 4 + 2] = ax.z; mark[i * 4 + 3] = MARK_CODE[mk];
+      }
+      g.setAttribute('aMark', new THREE.BufferAttribute(mark, 4));
+    }
     g.applyMatrix4(tmpM);
     this.parts.push(g);
     return this;

@@ -76,9 +76,34 @@ on by the look (`light` and `detail` in `src/data/looks.ts`) and costs nothing i
 ## Lanternfall+ (owner request, 2026-11-10)
 The owner likes Lanternfall-like best, for four reasons: crisp light and shadow bands, dark ink lines on
 everything, richer color and contrast, and no grain or haze. Lanternfall+ keeps all of Lanternfall-like's
-values (shading, outline, color remap, ground, haze, post) and adds Painted+'s `light` and `detail`:
-baked occlusion 0.75, contact shadows 0.7, sun shadow radius 4, and the fine models. The ink outlines read
-cleanly on the finer models (tile courses, lantern, rounded stones); no thinning was needed.
+values (shading, outline, color remap, ground, haze, post) and adds Painted+'s `light` (baked occlusion
+0.75, contact shadows 0.7, sun shadow radius 4) and the **rich** detail level (`detail: 'rich'`,
+`rich()` in `src/render/look.ts`), which the owner asked for with phones set aside for now (PC first):
+1. **Leafy crowns** (`leafyCrown()` in `decor-models.ts`): Lanternfall's clean round puff with small leaf
+   clumps set into its surface, mostly over the top and sides, so the inked outline breaks into leaves.
+   Trunks get flaring **roots** (`roots()`), branches get a forking twig. Gather trees use the same crown.
+2. **Inked surface marks**: `MB` parts carry an `aMark` attribute (`setMark()` or `mark` per part: `wood`,
+   `bark`, `stone`; the long axis of the part is the grain direction). `Mats.std` draws wood grain, coarser
+   bark grain and stone cracks (3D cell edges, shown in patches) as fine dark lines in the shader
+   (`MARK_GLSL` in `materials.ts`); lines fade where they would crowd. Code 1 = no marks, so geometry
+   without the attribute is unmarked.
+3. **Ground dressing** (`src/render/rich.ts`, `dressingPlan` + `dressingGeos`): edging stones along both
+   sides of the path (gaps now and then), pebbles, moss patches at the feet of rocks and trees, petals under
+   the cherries (floating on the pond too), clover and flower clumps, twigs under leafy trees. Kept clear of
+   build sites. Instanced.
+4. **Pond** (`RICH_WATER_GLSL` in `stage.ts`): the grassy bank softly mirrored near the shore, inked ripple
+   rings spreading slowly from five spots, an inked line where water meets ground, and three koi gliding
+   just under the surface (drawn after the water, slightly see-through). Not a true reflection of the scene.
+5. **Life** (`Life` in `rich.ts`): 16 butterflies by day, leaves and petals drifting down from the crowns
+   and settling, lotus and lily pads riding a slow swell, and the shelter's paper lantern swaying on its
+   cord (`PartGeo.swing`, animated in `BuildingView`).
+6. **Lantern light** (`LAMP_GLSL`, `shared.uLamps`, 8 slots): stone lanterns and the shelter's hanging
+   lantern (once its part has settled) light the ground and things near them in two crisp rings at dusk
+   and night, fading in with the lanterns' glow.
+Cost: about 4× Lanternfall-like's vertices in decor and kits (an oak: 3.5k → 42k), ~0.6 s more model
+building at load on a desktop, and heavier pixel shading on stone (the crack pattern). Not measured on a
+phone; the owner set phones aside for this pass. Software rendering in the container is now very slow
+(screenshots need a long timeout).
 
 ## Time of day (Phase 2)
 Presets per place and time in `src/data/presets.ts` (`home_dawn`, `home_day`, `home_golden`, `home_dusk`,

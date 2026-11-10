@@ -68,6 +68,24 @@ soft shading where things meet, ground shadows and the detail pass.
 | Half built | ![](plus-lanternfall-kit-partial.jpg) | ![](plus-lanternfallplus-kit-partial.jpg) |
 | Golden hour | ![](plus-lanternfall-golden.jpg) | ![](plus-lanternfallplus-golden.jpg) |
 
+#### Lanternfall+, richer (added 2026-11-10, PC first)
+
+You asked for all six detail ideas with the phone set aside for now. Lanternfall+ now has: leafy inked tree
+crowns with roots and twigs; inked wood grain, bark and stone cracks; edging stones, pebbles, moss, petals,
+clover and twigs on the ground; a pond with a soft bank reflection, inked ripples, an inked shoreline and
+koi; butterflies, drifting leaves, bobbing lotus and a swaying paper lantern; and lanterns that light the
+ground at dusk and night.
+
+| Valley | Close | Golden hour |
+|---|---|---|
+| ![](plus-lanternfallplus-wide.jpg) | ![](plus-lanternfallplus-close.jpg) | ![](plus-lanternfallplus-golden.jpg) |
+
+| Shelter | Half built | Night: Lanternfall-like | Night: Lanternfall+ |
+|---|---|---|---|
+| ![](plus-lanternfallplus-kit.jpg) | ![](plus-lanternfallplus-kit-partial.jpg) | ![](plus-lanternfall-night.jpg) | ![](plus-lanternfallplus-night.jpg) |
+
+Motion (butterflies, leaves, koi, ripples, the lantern's sway) only shows in the game.
+
 **If you pick either Lanternfall look for A6:** the plan's art target (7.1, "related at most, never the same")
 gets rewritten, and Moss & Bell will read as Lanternfall's sibling. That's fine if it's deliberate.
 

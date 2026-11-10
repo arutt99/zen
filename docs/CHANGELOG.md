@@ -1,5 +1,14 @@
 # Changelog
 
+## Phase 2 follow-up: Lanternfall+ goes richer (2026-11-10)
+- Owner: "ditch the worry about the phone right now and just focus on PC", do all six detail ideas.
+  Lanternfall+ now builds a new **rich** detail level: leafy inked crowns with roots and twigs; inked wood
+  grain, bark and stone cracks; ground dressing (path edging, pebbles, moss, petals, clover, twigs); a
+  livelier pond (bank reflection, inked ripples and shoreline, koi); life (butterflies, drifting leaves,
+  bobbing lotus and lily pads, a swaying paper lantern); and lantern light on the ground at dusk and night.
+  Painted+ and the other looks are unchanged.
+- 1 new unit test; screenshots in `docs/phase2/README.md`.
+
 ## Phase 2 follow-up: Lanternfall+ (2026-11-10)
 - New trial look **Lanternfall+**: Lanternfall-like's crisp bands, ink lines on everything, rich color and no
   grain or haze (what the owner likes about it), with Painted+'s baked occlusion, contact shadows and detail

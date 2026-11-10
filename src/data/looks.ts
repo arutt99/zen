@@ -85,9 +85,12 @@ export interface LookDef {
   ambient: number;
   /**
    * Which model set to build: 'base' is the Phase 2 models; 'fine' adds the detail pass (smoother rocks,
-   * clustered tree crowns, pond edge stones, a finer stone lantern and temple shelter).
+   * lumpy tree crowns, pond edge stones, a finer stone lantern and temple shelter); 'rich' (Lanternfall+,
+   * owner request 2026-11-10, PC first) builds on 'fine' with leafy inked crowns and roots, inked wood
+   * grain and stone cracks, ground dressing, a livelier pond with koi, butterflies, falling leaves, a
+   * swaying lantern and lantern light at night.
    */
-  detail: 'base' | 'fine';
+  detail: 'base' | 'fine' | 'rich';
   light: {
     /** Ambient occlusion baked into model colors where parts meet each other and the ground (0 = off, 1 = full). */
     ao: number;
@@ -198,7 +201,7 @@ export const LOOKS: Record<LookId, LookDef> = {
       posterizeMix: 0,
     },
     ambient: 1,
-    detail: 'fine',
+    detail: 'rich',
     light: { ao: 0.75, contact: 0.7, shadowSoftness: 4 },
   },
   woodblock: {

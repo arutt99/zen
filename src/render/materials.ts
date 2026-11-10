@@ -6,7 +6,7 @@
 // The painterly material system: brush-stroke albedo variation, soft rim light, and wind.
 import * as THREE from 'three';
 import type { OutlineClass } from '../data/looks';
-import { f, look, outlined, v3 } from './look';
+import { f, look, outlined, rich, v3 } from './look';
 import { makeRng } from '../core/util';
 
 export const shared = {
@@ -21,7 +21,89 @@ export const shared = {
   uGlow: { value: 1 },
   /** The caretaker's chest, world space; canopies between it and the camera thin out. w = on (1) / off (0). */
   uFocus: { value: new THREE.Vector4(0, 0, 0, 0) },
+  /** Lanternfall+: up to LAMPS lanterns that light the ground and things near them at night (xyz, w = strength). */
+  uLamps: { value: Array.from({ length: 8 }, () => new THREE.Vector4(0, 0, 0, 0)) },
 };
+
+/** How many lantern lights the shaders read (Lanternfall+). */
+export const LAMPS = 8;
+
+/**
+ * Warm light from lanterns at dusk and night (Lanternfall+): two crisp rings, like Lanternfall's bands,
+ * fading in as the lanterns' glow rises. Adds to `totalEmissiveRadiance`, scaled by `albedo`.
+ */
+export const LAMP_GLSL = /* glsl */ `
+  uniform vec4 uLamps[${LAMPS}];
+  uniform float uGlow;
+  vec3 lampLight(vec3 p, vec3 albedo) {
+    float k = smoothstep(0.6, 1.4, uGlow);
+    if (k <= 0.0) return vec3(0.0);
+    float sum = 0.0;
+    for (int i = 0; i < ${LAMPS}; i++) {
+      vec4 L = uLamps[i];
+      if (L.w <= 0.0) continue;
+      float d = distance(p, L.xyz);
+      float R = 4.2;
+      sum += L.w * (smoothstep(R, R * 0.86, d) * 0.5 + smoothstep(R * 0.5, R * 0.42, d) * 0.5);
+    }
+    return albedo * vec3(1.0, 0.6, 0.28) * sum * k * 0.85;
+  }
+`;
+
+/**
+ * Inked surface marks (Lanternfall+): wood grain along a part's long axis, coarser grain on bark, and a
+ * few cracks on stone, drawn as fine dark lines that fade out where they would get too dense to read.
+ */
+const MARK_GLSL = /* glsl */ `
+  varying vec4 vMark;
+  varying vec3 vLocal;
+  vec3 markHash(vec3 p) {
+    p = vec3(dot(p, vec3(127.1, 311.7, 74.7)), dot(p, vec3(269.5, 183.3, 246.1)), dot(p, vec3(113.5, 271.9, 124.6)));
+    return fract(sin(p) * 43758.5453);
+  }
+  // A thin line at every whole number of v, about \`width\` pixels wide; fades out where lines crowd.
+  float markLine(float v, float width) {
+    float fw = fwidth(v);
+    float d = abs(fract(v + 0.5) - 0.5);
+    float line = 1.0 - smoothstep(fw * width * 0.5, fw * width * 1.1, d);
+    return line * (1.0 - smoothstep(0.12, 0.3, fw));
+  }
+  float inkMarks() {
+    float kind = vMark.w;
+    if (kind < 1.5) return 0.0;
+    vec3 a = normalize(vMark.xyz + vec3(1e-4));
+    vec3 b = normalize(cross(a, abs(a.y) < 0.9 ? vec3(0.0, 1.0, 0.0) : vec3(1.0, 0.0, 0.0)));
+    vec3 c = cross(a, b);
+    vec3 p = vLocal;
+    if (kind < 3.5) {
+      // Grain: lines along the long axis, gently warped by the brush noise.
+      float s = dot(p, a), u = dot(p, b) + dot(p, c) * 0.83;
+      float bark = step(2.5, kind);
+      float n = texture2D(uBrush, vec2(s * 0.22, u * 0.35)).r;
+      float freq = mix(14.0, 7.0, bark);
+      float v = u * freq + (n - 0.5) * mix(2.4, 3.2, bark);
+      float line = markLine(v, mix(1.2, 1.8, bark));
+      // Grain comes and goes a little, so it reads as wood rather than stripes.
+      line *= smoothstep(0.3, 0.55, texture2D(uBrush, vec2(s * 0.5 + 0.3, u * 1.3)).r);
+      return line * mix(0.5, 0.65, bark);
+    }
+    // Stone: the edges of a 3D cell pattern, shown only in patches, read as cracks.
+    vec3 q = p * 3.2;
+    vec3 i = floor(q), fq = fract(q);
+    float d1 = 8.0, d2 = 8.0;
+    for (int x = -1; x <= 1; x++) for (int y = -1; y <= 1; y++) for (int z = -1; z <= 1; z++) {
+      vec3 g = vec3(float(x), float(y), float(z));
+      vec3 r = g + markHash(i + g) - fq;
+      float d = dot(r, r);
+      if (d < d1) { d2 = d1; d1 = d; } else if (d < d2) d2 = d;
+    }
+    float e = sqrt(d2) - sqrt(d1);
+    float w = fwidth(e) * 1.3;
+    float crack = (1.0 - smoothstep(w * 0.5, w * 1.5, e)) * (1.0 - smoothstep(0.25, 0.6, fwidth(q.x) + fwidth(q.y)));
+    crack *= smoothstep(0.5, 0.62, texture2D(uBrush, p.xz * 0.45 + p.y * 0.3).r);
+    return crack * 0.6;
+  }
+`;
 
 export function makeBrushTexture(): THREE.Texture {
   const size = 512;
@@ -74,6 +156,8 @@ export interface PaintOpts {
   brush?: number;
   /** Thin out where it stands between the camera and the caretaker (foliage). */
   fade?: boolean;
+  /** Draw inked wood grain and stone cracks from the geometry's `aMark` (Lanternfall+ only). */
+  marks?: boolean;
 }
 
 /** The canopy fade: dithered see-through where the fragment sits near the camera→caretaker line. */
@@ -212,7 +296,11 @@ export function paint<T extends THREE.Material>(mat: T, opts: PaintOpts = {}): T
   const brush = (opts.brush ?? 1) * L.brush;
   const fade = !!opts.fade;
   const hasNormal = !(mat instanceof THREE.MeshLambertMaterial);
+  const marks = rich() && !!opts.marks;
+  const lamps = rich();
   mat.onBeforeCompile = (s) => {
+    s.uniforms.uLamps = shared.uLamps;
+    s.uniforms.uGlow = shared.uGlow;
     s.uniforms.uTime = shared.uTime;
     s.uniforms.uBrush = shared.uBrush;
     s.uniforms.uRim = shared.uRim;
@@ -222,9 +310,10 @@ export function paint<T extends THREE.Material>(mat: T, opts: PaintOpts = {}): T
     s.uniforms.uWind = { value: wind };
     s.uniforms.uRimAmt = { value: rim };
     s.uniforms.uBrushAmt = { value: brush };
-    s.vertexShader = PAINT_VERT_HEAD + s.vertexShader
+    s.vertexShader = PAINT_VERT_HEAD + (marks ? 'attribute vec4 aMark;\nvarying vec4 vMark;\nvarying vec3 vLocal;\n' : '') + s.vertexShader
       .replace('#include <begin_vertex>', /* glsl */ `
         #include <begin_vertex>
+        ${marks ? 'vMark = aMark; vLocal = position;' : ''}
         ${wind > 0 ? /* glsl */ `
         #ifdef USE_INSTANCING
           vec3 windBase = instanceMatrix[3].xyz;
@@ -245,7 +334,7 @@ export function paint<T extends THREE.Material>(mat: T, opts: PaintOpts = {}): T
         #endif
         vPWorld = (modelMatrix * pWorld).xyz;
       `);
-    s.fragmentShader = PAINT_FRAG_HEAD + (fade ? FADE_GLSL : '') + celPatch(s.fragmentShader)
+    s.fragmentShader = PAINT_FRAG_HEAD + (fade ? FADE_GLSL : '') + (marks ? MARK_GLSL : '') + (lamps ? LAMP_GLSL : '') + celPatch(s.fragmentShader)
       .replace('#include <clipping_planes_fragment>', /* glsl */ `
         #include <clipping_planes_fragment>
         ${fade ? 'canopyFade(vPWorld);' : ''}
@@ -260,10 +349,12 @@ export function paint<T extends THREE.Material>(mat: T, opts: PaintOpts = {}): T
           diffuseColor.rgb *= 1.0 + bm * 0.62 * uBrushAmt;
           diffuseColor.rgb += bm * vec3(0.05, 0.015, -0.045) * uBrushAmt;
         }
+        ${marks ? 'diffuseColor.rgb *= 1.0 - inkMarks();' : ''}
         ${albedoGlsl('diffuseColor.rgb')}
       `)
       .replace('#include <emissivemap_fragment>', /* glsl */ `
         #include <emissivemap_fragment>
+        ${lamps ? 'totalEmissiveRadiance += lampLight(vPWorld, diffuseColor.rgb);' : ''}
         ${hasNormal ? /* glsl */ `
         {
           float rimF = pow(1.0 - saturate(dot(normalize(vViewPosition), normal)), 3.2);
@@ -272,7 +363,7 @@ export function paint<T extends THREE.Material>(mat: T, opts: PaintOpts = {}): T
         ` : ''}
       `);
   };
-  mat.customProgramCacheKey = () => `paint-${L.id}-${wind}-${rim}-${brush}-${fade}-${mat.type}`;
+  mat.customProgramCacheKey = () => `paint-${L.id}-${wind}-${rim}-${brush}-${fade}-${marks}-${mat.type}`;
   return mat;
 }
 
@@ -290,7 +381,7 @@ export function initMaterials() {
   shared.uBrush.value = makeBrushTexture();
   const L = look();
   inkShared.uWidth.value = L.outline.width;
-  Mats.std = paint(new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.82, metalness: 0.04 }));
+  Mats.std = paint(new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.82, metalness: 0.04 }), { marks: true });
   Mats.stdFoliage = paint(new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.9, metalness: 0 }), { wind: 0.0042, rim: 1.3, fade: true });
   Mats.metal = paint(new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.42, metalness: 0.72 }), { brush: 0.5 });
   Mats.glow = new THREE.MeshBasicMaterial({ vertexColors: true, toneMapped: true });
