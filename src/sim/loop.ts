@@ -6,7 +6,7 @@ import { BEAT_SECONDS, FIRST_BEAT_SECONDS, type MaterialId } from '../data/gathe
 import type { PlaceDef } from '../data/places';
 import type { MoveInput } from './input';
 import { GatherNode } from './nodes';
-import { isComplete, nextDeposit, partsBuiltCount } from './progress';
+import { completedBuildings, isComplete, nextDeposit, partsBuiltCount, siteOpen } from './progress';
 import { PRIORITY, ProximitySensor, type Proximate } from './proximity';
 import type { GameState } from './state';
 import { Walker, type Blocker, type WalkArea } from './walker';
@@ -77,6 +77,11 @@ export class CoreLoop {
     return isComplete(s.def, this.state.deposits[s.id]!);
   }
 
+  /** True once the site has revealed itself (its required buildings are complete). */
+  siteOpen(s: Site): boolean {
+    return siteOpen(s.def, completedBuildings(this.place, this.state.deposits), this.state.deposits[s.id]);
+  }
+
   private nodeTarget(n: GatherNode): BeatTarget {
     const material: MaterialId = n.def.material;
     const t: BeatTarget = {
@@ -114,7 +119,8 @@ export class CoreLoop {
       work: 'deposit',
       timer: 0,
       // Available until complete, even with an empty satchel, so standing on it shows the cost (plan 3.3).
-      isAvailable: () => !this.siteComplete(s),
+      // Only once the site has revealed itself (plan 3.3).
+      isAvailable: () => !this.siteComplete(s) && this.siteOpen(s),
       onEnter: () => { t.timer = FIRST_BEAT_SECONDS; },
       onTick: (dt) => {
         t.timer -= dt;
@@ -130,7 +136,7 @@ export class CoreLoop {
 
   /** True when the site target would deposit something on its next beat. */
   canDeposit(s: Site): boolean {
-    return !this.siteComplete(s) && nextDeposit(s.def, this.state.deposits[s.id]!, this.state.satchel) !== null;
+    return !this.siteComplete(s) && this.siteOpen(s) && nextDeposit(s.def, this.state.deposits[s.id]!, this.state.satchel) !== null;
   }
 
   /**

@@ -21,7 +21,7 @@ export function outlined(cls: OutlineClass): boolean {
   return current.outline.on.includes(cls);
 }
 
-/** True when the look builds the detail-pass models (Painted+, and Lanternfall+ on top of them). */
+/** True when the look builds the detail-pass models (Lanternfall+). Kept apart from rich() for readability. */
 export function fine(): boolean {
   return current.detail !== 'base';
 }

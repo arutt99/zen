@@ -1,6 +1,7 @@
 // Browser smoke test: loads dist/index.html at phone and laptop sizes, checks it boots without
 // errors, the canvas is not blank, keyboard and touch move the caretaker, the core loop gathers and
-// deposits, a reload keeps exactly what was delivered, and saves a screenshot of each run.
+// deposits, later sites stay hidden, a poem stone can be read, a reload keeps exactly what was delivered
+// and read, and saves a screenshot of each run.
 // Needs Playwright (`npm i -D playwright` locally; preinstalled in some CI images).
 const path = require('node:path');
 const fs = require('node:fs');
@@ -92,10 +93,17 @@ async function run(name, contextOpts, drive, { needMove = true, query = '' } = {
     await page.evaluate(() => window.__mb.teleport(9.5, -1.1));
     await wait(() => (window.__mb.deposits.shelter?.wood ?? 0) >= 2);
     await page.evaluate(() => window.__mb.teleport(2, 9)); // walk off mid-deposit
-    const before = await page.evaluate(() => ({ s: window.__mb.satchel, d: window.__mb.deposits }));
+    // Phase 3: the next site stays hidden until the shelter is done; a poem stone joins the collection.
+    const open = await page.evaluate(() => window.__mb.open);
+    if (JSON.stringify(open) !== '["shelter"]') throw new Error(`only the shelter should be open, got ${JSON.stringify(open)}`);
+    await page.evaluate(() => window.__mb.teleport(5.2, 14.0));
+    await wait(() => window.__mb.context === 'words:poem_gate');
+    await page.evaluate(() => window.__mb.pressContext());
+    await wait(() => window.__mb.collection.includes('poem_gate'));
+    const before = await page.evaluate(() => ({ s: window.__mb.satchel, d: window.__mb.deposits, c: window.__mb.collection }));
     await page.reload();
     await wait(() => window.__mb && window.__mb.fps > 0);
-    const after = await page.evaluate(() => ({ s: window.__mb.satchel, d: window.__mb.deposits }));
+    const after = await page.evaluate(() => ({ s: window.__mb.satchel, d: window.__mb.deposits, c: window.__mb.collection }));
     const same = JSON.stringify(before) === JSON.stringify(after);
     console.log(`   loop: before reload ${JSON.stringify(before)}, after ${JSON.stringify(after)} → ${same ? 'kept' : 'CHANGED'}`);
     if (!same) throw new Error('reload changed the saved facts');

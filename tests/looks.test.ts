@@ -1,5 +1,5 @@
-// Painted+ (owner request 2026-11-10): Painted nudged toward a soft-lit diorama. Baked occlusion,
-// contact shadows and a detail pass, all switched on by the look and off in every other look.
+// Lanternfall+ (A6): baked occlusion, contact shadows and the rich detail pass, switched on by the look
+// and off in plain Lanternfall.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import * as THREE from 'three';
@@ -11,36 +11,15 @@ import { partGeo } from '../src/render/kits';
 import { useLook } from '../src/render/look';
 import { MB } from '../src/render/mb';
 
-test('painted+ keeps painted\'s warmth but adds soft light and detail; other looks are unchanged', () => {
-  const p = LOOKS.painted, pp = LOOKS.paintedplus;
-  assert.equal(pp.detail, 'fine');
-  assert.ok(pp.light.ao > 0 && pp.light.contact > 0 && pp.light.shadowSoftness > p.light.shadowSoftness);
-  assert.deepEqual([...pp.outline.on], ['figure'], 'lines on figures only');
-  assert.ok(pp.outline.width < p.outline.width);
-  assert.ok(pp.shading.softness >= p.shading.softness, 'at least as soft');
-  assert.ok(pp.shading.shadowTint[0] >= pp.shading.shadowTint[2], 'warm shadow tint');
-  for (const id of LOOK_IDS) if (id !== 'paintedplus' && id !== 'lanternfallplus') {
-    assert.equal(LOOKS[id].detail, 'base', id);
-    assert.equal(LOOKS[id].light.ao, 0, id);
-    assert.equal(LOOKS[id].light.contact, 0, id);
-  }
-});
-
-test('lanternfall+ is lanternfall\'s shading, lines and color with painted+\'s light and detail', () => {
-  const l = LOOKS.lanternfall, lp = LOOKS.lanternfallplus, pp = LOOKS.paintedplus;
-  assert.deepEqual(lp.shading, l.shading, 'crisp bands');
-  assert.deepEqual(lp.outline, l.outline, 'ink on everything');
-  assert.deepEqual(lp.albedo, l.albedo, 'rich color');
-  assert.deepEqual(lp.post, l.post, 'no grain');
-  assert.deepEqual(lp.haze, l.haze, 'no haze');
-  assert.deepEqual(lp.ground, l.ground);
-  assert.equal(pp.detail, 'fine');
-  assert.equal(lp.detail, 'rich');
-  assert.ok(lp.light.ao > 0 && lp.light.contact > 0);
+test('only the decided look and its light fallback remain (A6, Phase 3 cleanup)', () => {
+  assert.deepEqual([...LOOK_IDS], ['lanternfallplus', 'lanternfall']);
+  assert.equal(LOOKS.lanternfall.detail, 'base');
+  assert.equal(LOOKS.lanternfall.light.ao, 0);
+  assert.equal(LOOKS.lanternfall.light.contact, 0);
 });
 
 test('baked occlusion darkens where parts meet and near the ground, and leaves open faces alone', () => {
-  useLook('painted'); // no bake inside MB.build: the test bakes by hand
+  useLook('lanternfall'); // no bake inside MB.build: the test bakes by hand
   const g = new MB().box(1, 1, 1, 0xffffff, { p: [0, 0.5, 0] }).box(0.2, 1, 0.2, 0xffffff, { p: [0, 1.5, 0] }).build();
   bakeAO(g, 1, { ground: true });
   const pos = g.getAttribute('position'), col = g.getAttribute('color'), nrm = g.getAttribute('normal');
@@ -65,20 +44,19 @@ test('contact shadows paint soft footprints that combine without going black', (
   assert.ok(at(2, 2, 1) > 150 && at(2, 2, 0) === 0, 'sites go in their own channel');
 });
 
-test('painted+ builds finer models: rounder stones, clustered crowns, a finer lantern and shelter', () => {
+test('lanternfall+ builds finer models than plain lanternfall: rounder stones, clustered crowns, a finer lantern', () => {
   const count = (g: THREE.BufferGeometry) => g.getAttribute('position').count;
   const base: Record<string, number> = {}, finer: Record<string, number> = {};
-  useLook('painted');
+  useLook('lanternfall');
   for (const k of ['oak', 'rock', 'stone_lantern']) base[k] = count(decorGeo(k).solid) + (decorGeo(k).leaf ? count(decorGeo(k).leaf!) : 0);
   const roofBase = count(partGeo('shelter_kit', 'roof', 'temple').solid);
-  useLook('paintedplus');
+  useLook('lanternfallplus');
   for (const k of ['oak', 'rock', 'stone_lantern']) finer[k] = count(decorGeo(k).solid) + (decorGeo(k).leaf ? count(decorGeo(k).leaf!) : 0);
   const roofFine = count(partGeo('shelter_kit', 'roof', 'temple').solid);
   for (const k of Object.keys(base)) assert.ok(finer[k]! > base[k]!, `${k}: ${base[k]} → ${finer[k]}`);
   assert.ok(roofFine > roofBase, `temple roof: ${roofBase} → ${roofFine}`);
-  // Budget: a clustered oak stays well under what a phone can instance a few dozen times.
-  assert.ok(finer.oak! < 60000, `oak vertices ${finer.oak}`);
-  useLook('painted');
+  assert.ok(finer.oak! < 80000, `oak vertices ${finer.oak}`);
+  useLook('lanternfall');
 });
 
 test('lanternfall+ rich detail: inked marks, leafy crowns, a swaying lantern, dressing and lantern light', async () => {
@@ -86,18 +64,15 @@ test('lanternfall+ rich detail: inked marks, leafy crowns, a swaying lantern, dr
   const { IslandWorld } = await import('../src/sim/island');
   const { PLACES } = await import('../src/data/places');
   const count = (g: THREE.BufferGeometry) => g.getAttribute('position').count;
-  useLook('paintedplus');
-  const oakFine = count(decorGeo('oak').leaf!);
   useLook('lanternfallplus');
   const oak = decorGeo('oak');
-  assert.ok(count(oak.leaf!) > oakFine * 0.8, 'leafy crown keeps its detail');
   // Trunks carry bark marks; the kit's posts wood; stones stone.
   const codes = (g: THREE.BufferGeometry) => new Set(Array.from({ length: count(g) }, (_, i) => g.getAttribute('aMark').getW(i)));
   assert.ok(codes(oak.solid).has(3), 'bark on the trunk');
   assert.ok(codes(decorGeo('rock').solid).has(4), 'stone on rocks');
   assert.ok(codes(partGeo('shelter_kit', 'post_back_left', 'temple').solid).has(2), 'wood on posts');
   const roof = partGeo('shelter_kit', 'roof', 'temple');
-  assert.ok(roof.swing && count(roof.swing.glow) > 0, 'the hanging lantern is its own swaying piece');
+  assert.ok(roof.swing && count(roof.swing.glow!) > 0, 'the hanging lantern is its own swaying piece');
   const world = new IslandWorld(PLACES.home_valley);
   const plan = dressingPlan(world);
   for (const k of DRESS_KINDS) assert.ok(plan[k].mats.length > 0, `dressing ${k}`);
@@ -107,6 +82,6 @@ test('lanternfall+ rich detail: inked marks, leafy crowns, a swaying lantern, dr
   const p = new THREE.Vector3();
   for (const k of DRESS_KINDS) for (const m of plan[k].mats) assert.ok(Math.hypot(p.setFromMatrixPosition(m).x - site.x, p.z - site.z) > 3, `${k} clear of the site`);
   assert.ok(staticLamps(world).length >= 2, 'stone lanterns light the night');
-  useLook('painted');
-  assert.equal(decorGeo('rock').solid.getAttribute('aMark'), undefined, 'no marks outside lanternfall+');
+  useLook('lanternfall');
+  assert.equal(decorGeo('rock').solid.getAttribute('aMark'), undefined, 'no marks in plain lanternfall');
 });

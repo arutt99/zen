@@ -1,24 +1,17 @@
-// Look presets (plan 7.4): everything that defines the art style, as named data the owner switches
-// between in Settings. Art decision point A6 (shading family) is chosen from these at the Phase 2 gate.
+// Look presets (plan 7.4): everything that defines the art style, as named data. Art decision point A6
+// is decided (owner, 2026-11-10): Lanternfall+. The other trial looks (Painted, Painted+, Woodblock) were
+// removed at the start of Phase 3; plain Lanternfall stays as the light look the browser smoke test drives
+// (software GL can't run Lanternfall+ fast enough) and as a fallback.
 //
-// - painted:     the target, the painted storybook reference (docs/art-reference.jpg), built with the
-//                plan 7.1 retuning checklist applied.
-// - lanternfall: Lanternfall's inked look exactly as copied in Phase 0 (for comparison).
-// - paintedplus: Painted nudged a little toward a soft-lit diorama (owner request, 2026-11-10: "move in
-//                that direction a bit"): baked soft shadows where things meet each other and the ground,
-//                softer sun shadows, lines on figures only, and a detail pass on focal models
-//                (smoother stones, clustered tree crowns, a stone-edged pond, a finer lantern and shelter).
-// - lanternfallplus: Lanternfall's crisp bands, ink on everything, rich color and no grain or haze (the
-//                four things the owner likes about it, 2026-11-10), plus Painted+'s baked occlusion,
-//                contact shadows and detail pass.
-// - woodblock:   the wildcard (owner pick, 2026-11-10): a Japanese woodblock print, flat colour,
-//                fine dark-brown lines, a limited palette on textured paper.
+// - lanternfallplus: Lanternfall's crisp bands, ink on everything, rich color and no grain or haze, with
+//                baked occlusion, contact shadows and the rich detail pass. The game always opens in it.
+// - lanternfall: Lanternfall's inked look exactly as copied in Phase 0, with the base models.
 //
 // Changing look reloads the page (shaders are compiled for one look). Colors are linear-ish RGB
 // triples (0..1) unless the field says 0xRRGGBB.
 
-export type LookId = 'painted' | 'paintedplus' | 'lanternfall' | 'lanternfallplus' | 'woodblock';
-export const LOOK_IDS: readonly LookId[] = ['painted', 'paintedplus', 'lanternfall', 'lanternfallplus', 'woodblock'];
+export type LookId = 'lanternfall' | 'lanternfallplus';
+export const LOOK_IDS: readonly LookId[] = ['lanternfallplus', 'lanternfall'];
 export type RGB = [number, number, number];
 
 /** Which kinds of object get an ink outline. */
@@ -84,13 +77,12 @@ export interface LookDef {
   /** Ambient particle multiplier (pollen, petals, fireflies). */
   ambient: number;
   /**
-   * Which model set to build: 'base' is the Phase 2 models; 'fine' adds the detail pass (smoother rocks,
-   * lumpy tree crowns, pond edge stones, a finer stone lantern and temple shelter); 'rich' (Lanternfall+,
-   * owner request 2026-11-10, PC first) builds on 'fine' with leafy inked crowns and roots, inked wood
-   * grain and stone cracks, ground dressing, a livelier pond with koi, butterflies, falling leaves, a
-   * swaying lantern and lantern light at night.
+   * Which model set to build: 'base' is the Phase 2 models; 'rich' (Lanternfall+, PC first) adds the
+   * detail pass (smoother rocks, lumpy crowns, pond edge stones, finer lantern and kits) plus leafy inked
+   * crowns and roots, inked wood grain and stone cracks, ground dressing, a livelier pond with koi,
+   * butterflies, falling leaves, a swaying lantern and lantern light at night.
    */
-  detail: 'base' | 'fine' | 'rich';
+  detail: 'base' | 'rich';
   light: {
     /** Ambient occlusion baked into model colors where parts meet each other and the ground (0 = off, 1 = full). */
     ao: number;
@@ -104,56 +96,6 @@ export interface LookDef {
 const NO_EXTRA_LIGHT: LookDef['light'] = { ao: 0, contact: 0, shadowSoftness: 3 };
 
 export const LOOKS: Record<LookId, LookDef> = {
-  painted: {
-    id: 'painted',
-    name: 'Painted (the reference)',
-    note: 'Soft gouache: wide blended tones, warm light shadows, thin brown lines on figures and buildings only, paper grain and haze.',
-    shading: { levels: [0.74, 0.93, 1.08], steps: [0.6, 1.04], softness: 0.17, shadowTint: [1.0, 0.92, 0.88], lightHue: 0.45 },
-    brush: 0.95,
-    rim: 0.55,
-    albedo: { sat: 0.78, lift: 0.14, toward: [0.95, 0.88, 0.74] },
-    outline: { on: ['figure', 'building'], color: [0.3, 0.2, 0.13], albedoMix: 0.3, width: 1.25 / 720 },
-    ground: { patchSoftness: 0.07, pathInk: 0, pathSoftness: 0.35, grass: 0.35, grassLight: 1.5 },
-    haze: { density: 1.35, paper: 0.5 },
-    post: {
-      bloom: { strength: 0.2, radius: 0.6, threshold: 1.15 },
-      sat: 0.86,
-      lift: [0.025, 0.018, 0.008],
-      gain: [1.02, 1.0, 0.95],
-      vignette: 0.22,
-      grain: 0.05,
-      posterize: 0,
-      posterizeMix: 0,
-    },
-    ambient: 1,
-    detail: 'base',
-    light: NO_EXTRA_LIGHT,
-  },
-  paintedplus: {
-    id: 'paintedplus',
-    name: 'Painted+ (toward a soft-lit diorama)',
-    note: 'Painted with soft shadows where things meet, softer sun shadows, lines on figures only, and more detail on stones, trees, the pond edge, the lantern and the shelter.',
-    shading: { levels: [0.72, 0.94, 1.1], steps: [0.6, 1.04], softness: 0.24, shadowTint: [1.0, 0.91, 0.86], lightHue: 0.5 },
-    brush: 0.62,
-    rim: 0.45,
-    albedo: { sat: 0.84, lift: 0.1, toward: [0.95, 0.88, 0.74] },
-    outline: { on: ['figure'], color: [0.32, 0.22, 0.15], albedoMix: 0.4, width: 1.0 / 720 },
-    ground: { patchSoftness: 0.09, pathInk: 0, pathSoftness: 0.4, grass: 0.45, grassLight: 1.4 },
-    haze: { density: 1.2, paper: 0.45 },
-    post: {
-      bloom: { strength: 0.26, radius: 0.6, threshold: 1.05 },
-      sat: 0.9,
-      lift: [0.02, 0.015, 0.006],
-      gain: [1.02, 1.0, 0.96],
-      vignette: 0.18,
-      grain: 0.03,
-      posterize: 0,
-      posterizeMix: 0,
-    },
-    ambient: 1,
-    detail: 'fine',
-    light: { ao: 0.85, contact: 0.8, shadowSoftness: 6 },
-  },
   lanternfall: {
     id: 'lanternfall',
     name: 'Lanternfall-like',
@@ -203,31 +145,6 @@ export const LOOKS: Record<LookId, LookDef> = {
     ambient: 1,
     detail: 'rich',
     light: { ao: 0.75, contact: 0.7, shadowSoftness: 4 },
-  },
-  woodblock: {
-    id: 'woodblock',
-    name: 'Woodblock print (wildcard)',
-    note: 'Flat colour in two tones, fine dark-brown lines on everything, a limited palette pressed onto textured paper.',
-    shading: { levels: [0.8, 1.0, 1.0], steps: [0.66, 9], softness: 0.012, shadowTint: [0.86, 0.88, 0.98], lightHue: 0.3 },
-    brush: 0.25,
-    rim: 0,
-    albedo: { sat: 0.7, lift: 0.1, toward: [0.93, 0.87, 0.74] },
-    outline: { on: ['figure', 'building', 'nature'], color: [0.15, 0.1, 0.07], albedoMix: 0.15, width: 1.35 / 720 },
-    ground: { patchSoftness: 0.004, pathInk: 0.6, pathSoftness: 0.02, grass: 0.35, grassLight: 1.3 },
-    haze: { density: 1.2, paper: 0.8 },
-    post: {
-      bloom: { strength: 0.05, radius: 0.4, threshold: 1.5 },
-      sat: 0.88,
-      lift: [0.03, 0.025, 0.012],
-      gain: [1.0, 0.98, 0.92],
-      vignette: 0.12,
-      grain: 0.11,
-      posterize: 7,
-      posterizeMix: 0.55,
-    },
-    ambient: 0.6,
-    detail: 'base',
-    light: NO_EXTRA_LIGHT,
   },
 };
 

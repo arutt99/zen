@@ -3,8 +3,9 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { blendPresets, clockLabel, dayFraction, inkRef, lightLevel, presetAt, timeOfDay } from '../src/core/daylight';
 import { ANIMALS } from '../src/data/animals';
+import { BUILDINGS } from '../src/data/buildings';
 import { CARETAKER, CARETAKER_HEIGHT, CHARACTER_STYLES, caretakerHeight } from '../src/data/characters';
-import { LOOKS, LOOK_IDS, lookById } from '../src/data/looks';
+import { LOOKS, lookById } from '../src/data/looks';
 import { PLACES } from '../src/data/places';
 import { MOMENTS, PRESETS } from '../src/data/presets';
 import { Wanderer } from '../src/sim/animals';
@@ -13,21 +14,10 @@ import { animalsPresent } from '../src/sim/progress';
 
 const place = PLACES.home_valley;
 
-test('look presets: painted (the target), painted+, lanternfall-like and the woodblock wildcard', () => {
-  assert.deepEqual([...LOOK_IDS], ['painted', 'paintedplus', 'lanternfall', 'lanternfallplus', 'woodblock']);
-  assert.equal(lookById('nonsense').id, 'lanternfallplus', 'unknown looks fall back to the decided one (A6)');
-  // Painted applies the plan 7.1 checklist: softer bands, warm light shadows, more brush, brown thin lines
-  // on figures and buildings only, warmer and less saturated, paper grain, more haze.
-  const p = LOOKS.painted, l = LOOKS.lanternfall;
-  assert.ok(p.shading.softness > l.shading.softness * 3);
-  assert.ok(p.shading.shadowTint[0] >= p.shading.shadowTint[2], 'warm shadow tint');
-  assert.ok(p.shading.levels[0] > l.shading.levels[0], 'lighter shadows');
-  assert.ok(p.brush > l.brush);
-  assert.ok(p.outline.width < l.outline.width);
-  assert.deepEqual([...p.outline.on].sort(), ['building', 'figure']);
-  assert.ok(p.outline.color[0] > p.outline.color[2] && p.outline.color[0] > 0.2, 'warm brown lines');
-  assert.ok(p.post.sat < 1 && p.post.grain > 0 && p.haze.density > 1);
-  assert.equal(p.ground.pathInk, 0, 'no ink on the ground');
+test('unknown looks fall back to the decided one (A6)', () => {
+  assert.equal(lookById('nonsense').id, 'lanternfallplus');
+  assert.equal(lookById('painted').id, 'lanternfallplus', 'removed trial looks fall back too');
+  assert.ok(LOOKS.lanternfall.shading.softness < 0.05, 'crisp bands');
 });
 
 test('the clock gives a fraction of the day; a fixed time wins', () => {
@@ -66,16 +56,15 @@ test('night is dimmer than day but never dark, and fireflies and lanterns come o
   assert.ok(Number.isFinite(inkRef(night)) && inkRef(night) > inkRef(day));
 });
 
-test('both caretaker styles stand ~1.8 m tall (A3), the chibi with a much bigger head', () => {
+test('the chibi caretaker stands ~1.8 m tall (A3) and under 3 heads tall (A4)', () => {
   for (const s of CHARACTER_STYLES) assert.ok(Math.abs(caretakerHeight(CARETAKER[s]) - CARETAKER_HEIGHT) < 0.08, s);
-  const headsTall = (s: 'chibi' | 'storybook') => CARETAKER_HEIGHT / (CARETAKER[s].head * 2);
-  assert.ok(headsTall('chibi') < 3, `chibi ${headsTall('chibi')}`);
-  assert.ok(headsTall('storybook') > 4, `storybook ${headsTall('storybook')}`);
+  assert.ok(CARETAKER_HEIGHT / (CARETAKER.chibi.head * 2) < 3);
 });
 
 test('the deer arrives with restoration, wanders near home, and steps away from a moving caretaker', () => {
-  assert.equal(animalsPresent(place, { shelter: { wood: 3, stone: 0 } }).length, 0);
-  assert.deepEqual(animalsPresent(place, { shelter: { wood: 6, stone: 0 } }).map((a) => a.id), ['deer']);
+  // Plan 4.2 / 9.6: the gravel garden brings the deer (not the shelter alone).
+  assert.equal(animalsPresent(place, { shelter: { wood: 6, stone: 0 } }).length, 0);
+  assert.deepEqual(animalsPresent(place, { shelter: { wood: 6, stone: 0 }, gravel_garden: { wood: 4, stone: 6 } }).map((a) => a.id), ['deer']);
   const world = new IslandWorld(place);
   const walk = (x: number, z: number) => world.walkable(x, z);
   const d = new Wanderer(ANIMALS.deer, walk, 5, true);
@@ -99,11 +88,12 @@ test('the deer arrives with restoration, wanders near home, and steps away from 
 test('every Zen-kit prop is placed on the valley floor (lotus on the water), clear of nodes and the site', () => {
   const world = new IslandWorld(place);
   const kinds = new Set(place.props.map((p) => p.kind));
-  for (const k of ['maple', 'bamboo', 'mossy_stone', 'stone_lantern', 'fence_wood', 'fence_rope', 'raked_gravel', 'stepping_stone', 'lotus']) assert.ok(kinds.has(k), k);
+  // Raked gravel now comes with the gravel garden (Phase 3), not as a loose prop.
+  for (const k of ['maple', 'bamboo', 'mossy_stone', 'stone_lantern', 'fence_wood', 'fence_rope', 'stepping_stone', 'lotus']) assert.ok(kinds.has(k), k);
   for (const p of place.props) {
     const h = world.height(p.x, p.z);
     if (p.kind === 'lotus') assert.ok(h < world.waterLevel - 0.1, `${p.id} should be in the pond`);
     for (const n of place.nodes) assert.ok(Math.hypot(n.x - p.x, n.z - p.z) > 2.2, `${p.id} crowds ${n.id}`);
-    for (const s of place.sites) assert.ok(Math.hypot(s.x - p.x, s.z - p.z) > 3.4, `${p.id} sits on site ${s.id}`);
+    for (const s of place.sites) assert.ok(Math.hypot(s.x - p.x, s.z - p.z) > BUILDINGS[s.building].siteRadius, `${p.id} sits on site ${s.id}`);
   }
 });

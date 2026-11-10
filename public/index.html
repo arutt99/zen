@@ -34,6 +34,16 @@
   #intro { position: absolute; left: 0; right: 0; top: 32%; text-align: center; font-size: 22px; font-style: italic;
     color: #fffaf0; text-shadow: 0 1px 8px rgba(74,59,44,.6); opacity: 0; transition: opacity 2.5s; padding: 0 24px; }
   #intro.show { opacity: 1; }
+  .words { position: absolute; left: 50%; top: calc(env(safe-area-inset-top) + 64px); transform: translateX(-50%) translateY(6px);
+    background: rgba(246,238,220,.94); border-radius: 18px; padding: 16px 26px 14px; max-width: min(520px, 80vw);
+    box-shadow: 0 6px 24px rgba(74,59,44,.25); opacity: 0; transition: opacity .6s, transform .6s; text-align: center;
+    font-size: 17px; line-height: 1.55; }
+  .words.show { opacity: 1; transform: translateX(-50%); }
+  .words.poem #words-lines { font-style: italic; font-size: 19px; }
+  .words .from { font-size: 13px; opacity: .7; margin-top: 8px; }
+  .words .from:empty { display: none; }
+  .words .tag { font: 10px ui-monospace, monospace; letter-spacing: .12em; opacity: .45; margin-top: 8px; }
+  .words .tag[hidden] { display: none; }
   #menu .note { font-size: 12px; opacity: .7; margin: 14px 0 0; max-width: 300px; }
   .corner { position: absolute; top: calc(env(safe-area-inset-top) + 12px); right: calc(env(safe-area-inset-right) + 12px);
     pointer-events: auto; min-width: 48px; min-height: 48px; border: 0; border-radius: 16px;
@@ -73,7 +83,8 @@
   </div>
   <div class="chip" id="chip"></div>
   <div class="cost" id="cost"><div class="name" id="cost-name"></div><div id="cost-items"></div></div>
-  <div id="intro">A quiet place can begin with one small act.</div>
+  <div id="intro"></div>
+  <div class="words" id="words" aria-live="polite"><div id="words-lines"></div><div class="from" id="words-from"></div><div class="tag" id="words-tag">PLACEHOLDER</div></div>
   <button class="corner" id="menu-btn" aria-label="Menu">☰</button>
   <button class="context" id="context-btn">Sit</button>
   <div class="stick" id="stick"><div class="knob" id="knob"></div></div>
@@ -91,7 +102,7 @@
       <label>Caretaker <select id="character"></select></label>
       <label>Building kit <select id="kit"></select></label>
     </div>
-    <label>Time <select id="time-mode"><option value="clock">Follow my clock</option><option value="fixed">Choose</option></select></label>
+    <label>Time <select id="time-mode"><option value="clock">Follow my clock</option><option value="day">Always day</option><option value="fixed">Choose</option></select></label>
     <label class="range"><input type="range" id="time-at" min="0" max="999" step="1"><span id="time-label"></span></label>
     <button id="menu-close">Close</button>
   </div>

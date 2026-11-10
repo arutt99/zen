@@ -5,6 +5,8 @@ import { CAMERA_OPTIONS, SCALE_OPTIONS } from './feel';
 import { MATERIALS, NODE_KINDS, SATCHEL_CAP } from './gathering';
 import { PLACES } from './places';
 import { ANIMALS } from './animals';
+import { RITUALS } from './rituals';
+import { WORDS } from './words';
 import { CARETAKER, CHARACTER_STYLES, CARETAKER_HEIGHT, caretakerHeight } from './characters';
 import { LOOKS, LOOK_IDS } from './looks';
 import { DAY_CYCLES, PRESETS } from './presets';
@@ -15,6 +17,8 @@ export const DECOR_KINDS = [
   'oak', 'birch', 'bush', 'pine', 'willow', 'reedclump', 'rock', 'cherry', 'bench',
   // Phase 2, the Zen kit:
   'maple', 'bamboo', 'mossy_stone', 'stone_lantern', 'fence_wood', 'fence_rope', 'raked_gravel', 'stepping_stone', 'lotus',
+  // Phase 3: the old gate, restoration props (overgrowth and what replaces it), poem stones and note posts.
+  'old_gate', 'bramble', 'tall_weeds', 'flower_bed', 'iris', 'path_lantern', 'trail_gate_shut', 'trail_gate_open', 'poem_stone', 'note_post',
 ] as const;
 
 const isColor = (n: unknown) => typeof n === 'number' && Number.isInteger(n) && n >= 0 && n <= 0xffffff;
@@ -63,6 +67,42 @@ export function validateData(): string[] {
         if (b && Math.hypot(n.x - st.x, n.z - st.z) < b.siteRadius + NODE_KINDS[n.kind].radius) problems.push(`place ${key}: node "${n.id}" overlaps site "${st.id}"`);
       }
     }
+    const built = new Set(p.sites.map((st) => st.building));
+    const gate = (what: string, req: string | undefined) => {
+      if (req && !built.has(req as never)) problems.push(`place ${key}: ${what} requires "${req}", which has no site here`);
+    };
+    for (const st of p.sites) for (const st2 of p.sites) {
+      if (st !== st2 && BUILDINGS[st.building] && BUILDINGS[st2.building]) {
+        const need = BUILDINGS[st.building].siteRadius + BUILDINGS[st2.building].siteRadius;
+        if (Math.hypot(st.x - st2.x, st.z - st2.z) < need) problems.push(`place ${key}: sites "${st.id}" and "${st2.id}" overlap`);
+      }
+    }
+    for (const sit of p.sits) {
+      if (ids.has(sit.id)) problems.push(`place ${key}: duplicate id "${sit.id}"`);
+      ids.add(sit.id);
+      gate(`sit spot "${sit.id}"`, sit.requires);
+      if (!inside(sit.x, sit.z, 1)) problems.push(`place ${key}: sit spot "${sit.id}" is outside the valley floor`);
+    }
+    for (const w of p.words) {
+      if (!WORDS[w.id]) problems.push(`place ${key}: unknown words "${w.id}"`);
+      if (ids.has(w.id)) problems.push(`place ${key}: duplicate id "${w.id}"`);
+      ids.add(w.id);
+      gate(`words "${w.id}"`, w.requires);
+      if (!inside(w.x, w.z, 1)) problems.push(`place ${key}: words "${w.id}" are outside the valley floor`);
+    }
+    for (const g of p.growth) {
+      if (ids.has(g.id)) problems.push(`place ${key}: duplicate id "${g.id}"`);
+      ids.add(g.id);
+      if (!kinds.has(g.kind)) problems.push(`place ${key}: growth "${g.id}" has unknown kind "${g.kind}"`);
+      if (g.min === undefined && g.max === undefined) problems.push(`place ${key}: growth "${g.id}" needs min or max`);
+      if (g.min !== undefined && g.max !== undefined && !(g.min < g.max)) problems.push(`place ${key}: growth "${g.id}" min must be below max`);
+      if (!inside(g.x, g.z, 0.5)) problems.push(`place ${key}: growth "${g.id}" is outside the valley floor`);
+      for (const st of p.sites) {
+        const b = BUILDINGS[st.building];
+        if (b && Math.hypot(g.x - st.x, g.z - st.z) < b.siteRadius + 0.3) problems.push(`place ${key}: growth "${g.id}" sits on site "${st.id}"`);
+      }
+    }
+    if (!(p.water.murk >= 0 && p.water.murk <= 1 && p.water.clearAt > 0)) problems.push(`place ${key}: water murk/clearAt out of range`);
     if (!(p.mist.clearAt > 0 && p.mist.clearAt <= 1)) problems.push(`place ${key}: mist.clearAt must be in (0, 1]`);
     for (const [k, w] of p.decor.kinds) {
       if (!kinds.has(k)) problems.push(`place ${key}: decor kind "${k}" is unknown`);
@@ -87,6 +127,19 @@ export function validateData(): string[] {
       if (partIds.has(part.id)) problems.push(`building ${key}: duplicate part "${part.id}"`);
       partIds.add(part.id);
       if (!MATERIALS.includes(part.material)) problems.push(`building ${key}: part "${part.id}" uses unknown material "${part.material}"`);
+    }
+    // Mixed materials: a part rests only on the ground or on an earlier part of its own material, so any
+    // mix of wood and stone deliveries looks whole (see src/data/buildings.ts).
+    b.parts.forEach((part, i) => {
+      if (!part.on) return;
+      const j = b.parts.findIndex((q) => q.id === part.on);
+      if (j < 0) problems.push(`building ${key}: part "${part.id}" rests on unknown part "${part.on}"`);
+      else if (j >= i) problems.push(`building ${key}: part "${part.id}" rests on "${part.on}", which comes later`);
+      else if (b.parts[j]!.material !== part.material) problems.push(`building ${key}: part "${part.id}" (${part.material}) rests on "${part.on}" (${b.parts[j]!.material})`);
+    });
+    for (const r of b.requires) {
+      if (!BUILDINGS[r]) problems.push(`building ${key}: requires unknown building "${r}"`);
+      else if (r === b.id) problems.push(`building ${key}: requires itself`);
     }
     for (const [m, n] of Object.entries(buildingCost(b))) {
       if (n! > SATCHEL_CAP * 4) problems.push(`building ${key}: ${n} ${m} is more than four full satchels`);
@@ -122,6 +175,16 @@ export function validateData(): string[] {
     if (!PLACES[a.place]) problems.push(`animal ${key}: unknown place "${a.place}"`);
     if (!(a.minRestoration >= 0 && a.minRestoration <= 1)) problems.push(`animal ${key}: minRestoration must be in [0, 1]`);
     if (!(a.linger[0] > 0 && a.linger[0] <= a.linger[1])) problems.push(`animal ${key}: linger must be a positive range`);
+  }
+  for (const [key, r] of Object.entries(RITUALS)) {
+    if (r.id !== key) problems.push(`ritual ${key}: id mismatch`);
+    if (!BUILDINGS[r.building]) problems.push(`ritual ${key}: unknown building "${r.building}"`);
+    if (!(r.radius > 0.5 && r.seconds > 0)) problems.push(`ritual ${key}: radius and seconds must be positive`);
+  }
+  for (const [key, w] of Object.entries(WORDS)) {
+    if (w.id !== key) problems.push(`words ${key}: id mismatch`);
+    if (w.lines.length === 0 || w.lines.some((l) => !l.trim())) problems.push(`words ${key}: needs non-empty lines`);
+    if (w.kind === 'poem' && w.lines.length !== 3) problems.push(`words ${key}: a poem has three lines`);
   }
   return problems;
 }

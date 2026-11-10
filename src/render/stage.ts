@@ -41,6 +41,7 @@ const TERRAIN_FRAG_HEAD = /* glsl */ `
   uniform vec3 uRim;
   uniform sampler2D uContact;
   uniform float uSiteShade;
+  uniform float uHeal;
 
   vec2 hash22(vec2 p) {
     vec3 a = fract(p.xyx * vec3(123.34, 234.34, 345.65));
@@ -76,7 +77,7 @@ const WATER_FRAG = /* glsl */ `
   uniform vec2 uExt;
   uniform vec3 uShallow, uDeep, uSky, uSun, uFog, uFoam;
   uniform vec3 uSunDir;
-  uniform float uTime, uLava, uFogDensity, uLevel;
+  uniform float uTime, uLava, uFogDensity, uLevel, uMurk;
   varying vec3 vW;
   void main() {
     vec2 fuv = (vW.xz + uExt) / (2.0 * uExt);
@@ -116,7 +117,10 @@ const WATER_FRAG = /* glsl */ `
       foam += smoothstep(0.08, 0.0, depth);
       col = mix(col, uFoam * 0.8, clamp(foam, 0.0, 1.0) * 0.6);
       RICH_WATER
-      alpha = smoothstep(0.0, 0.3, depth) * 0.42 + 0.56;
+      // An unrestored pond is murky: a dull green-brown film, less sky, more opaque (plan 3.4, "water clears").
+      float murkN = texture2D(uBrush, p * 0.06 + vec2(t * 0.004)).r;
+      col = mix(col, mix(vec3(0.27, 0.31, 0.2), vec3(0.36, 0.38, 0.24), murkN), uMurk * (0.75 + murkN * 0.25));
+      alpha = smoothstep(0.0, 0.3, depth) * 0.42 + 0.56 + uMurk * 0.3;
     }
     float d = length(cameraPosition - vW);
     float fog = 1.0 - exp(-d * d * uFogDensity * uFogDensity);
@@ -459,9 +463,10 @@ export class Stage {
     }
     for (const st of w.place.sites) {
       const r = (BUILDINGS[st.building]?.solidRadius ?? 1.5) * 0.92;
-      prints.push({ x: st.x, z: st.z, hx: r, hz: r * 0.88, rot: st.rot ?? 0, k: 0.8, site: true });
+      this.sitePrints.set(st.id, { x: st.x, z: st.z, hx: r, hz: r * 0.88, rot: st.rot ?? 0, k: 0.8, site: true });
     }
     const field = contactField(w.extW, w.extH, prints);
+    this.contactData = field.data;
     const tex = new THREE.DataTexture(field.data, field.w, field.h, THREE.RGBAFormat, THREE.UnsignedByteType);
     tex.minFilter = tex.magFilter = THREE.LinearFilter;
     tex.wrapS = tex.wrapT = THREE.ClampToEdgeWrapping;
@@ -469,9 +474,26 @@ export class Stage {
     this.contactTex = this.track(tex);
   }
 
-  /** Shows the build sites' contact shadow as their buildings go up (0..1). */
-  setSiteShade(v: number) {
-    this.siteShade.value = v;
+  private sitePrints = new Map<string, Footprint>();
+  private siteWeights = new Map<string, number>();
+  private contactData: Uint8Array | null = null;
+
+  /**
+   * Shows each build site's contact shadow as its building goes up (0..1 per site id). The sites' channel
+   * is repainted only when a weight has moved noticeably (a deck settling), never every frame.
+   */
+  setSiteShades(weights: ReadonlyMap<string, number>) {
+    this.siteShade.value = 1;
+    if (!this.contactData || !this.contactTex) return;
+    let changed = false;
+    for (const [id, v] of weights) if (Math.abs((this.siteWeights.get(id) ?? 0) - v) > 0.04 || (v === 0) !== ((this.siteWeights.get(id) ?? 0) === 0)) changed = true;
+    if (!changed) return;
+    for (const [id, v] of weights) this.siteWeights.set(id, v);
+    const prints = [...this.sitePrints].filter(([id]) => (this.siteWeights.get(id) ?? 0) > 0).map(([id, p]) => ({ ...p, k: p.k * this.siteWeights.get(id)! }));
+    const field = contactField(this.world.extW, this.world.extH, prints);
+    const d = this.contactData;
+    for (let i = 1; i < d.length; i += 4) d[i] = field.data[i]!;
+    this.contactTex.needsUpdate = true;
   }
 
   private buildTerrain() {
@@ -543,6 +565,7 @@ export class Stage {
       uRing2Color: { value: new THREE.Color(0xffffff) },
       uContact: { value: this.contactTex },
       uSiteShade: this.siteShade,
+      uHeal: this.heal,
     };
     this.uniforms = u;
     const mat = new THREE.MeshStandardMaterial({ roughness: 0.93, metalness: 0 });
@@ -573,6 +596,12 @@ export class Stage {
           col = mix(uGroundA * ${inkTint} * 0.94, uGroundB * ${inkTint}, smoothstep(${f(0.4625 - ps)}, ${f(0.4625 + ps)}, inkPat));
           col = mix(col, mix(uGroundB * 1.12, uGroundC, ${b.ink.high.toFixed(2)}) * ${inkTint}, smoothstep(${f(0.5325 - ps)}, ${f(0.5325 + ps)}, inkPat));
           ` : ''}
+          // An unrestored valley is tired ground (plan 3.4): duller, browner patches over the floor that
+          // green up as restoration rises. uHeal: 0 neglected .. 1 restored.
+          {
+            float tired = (1.0 - uHeal) * smoothstep(0.38, 0.62, n2 * 0.6 + n3 * 0.4);
+            col = mix(col, col * vec3(1.06, 0.92, 0.66) + vec3(0.03, 0.02, 0.0), tired * 0.75);
+          }
           // Cliffs and steep slopes, with layered strata.
           float slope = 1.0 - clamp(vPNormal.y, 0.0, 1.0);
           float rock = smoothstep(0.2, 0.46, slope + (n2 - 0.5) * 0.14);
@@ -631,7 +660,8 @@ export class Stage {
             if (uRing2.w > 0.001) {
               float d = length(vPWorld.xz - uRing2.xy);
               float line = 1.0 - smoothstep(0.03, 0.13, abs(d - uRing2.z));
-              float fill = (1.0 - step(uRing2.z, d)) * 0.14;
+              // A soft wave just behind the line (the bell's sound spreading), not a filled disc.
+              float fill = smoothstep(uRing2.z - 1.6, uRing2.z, d) * (1.0 - step(uRing2.z, d)) * 0.16;
               totalEmissiveRadiance += uRing2Color * (line * 1.25 + fill) * uRing2.w;
             }
             float rimF = pow(1.0 - saturate(dot(normalize(vViewPosition), normal)), 4.0);
@@ -656,7 +686,7 @@ export class Stage {
       depthWrite: false,
       vertexShader: WATER_VERT,
       fragmentShader: WATER_FRAG.replace('RICH_WATER', rich() ? RICH_WATER_GLSL : '')
-        .replace('uniform float uTime, uLava, uFogDensity, uLevel;', 'uniform float uTime, uLava, uFogDensity, uLevel;\n  uniform vec3 uRipples[5];\n  uniform vec3 uBank, uInk;'),
+        .replace('uniform float uTime, uLava, uFogDensity, uLevel, uMurk;', 'uniform float uTime, uLava, uFogDensity, uLevel, uMurk;\n  uniform vec3 uRipples[5];\n  uniform vec3 uBank, uInk;'),
       uniforms: this.waterU = {
         uBrush: shared.uBrush,
         uTime: shared.uTime,
@@ -672,6 +702,7 @@ export class Stage {
         uLava: { value: 0 },
         uFogDensity: { value: b.fogDensity },
         uLevel: { value: w.waterLevel },
+        uMurk: this.murk,
         uRipples: { value: ripples(w) },
         uBank: { value: colorOf(b.groundA).multiplyScalar(0.55) },
         uInk: { value: new THREE.Color(0.05, 0.06, 0.07) },
@@ -1139,6 +1170,17 @@ export class Stage {
       pts.renderOrder = 8;
       this.scene.add(pts);
     });
+  }
+
+  private murk = { value: 0 };
+  private heal = { value: 1 };
+  /** How restored the ground looks (0 neglected .. 1 restored): eased by the caller. */
+  setHeal(v: number) {
+    this.heal.value = v;
+  }
+  /** How murky the pond is (0 clear .. 1), from the place's restoration (sim/progress.ts waterMurk). */
+  setWaterMurk(v: number) {
+    this.murk.value = v;
   }
 
   /** Fog density for the whole scene (the mist response, plan 3.4 changes it as the place heals). */

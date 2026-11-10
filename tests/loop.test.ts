@@ -163,8 +163,8 @@ test('a corrupt save starts fresh with an empty satchel and no deposits', () => 
 const world = new IslandWorld(home);
 const ground: GroundQuery = { walkable: (x, z) => world.walkable(x, z), solids: world.solids };
 
-test('every gather node and the site can be reached on the home island', () => {
-  for (const n of [...home.nodes.map((q) => ({ ...q, r: NODE_KINDS[q.kind].radius })), ...home.sites.map((q) => ({ ...q, r: shelter.siteRadius }))]) {
+test('every gather node and site can be reached on the home island', () => {
+  for (const n of [...home.nodes.map((q) => ({ ...q, r: NODE_KINDS[q.kind].radius })), ...home.sites.map((q) => ({ ...q, r: BUILDINGS[q.building].siteRadius }))]) {
     let ok = 0;
     for (let a = 0; a < 16; a++) {
       const x = n.x + Math.cos((a / 16) * Math.PI * 2) * n.r * 0.75, z = n.z + Math.sin((a / 16) * Math.PI * 2) * n.r * 0.75;
@@ -174,11 +174,22 @@ test('every gather node and the site can be reached on the home island', () => {
   }
 });
 
-test('pacing bot: the shelter gets built from a fresh start, cycles in the 30–90 s target', () => {
+test('pacing bot: the whole home valley gets built from a fresh start, in order, with cycles under 90 s', () => {
   const r = runPacingBot(home, ground);
   assert.equal(r.timedOut, false);
-  const at = r.completedAt.shelter!;
-  console.log(`  pacing: shelter built at ${at.toFixed(1)} s, cycles ${r.cycles.map((c) => c.toFixed(1)).join(', ')} s, ${r.gathered} units gathered`);
-  assert.ok(at > 5 && at < 90, `shelter at ${at.toFixed(1)} s`);
+  const order = Object.entries(r.completedAt).sort((a, b) => a[1] - b[1]).map(([id]) => id);
+  assert.deepEqual(order, ['shelter', 'gravel_garden', 'meditation_hall', 'bell_tower']);
+  const total = r.completedAt.bell_tower!;
+  console.log(`  pacing (perfect): ${order.map((id) => `${id} ${r.completedAt[id]!.toFixed(0)} s`).join(', ')}; cycles ${r.cycles.map((c) => c.toFixed(0)).join(', ')} s; ${r.gathered} units`);
+  assert.ok(r.completedAt.shelter! > 5 && r.completedAt.shelter! < 90, `shelter at ${r.completedAt.shelter!.toFixed(1)} s`);
   for (const c of r.cycles) assert.ok(c < 90, `cycle of ${c.toFixed(1)} s is over the 90 s target`);
+  assert.ok(total < 300, `a perfect run takes ${total.toFixed(0)} s`);
+});
+
+test('pacing bot (relaxed player): the valley takes several minutes, never a soft-lock', () => {
+  const r = runPacingBot(home, ground, { style: 'relaxed' });
+  assert.equal(r.timedOut, false);
+  const total = r.completedAt.bell_tower!;
+  console.log(`  pacing (relaxed): shelter ${r.completedAt.shelter!.toFixed(0)} s, garden ${r.completedAt.gravel_garden!.toFixed(0)} s, hall ${r.completedAt.meditation_hall!.toFixed(0)} s, bell tower ${total.toFixed(0)} s (${(total / 60).toFixed(1)} min); cycles ${r.cycles.map((c) => c.toFixed(0)).join(', ')} s`);
+  assert.ok(total > 150 && total < 900, `relaxed run ${total.toFixed(0)} s`);
 });

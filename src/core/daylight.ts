@@ -1,11 +1,12 @@
 // Time of day (plan 5): the clock and the blend of a place's presets along its day cycle.
 // Pure, no three.js: tests and the renderer share it. The renderer reads `presetAt()` each frame.
-import { DAY_CYCLES, PRESETS, type PlacePreset } from '../data/presets';
+import { DAY_CYCLES, MOMENTS, PRESETS, type PlacePreset } from '../data/presets';
 import { clamp } from './util';
 
 /** How the time of day is chosen: the device's clock, or a fixed moment (the debug slider). */
 export interface TimeSetting {
-  mode: 'clock' | 'fixed';
+  /** 'clock' follows the device, 'day' is always midday, 'fixed' is a chosen moment (plan 5). */
+  mode: 'clock' | 'day' | 'fixed';
   /** Fraction of the day, 0..1 (0 = midnight), used when mode is 'fixed'. */
   at: number;
 }
@@ -16,6 +17,7 @@ export function dayFraction(d: Date): number {
 }
 
 export function timeOfDay(setting: TimeSetting, now: Date): number {
+  if (setting.mode === 'day') return MOMENTS.day;
   return setting.mode === 'fixed' ? ((setting.at % 1) + 1) % 1 : dayFraction(now);
 }
 

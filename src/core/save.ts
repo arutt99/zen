@@ -3,7 +3,7 @@
 
 import type { QualityTier } from '../data/quality';
 
-export const SAVE_VERSION = 3;
+export const SAVE_VERSION = 4;
 export const SAVE_KEY = 'moss-and-bell/save';
 
 export interface SaveSettings {
@@ -16,8 +16,10 @@ export interface SaveSettings {
   look: string;
   character: string;
   kit: string;
-  /** Time of day: the device clock, or a fixed moment (debug slider), 0..1 of the day. */
-  time: { mode: 'clock' | 'fixed'; at: number };
+  /**
+   * Time of day (plan 5): the device clock, always day, or a chosen moment (the slider), 0..1 of the day.
+   */
+  time: { mode: 'clock' | 'day' | 'fixed'; at: number };
 }
 
 /** Counts of each material, by material id. */
@@ -30,6 +32,10 @@ export interface SaveData {
   satchel: Counts;
   /** Units delivered per build site id. Growth is derived from this (parts shown = units delivered). */
   deposits: Record<string, Counts>;
+  /** Words found (poem stones, caretaker notes), by id. Phase 5's collection book reads this. */
+  collection: string[];
+  /** True once the opening (plan 4.5) has been shown, so it never plays again. */
+  opened: boolean;
   settings: SaveSettings;
 }
 
@@ -46,6 +52,8 @@ export function freshSave(): SaveData {
     at: { place: '', x: 0, z: 0 },
     satchel: {},
     deposits: {},
+    collection: [],
+    opened: false,
     settings: { quality: 'auto', sound: true, camera: 'a', scale: 'm', look: 'lanternfallplus', character: 'chibi', kit: 'timber', time: { mode: 'clock', at: 0.5 } },
   };
 }
@@ -56,6 +64,8 @@ const migrations: Record<number, (old: Record<string, unknown>) => Record<string
   1: (old) => ({ ...old, v: 2, satchel: {}, deposits: {} }),
   // v2 (Phase 1) had no look, character, kit or time settings: field repair below fills the defaults.
   2: (old) => ({ ...old, v: 3 }),
+  // v3 (Phase 2) had no collection. A player who had already started has seen the opening.
+  3: (old) => ({ ...old, v: 4, collection: [], opened: true }),
 };
 
 const isNum = (n: unknown): n is number => typeof n === 'number' && Number.isFinite(n);
@@ -72,7 +82,7 @@ function counts(o: unknown): Counts {
 
 function timeSetting(o: unknown, fallback: SaveSettings['time']): SaveSettings['time'] {
   if (!isObj(o)) return { ...fallback };
-  const mode = o.mode === 'fixed' || o.mode === 'clock' ? o.mode : fallback.mode;
+  const mode = o.mode === 'fixed' || o.mode === 'clock' || o.mode === 'day' ? o.mode : fallback.mode;
   const at = isNum(o.at) ? ((o.at % 1) + 1) % 1 : fallback.at;
   return { mode, at };
 }
@@ -116,6 +126,8 @@ export function parseSave(raw: string | null): { data: SaveData; recovered: stri
           .map(([k, v]) => [k, counts(v)] as const)
           .filter(([, c]) => Object.keys(c).length > 0),
       ),
+      collection: Array.isArray(obj.collection) ? [...new Set(obj.collection.filter((x): x is string => typeof x === 'string' && ID.test(x)))].sort() : [],
+      opened: typeof obj.opened === 'boolean' ? obj.opened : base.opened,
       settings: {
         quality: quality === 'low' || quality === 'medium' || quality === 'high' || quality === 'ultra' ? quality : 'auto',
         sound: typeof settings?.sound === 'boolean' ? settings.sound : base.settings.sound,

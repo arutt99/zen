@@ -32,7 +32,7 @@ test('save round trip keeps every fact', () => {
   const store = memStore();
   const s = freshSave();
   s.at = { place: 'home_valley', x: 3.25, z: -1.5 };
-  s.settings = { quality: 'high', sound: false, camera: 'b', scale: 's', look: 'woodblock', character: 'storybook', kit: 'timber', time: { mode: 'fixed', at: 0.8 } };
+  s.settings = { quality: 'high', sound: false, camera: 'b', scale: 's', look: 'lanternfall', character: 'chibi', kit: 'timber', time: { mode: 'fixed', at: 0.8 } };
   s.satchel = { wood: 3, stone: 1 };
   s.deposits = { shelter: { wood: 4 } };
   assert.ok(writeSave(store, s));
@@ -100,12 +100,14 @@ test('phones default to Medium unless clearly weak; GPU rules follow Lanternfall
   assert.equal(defaultTier({ coarsePointer: false, gpu: 'nvidia geforce rtx 3060' }), 'high');
 });
 
-test('a Phase 1 (v2) save migrates to v3 with default look, character, kit and clock time', () => {
+test('a Phase 1 (v2) save migrates to v4 with default look, character, kit and clock time', () => {
   const v2 = { v: 2, at: { place: 'home_valley', x: 1, z: 2 }, satchel: { wood: 2 }, deposits: { shelter: { wood: 3 } }, settings: { quality: 'medium', sound: true, camera: 'a', scale: 'm' } };
   const { data, recovered } = parseSave(JSON.stringify(v2));
   assert.equal(recovered, null);
-  assert.equal(data.v, 3);
+  assert.equal(data.v, 4);
   assert.deepEqual(data.deposits, v2.deposits);
+  assert.deepEqual(data.collection, []);
+  assert.equal(data.opened, true, 'someone who already played has seen the opening');
   assert.deepEqual(data.satchel, v2.satchel);
   assert.deepEqual([data.settings.look, data.settings.character, data.settings.kit], ['lanternfallplus', 'chibi', 'timber']);
   assert.deepEqual(data.settings.time, { mode: 'clock', at: 0.5 });

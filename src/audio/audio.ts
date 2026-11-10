@@ -2,11 +2,11 @@
 // @ b282628): the same master compressor, generated hall reverb, pre-rendered sound bank, take
 // rotation, burst softening, squared volume curve and suspend-while-hidden. The adaptive battle score,
 // ducking and beam loop are gone; the buses are the plan's Master, Ambience, Effects and Music (plan 8).
-import { renderTake } from './synth-kit';
-import { SFX, type SfxBus, type SfxDef, type SfxName } from './sfx-recipes';
+import { renderLoop, renderTake } from './synth-kit';
+import { AMBIENCE, SFX, type AmbienceName, type SfxBus, type SfxDef, type SfxName } from './sfx-recipes';
 
 export { pentatonicHz, pentatonicRate, PENTATONIC } from './sfx-recipes';
-export type { SfxName };
+export type { AmbienceName, SfxName };
 
 const DEFS = SFX as Record<SfxName, SfxDef>;
 const VOICE_LIMIT = 32;
@@ -97,6 +97,46 @@ export class AudioEngine {
       const takes: AudioBuffer[] = [];
       for (let i = 0; i < (def.variants ?? 1); i++) takes.push(await renderTake(seed++ * 7919, def.level, def.drive, def.render));
       this.bank.set(name, takes);
+    }
+  }
+
+  private ambience = new Map<AmbienceName, GainNode>();
+  private ambienceWant: Partial<Record<AmbienceName, number>> = {};
+  private ambienceStarting = false;
+
+  /**
+   * Sets how loud each ambience layer should be (0..1); they fade there over a few seconds. The loops
+   * are rendered the first time this is called after the audio is unlocked.
+   */
+  setAmbience(levels: Partial<Record<AmbienceName, number>>) {
+    this.ambienceWant = levels;
+    const ctx = this.ctx;
+    if (!ctx || ctx.state !== 'running') return;
+    if (!this.ambienceStarting) {
+      this.ambienceStarting = true;
+      void this.startAmbience();
+      return;
+    }
+    for (const [name, g] of this.ambience) g.gain.setTargetAtTime(levels[name] ?? 0, ctx.currentTime, 1.5);
+  }
+
+  private async startAmbience() {
+    if (typeof OfflineAudioContext === 'undefined') return;
+    let seed = 101;
+    for (const name of Object.keys(AMBIENCE) as AmbienceName[]) {
+      const def = AMBIENCE[name];
+      const buf = await renderLoop(seed++ * 977, def.level, def.seconds, 1.5, def.render);
+      const ctx = this.ctx!;
+      const src = ctx.createBufferSource();
+      src.buffer = buf;
+      src.loop = true;
+      const g = ctx.createGain();
+      g.gain.value = 0;
+      src.connect(g).connect(this.buses.ambience);
+      // Start each loop at a different point so the layers never line up the same way.
+      src.start(0, Math.random() * def.seconds);
+      this.ambience.set(name, g);
+      g.gain.setTargetAtTime(this.ambienceWant[name] ?? 0, ctx.currentTime, 2);
     }
   }
 
