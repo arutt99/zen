@@ -47,3 +47,8 @@ Known Phase 0 gaps: trees between the camera and the caretaker can hide them (Ph
 
 ## Phase 1: The feel (next, once the owner has done the gate check)
 See plan section 10. Art decision points A2 (camera) and A3 (world scale) are due at its gate.
+
+Owner direction (2026-11-10): **nothing jumps from 0 to 100%** (plan pillar 6, sections 3.1 and 3.3).
+- Chopping and chipping are animated; trees and boulders visibly deplete with every unit (leaves and branches fall, the canopy shrinks, the trunk is notched, a stump remains) and regrow gradually. Gentle: no crashing trees.
+- Buildings gain one visible part per unit delivered and stay visibly incomplete (gaps, open roof, scaffolding) when materials run short.
+- The basket fills and empties item by item.
