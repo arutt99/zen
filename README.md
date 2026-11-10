@@ -24,6 +24,10 @@ You can also open `dist/index.html` straight from disk. To try it on a phone, ru
 on a computer on the same Wi-Fi and open the printed `phone:` address, or download the
 `moss-and-bell-build` artifact from a CI run.
 
+**GitHub Pages:** every push to `main` publishes the build to https://arutt99.github.io/zen/
+(`.github/workflows/pages.yml`; it can also be run by hand from the Actions tab). One-time setup:
+repo Settings → Pages → Build and deployment → Source: **GitHub Actions**.
+
 ## Checks
 
 ```sh
