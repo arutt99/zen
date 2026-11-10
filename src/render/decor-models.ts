@@ -475,6 +475,69 @@ const builders: Record<string, () => DecorGeo> = {
     m.box(0.68, 0.05, 0.24, [0x7a6040, 0xa48660], { p: [0, 1.27, -0.1], r: [-0.25, 0, 0] });
     return { ...finish(m), ink: 'building' };
   },
+  // --- Phase 4: the travel map board, bamboo fences, fallen culms in the grove, ferns.
+  map_board() {
+    // The painted travel map (plan 4.1): a wide board on two posts under a little thatched roof, painted
+    // with the valley (green), its pond, a dotted trail and the grove (deeper green). Faces +z.
+    const m = new MB(); const l = new MB();
+    for (const sx of [-1, 1]) {
+      m.cyl(0.06, 0.07, 1.9, CEDAR, { p: [sx * 0.62, 0.95, 0], mark: 'bark' }, 7);
+      m.torus(0.08, 0.018, 0xb49a68, { p: [sx * 0.62, 1.5, 0], r: [Math.PI / 2, 0, 0] }, 4, 9);
+    }
+    m.box(1.26, 0.82, 0.06, [0x9a7a55, 0xb89a6e], { p: [0, 1.18, 0.05], mark: 'wood' });
+    m.box(1.12, 0.68, 0.02, [0xe8d8b4, 0xf2e4c8], { p: [0, 1.18, 0.09] });
+    // The painting: the valley, its pond, the trail and the grove, and a red mark for "you are here".
+    m.cyl(0.2, 0.2, 0.01, [0x7aa060, 0x8fb070], { p: [-0.26, 1.06, 0.105], r: [Math.PI / 2, 0, 0], s: [1.25, 1, 0.9] }, 12);
+    m.cyl(0.06, 0.06, 0.01, 0x7ab0b0, { p: [-0.34, 1.02, 0.11], r: [Math.PI / 2, 0, 0] }, 8);
+    m.cyl(0.15, 0.15, 0.01, [0x3f6a3a, 0x4f7a42], { p: [0.32, 1.32, 0.105], r: [Math.PI / 2, 0, 0], s: [1.2, 1, 0.9] }, 12);
+    for (let i = 0; i < 5; i++) m.box(0.035, 0.035, 0.01, 0x6a4a30, { p: [-0.08 + i * 0.075, 1.14 + i * 0.03, 0.11] });
+    m.cyl(0.022, 0.022, 0.01, 0xc04a3a, { p: [-0.12, 1.1, 0.115], r: [Math.PI / 2, 0, 0] }, 6);
+    // A small thatched roof with moss.
+    for (const side of [-1, 1]) m.box(1.55, 0.06, 0.42, [0xa88a52, 0xd8c088], { p: [0, 1.9, side * 0.16], r: [side * 0.55, 0, 0] });
+    m.cyl(0.05, 0.05, 1.6, CEDAR, { p: [0, 2.0, 0], r: [0, 0, Math.PI / 2], mark: 'bark' }, 6);
+    l.ico(0.18, MOSS, { p: [0.4, 2.02, 0.02], s: [1.6, 0.4, 1], flat: false, puff: 0.5 }, 1);
+    return { ...finish(m, l), ink: 'building' };
+  },
+  fence_bamboo() {
+    // A low bamboo fence, 2 m along x: three posts with slanted cut tops, two rails lashed with black cord.
+    const m = new MB();
+    const CULM: [number, number] = [0x8a9a52, 0xc4c078];
+    for (const x of [-1, 0, 1]) {
+      m.cyl(0.05, 0.055, 0.9, CULM, { p: [x, 0.45, 0] }, 7);
+      m.cyl(0.056, 0.056, 0.03, 0x6f7a3e, { p: [x, 0.45, 0] }, 7);
+      m.cyl(0.04, 0.04, 0.01, 0xe2d6a0, { p: [x, 0.91, 0], r: [0.5, 0, 0] }, 7);
+    }
+    for (const y of [0.38, 0.7]) {
+      m.cyl(0.035, 0.035, 2.12, CULM, { p: [0, y, 0.07], r: [0, 0, Math.PI / 2] }, 6);
+      for (const x of [-1, 0, 1]) m.torus(0.05, 0.012, 0x2a2420, { p: [x, y, 0.04], r: [0, Math.PI / 2, 0.6] }, 3, 7);
+    }
+    return { ...finish(m), ink: 'building' };
+  },
+  fallen_bamboo() {
+    // The grove before it heals: a few dry, fallen culms lying in a tangle, with dead leaves.
+    const m = new MB(); const l = new MB();
+    const DRY: [number, number] = [0x8a7a48, 0xc8b47a];
+    const lie: [number, number, number, number][] = [[0, 0, 0.1, 3.0], [0.2, 0.3, 0.6, 2.6], [-0.3, -0.2, -0.4, 2.2], [0.1, -0.35, 1.3, 1.6]];
+    lie.forEach(([x, z, a, len], i) => {
+      m.cyl(0.05, 0.06, len, DRY, { p: [x, 0.07 + i * 0.05, z], r: [Math.PI / 2, a, 0.05] }, 6);
+      for (let k = 1; k < 4; k++) m.cyl(0.063, 0.063, 0.03, 0x7a6a3a, { p: [x + Math.sin(a) * (k / 4 - 0.5) * len, 0.07 + i * 0.05, z + Math.cos(a) * (k / 4 - 0.5) * len], r: [Math.PI / 2, a, 0.05] }, 6);
+    });
+    for (let i = 0; i < 6; i++) {
+      const a = i * 2.2;
+      l.ico(0.22, [0x8a7a3a, 0xb8a058], { p: [Math.cos(a) * 0.8, 0.12, Math.sin(a) * 0.6], s: [1.6, 0.35, 0.9], r: [0, a, 0], wobble: 0.05, flat: false, puff: 0.5 }, 1);
+    }
+    return finish(m, l);
+  },
+  fern() {
+    // A fern clump under the bamboo: long fronds arching out from the middle, each a flattened, tapering leaf.
+    const l = new MB();
+    for (let i = 0; i < 11; i++) {
+      const a = i * 2.39, tilt = 0.75 + (i % 3) * 0.2, len = 0.75 + ((i * 7) % 5) * 0.08;
+      l.cone(0.14, len, [0x3f7a34, 0x8ac058], { p: [Math.sin(a) * len * 0.42 * Math.sin(tilt), 0.12 + Math.cos(tilt) * len * 0.42, Math.cos(a) * len * 0.42 * Math.sin(tilt)], r: [tilt * Math.cos(a), 0, -tilt * Math.sin(a)], s: [1, 1, 0.22] }, 5);
+    }
+    l.ico(0.18, [0x3a6a30, 0x5a8a40], { p: [0, 0.08, 0], s: [1.2, 0.5, 1.2], flat: false, puff: 0.5 }, 1);
+    return { solid: new MB().sphere(0.01, 0, {}, 3, 2).build(), leaf: l.build({ ground: true }) };
+  },
 };
 
 /**

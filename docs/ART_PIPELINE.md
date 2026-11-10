@@ -185,7 +185,36 @@ Gather nodes show a soft ground ring as the caretaker comes within 7 m, so they 
   list it in the building's `parts` (a test checks every part has a model).
 - Ghost parts use a pale transparent material; the site marker is a terrain-following disc.
 
+## Phase 4 models (the first journey)
+All built in code on decided art (A1–A6), timber style, Lanternfall+ first.
+- **Bamboo** (`src/render/kits.ts` helpers `culm`, `pole`, `bambooScreen`, `bambooFence`, `bambooRoof`): a culm is
+  a green two-tone cylinder (`#7A9048`→`#B8C070`) with a darker node ring (`#5F7238`) every ~0.45 m and a pale
+  cut top; poles are lashed with near-black cord (`#2A2420`); a split-bamboo roof lays halved culms down the
+  slope, alternating light and dark. Bamboo is the same in every kit style.
+- **Bamboo gather clump** (`BambooView`, `src/render/nodes.ts`): 4 culms (4.6 m, one per unit) with leaf tufts
+  near the top over a mat of leaf litter; each cut shrinks one culm into its slanted stub (no falling); shoots
+  rise back one at a time. Ground ring as for trees and boulders.
+- **Wind shrine** (`shrine_kit`): stone platform 2.2 × 1.8 m (two halves) with a step and a basin, four
+  planted bamboo posts, a split-bamboo roof with a ridge pole, and wind chimes under the front eave that sway
+  (`PartGeo.swing`). No deity imagery (plan pillar 4); a flat stone beside the basin for a flower.
+- **Tea house** (`teahouse_kit`): a timber log floor 2.6 × 2.2 m, four log posts and a thatched roof (the timber
+  helpers), with bamboo walls planted around it, a fenced garden, a bamboo bench with a tea set (bowl, whisk,
+  scoop, ladle; `PartGeo.steam` marks where steam rises) and a water pipe (`PartGeo.rocker`, animated in
+  `BuildingView.updateRocker`: fills ~6 s, tips, pours, knocks back; the knock calls `onTock`).
+- **Crane** (`src/render/crane.ts`): chibi like the deer, ~1.2 m to the crown: white body, grey folded wings,
+  black tail plumes and throat, red crown, pale bill, long dark legs. Walks high-stepping, dips its bill to
+  the water, and rests on one leg.
+- **Decor** (`decor-models.ts`): `map_board` (the painted travel map under a little thatched roof),
+  `fence_bamboo` (2 m), `fallen_bamboo` (dry culms and dead leaves: grove overgrowth), `fern` (wind-swayed).
+- **Travel map** (`public/index.html`, `#travel`): a painted sheet in SVG (washes of green for hills, a river,
+  the dotted trail between known places), places as pins with names; the current place is red. HTML, so it
+  stays crisp at any size; buttons are at least 48 px.
+
 ## Palette
+Bamboo grove (Phase 4): the home presets with a cooler, deeper floor (`#4F7F42`/`#6F9A52`/`#9FB06A`), bamboo-
+tinted grass, a green-gold haze by day and darker, clearer spring water (`groveOf` in `src/data/presets.ts`).
+This is a place palette, not a seasonal one (A7 is untouched).
+
 Home valley, spring day: `src/data/presets.ts` (`home_day`), Lanternfall's meadow nudged toward the plan's
 palette (plan 7.2). Path `#D9C39D`/`#A48A62`, water `#9CC7B8`→`#3F7F7A`, cherry blossom `#D98AA0`→`#F6D2DC`.
 
@@ -198,7 +227,7 @@ palette (plan 7.2). Path `#D9C39D`/`#A48A62`, water `#9CC7B8`→`#3F7F7A`, cherr
 | A4 | Character proportions | **Decided: chibi** (owner, 2026-11-10) |
 | A5 | Building kit style | **Decided: timber by default**, temple and others as a free per-building style later (Phase 5); timber detail pass (roofs first) done at the start of Phase 3 (owner, 2026-11-10) |
 | A6 | Shading family | **Decided: Lanternfall+** (owner, 2026-11-10) |
-| A7 | Seasonal palettes | Phase 5 gate (Phase 3 built nothing seasonal) |
+| A7 | Seasonal palettes | Phase 5 gate (Phases 3 and 4 built nothing seasonal; the grove's palette is a place palette) |
 
 ## External assets
 None. Fonts are system fonts; all sound is synthesized. Log the source and license of any future asset here.

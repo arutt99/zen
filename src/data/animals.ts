@@ -2,7 +2,7 @@
 // No needs, no feeding. Presence is derived from the place's restoration (sim/progress.ts).
 import type { CircleArea, PlaceId } from './places';
 
-export type AnimalId = 'deer';
+export type AnimalId = 'deer' | 'crane';
 
 export interface AnimalDef {
   id: AnimalId;
@@ -31,5 +31,18 @@ export const ANIMALS: Record<AnimalId, AnimalDef> = {
     walkSpeed: 1.1,
     linger: [5, 12],
     shyRadius: 2.6,
+  },
+  // Phase 4 (plan 4.2, 4.3): the wind shrine brings the crane to the grove's spring pool. It wades the
+  // shallows and stands a long while on one leg ('rest').
+  crane: {
+    id: 'crane',
+    name: 'Crane',
+    place: 'bamboo_grove',
+    minRestoration: 1,
+    home: { x: -9, z: -5.5, r: 6 },
+    enterFrom: { x: -16, z: -15 },
+    walkSpeed: 0.8,
+    linger: [6, 14],
+    shyRadius: 2.4,
   },
 };

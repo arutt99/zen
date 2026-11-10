@@ -59,8 +59,25 @@ function buildGeos() {
   const chunk = stone(new MB(), 0.5, STONE, { s: [1, 0.75, 1], wobble: 0.06 }).build();
   // Gatherable boulders are mossy (plan 3.1), so they read apart from the bare decor rocks.
   const moss = new MB().ico(1, [0x5f7f3f, 0x93b25e], { s: [0.95, 0.32, 0.9], wobble: 0.08, flat: false, puff: 0.5, smooth: fine() }, fine() ? 2 : 1).build();
-  return { stump, upper, puff, notch, rock, chunk, moss };
+  // Phase 4: a bamboo culm (base at y = 0) with leaf tufts near the top, and the slanted stub a cut leaves.
+  const culmMB = new MB();
+  culmMB.cyl(0.07, 0.08, 4.6, CULM, { p: [0, 2.3, 0] }, 8);
+  for (let k = 1; k < 10; k++) culmMB.cyl(0.088, 0.088, 0.04, 0x5f7238, { p: [0, k * 0.46, 0] }, 8);
+  const culm = culmMB.build({ ground: true });
+  const tuftMB = new MB();
+  for (let k = 0; k < 4; k++) {
+    const a = k * 2.3, y = 3.0 + k * 0.42;
+    tuftMB.ico(0.5 - k * 0.05, [0x5c8a3a, 0xb0cc6e], { p: [Math.cos(a) * 0.38, y, Math.sin(a) * 0.38], s: [1.5, 0.42, 0.9], r: [0, a, 0], wobble: 0.06, flat: false, puff: 0.6 }, 1);
+  }
+  const tuft = tuftMB.build();
+  const stub = new MB()
+    .cyl(0.07, 0.08, 0.28, CULM, { p: [0, 0.14, 0] }, 8)
+    .cyl(0.062, 0.062, 0.01, 0xe2d6a0, { p: [0, 0.285, 0.0], r: [0.55, 0, 0] }, 8)
+    .build({ ground: true });
+  const litter = new MB().ico(0.7, [0x8a7a3a, 0xb8a058], { s: [1.2, 0.08, 1.1], wobble: 0.08, flat: false, puff: 0.4 }, 1).build({ ground: true });
+  return { stump, upper, puff, notch, rock, chunk, moss, culm, tuft, stub, litter };
 }
+const CULM: [number, number] = [0x7a9048, 0xb8c070];
 
 const RING_FRAG = /* glsl */ `
   uniform float uAlpha;
@@ -255,6 +272,52 @@ export class BoulderView extends NodeView {
   }
 }
 
+/**
+ * Phase 4: a bamboo clump. One culm per unit; each cut takes a culm down to a slanted stub (it shrinks into
+ * the ground, never falls). An emptied clump is a ring of stubs in leaf litter; shoots rise back one by one.
+ */
+export class BambooView extends NodeView {
+  private culms: Part[] = [];
+  private tops: THREE.Object3D[] = [];
+
+  constructor(node: GatherNode, y: number, rot: number) {
+    super(node, y, rot);
+    const g = geos!;
+    this.root.add(mesh(g.litter, Mats.std));
+    for (let i = 0; i < node.def.units; i++) {
+      const a = i * 2.4 + 0.3, r = 0.22 + (i % 2) * 0.16;
+      const x = Math.cos(a) * r, z = Math.sin(a) * r;
+      const stub = mesh(g.stub, Mats.std);
+      stub.position.set(x, 0, z);
+      stub.rotation.y = a;
+      this.root.add(stub);
+      const c = new THREE.Group();
+      c.position.set(x, 0, z);
+      c.rotation.set(Math.sin(a) * 0.05, a, -Math.cos(a) * 0.05);
+      c.scale.setScalar(0.85 + ((i * 7) % 4) * 0.08);
+      c.add(mesh(g.culm, Mats.std));
+      c.add(mesh(g.tuft, Mats.stdFoliage));
+      const top = new THREE.Object3D();
+      top.position.y = 3.6;
+      c.add(top);
+      this.tops.push(top);
+      this.culms.push(this.part(c));
+    }
+    this.settle();
+  }
+
+  protected targets(): void {
+    const u = this.node.units;
+    this.culms.forEach((p, i) => { p.target = i < u ? 1 : 0; });
+  }
+
+  burstAt(out: THREE.Vector3): THREE.Vector3 {
+    // The culm that was just cut: index `units` (it has started shrinking).
+    return (this.tops[this.node.units] ?? this.tops[0]!).getWorldPosition(out);
+  }
+}
+
 export function nodeView(node: GatherNode, y: number, rot: number): NodeView {
+  if (node.kind === 'bamboo') return new BambooView(node, y, rot);
   return node.kind === 'tree' ? new TreeView(node, y, rot) : new BoulderView(node, y, rot);
 }

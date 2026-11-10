@@ -1,7 +1,8 @@
-// Screenshot sets for the phase checkpoints (plan 7.4, 11). Phase 3: the home valley before and after,
-// each building, a half-built hall, rituals, words, night lanterns and the opening, in Lanternfall+ at
-// phone size. Earlier phases' sets stay in docs/phase1 and docs/phase2 (made with older versions of this
-// script).
+// Screenshot sets for the phase checkpoints (plan 7.4, 11). Phase 4: the first journey — the open trail
+// gate, the bamboo grove before and after its wind shrine, the shrine half built and finished, the crane,
+// cutting bamboo, the travel map, the tea house (half built, finished, and its ritual) and the grove at
+// dusk, in Lanternfall+ at phone size. Earlier phases' sets stay in docs/phase1..3 (made with older
+// versions of this script).
 // Usage: node scripts/shots.cjs [outDir] [filter]   (needs Playwright; software GL is slow, be patient)
 const path = require('node:path');
 const fs = require('node:fs');
@@ -12,26 +13,25 @@ const outDir = path.resolve(process.argv[2] || path.join(__dirname, '../test-res
 const filter = process.argv[3] || '';
 fs.mkdirSync(outDir, { recursive: true });
 
-/** Each shot: what to do with the debug handle `mb` before the picture (runs in the page). */
+const HOME_BUILT = `mb.deliver('shelter', 6); mb.deliver('gravel_garden', 4, 6); mb.deliver('meditation_hall', 14, 10); mb.deliver('bell_tower', 10, 8);`;
+/**
+ * Each shot: the place to be in (travelled to first, by the map), and what to do with the debug handle
+ * `mb` before the picture (runs in the page once the place is ready). `pre` runs before travelling.
+ */
 const SHOTS = {
-  // Before and after (the Phase 3 gate: "before and after look clearly different").
-  'valley-before': `mb.setTime('day'); mb.teleport(1, 0); mb.zoom(1); mb.settle();`,
-  'valley-after': `mb.restoreAll(true); mb.setTime('day'); mb.teleport(1, 0); mb.zoom(1); mb.settle();`,
-  'valley-before-golden': `mb.setTime('golden'); mb.teleport(-6, 4); mb.zoom(1); mb.settle();`,
-  'valley-after-golden': `mb.restoreAll(true); mb.setTime('golden'); mb.teleport(-6, 4); mb.zoom(1); mb.settle();`,
-  // The buildings.
-  'shelter-timber': `mb.deliver('shelter', 6); mb.setTime('golden'); mb.teleport(9.8, 1.2); mb.closeup(3.0, 7.5, 5.0, 2.2); mb.settle();`,
-  'garden': `mb.restoreAll(true); mb.setTime('day'); mb.teleport(-12.4, 13.6); mb.closeup(2.9, 6.6, 5.2, 0.8); mb.settle();`,
-  'hall': `mb.restoreAll(true); mb.setTime('day'); mb.teleport(-1.2, -6.6); mb.closeup(3.0, 9.5, 5.5, 2.0); mb.settle();`,
-  'hall-half-built': `mb.deliver('shelter', 6); mb.deliver('gravel_garden', 4, 6); mb.deliver('meditation_hall', 9, 5); mb.setTime('day'); mb.teleport(-1.2, -6.6); mb.closeup(3.0, 9.5, 5.5, 2.0); mb.settle();`,
-  'tower': `mb.restoreAll(true); mb.setTime('day'); mb.teleport(13.6, -8.2); mb.closeup(2.7, 7.0, 3.6, 2.6); mb.settle();`,
-  // Rituals, stillness and words.
-  'ring-bell': `mb.restoreAll(true); mb.setTime('day'); mb.teleport(11.9, -10.7); mb.closeup(2.7, 6.5, 3.4, 2.6); mb.settle(); mb.ritual('ring_bell');`,
-  'night-lanterns': `mb.restoreAll(true); mb.setTime('night'); mb.teleport(-4.5, -8.3); mb.zoom(1); mb.settle(); mb.ritual('light_lanterns'); setTimeout(() => mb.settle(), 4500);`,
-  'sit-hall': `mb.restoreAll(true); mb.setTime('golden'); mb.settle(); mb.sitAt('sit_hall');`,
-  'poem': `mb.setTime('day'); mb.teleport(5.2, 14.0); mb.read('poem_gate');`,
-  // The opening at the old gate (a fresh save shows it once).
-  'opening': `mb.setTime('dawn');`,
+  'trail-gate': { pre: HOME_BUILT, js: `mb.setTime('golden'); mb.teleport(15.2, -12.2); mb.closeup(3.6, 7.5, 4.6, 1.4); mb.settle();` },
+  'grove-arrive': { place: 'bamboo_grove', js: `mb.setTime('day'); mb.teleport(2.2, 16.4); mb.settle();` },
+  'grove-before': { place: 'bamboo_grove', js: `mb.setTime('day'); mb.teleport(0.8, -4.5); mb.zoom(1); mb.settle();` },
+  'bamboo-cut': { place: 'bamboo_grove', js: `mb.setTime('day'); mb.teleport(4.2, 2.0); mb.closeup(1.6, 5.2, 3.4, 1.4);` },
+  'shrine-half': { place: 'bamboo_grove', js: `mb.deliver('wind_shrine', 0, 2, 4); mb.setTime('day'); mb.teleport(2.4, -6.2); mb.closeup(3.0, 7.0, 4.6, 1.4); mb.settle();` },
+  'grove-after': { place: 'bamboo_grove', pre: 'mb.restoreAll(true);', js: `mb.setTime('day'); mb.teleport(0.8, -4.5); mb.zoom(1); mb.settle();` },
+  'shrine': { place: 'bamboo_grove', pre: 'mb.restoreAll(true);', js: `mb.setTime('golden'); mb.teleport(2.4, -6.2); mb.closeup(3.0, 7.0, 4.6, 1.4); mb.settle();` },
+  'crane': { place: 'bamboo_grove', pre: 'mb.restoreAll(true);', js: `mb.setTime('day'); mb.teleport(-5.2, -1.2); mb.closeup(3.6, 6.0, 3.6, 0.6); mb.settle();` },
+  'grove-dusk': { place: 'bamboo_grove', pre: 'mb.restoreAll(true);', js: `mb.setTime('dusk'); mb.teleport(-0.6, 3.0); mb.zoom(1); mb.settle();` },
+  'map': { pre: HOME_BUILT + ` mb.discover('bamboo_grove');`, js: `mb.setTime('day'); mb.teleport(14.7, -14.4); mb.settle(); mb.openMap();` },
+  'teahouse-half': { pre: HOME_BUILT + ` mb.deliver('wind_shrine', 0, 4, 8); mb.deliver('tea_house', 4, 0, 3);`, js: `mb.setTime('day'); mb.teleport(-16.0, 13.6); mb.closeup(4.0, 7.5, 4.8, 1.2); mb.settle();` },
+  'teahouse': { pre: 'mb.restoreAll(true);', js: `mb.setTime('golden'); mb.teleport(-16.0, 13.6); mb.closeup(4.0, 7.5, 4.8, 1.2); mb.settle();` },
+  'tea-ritual': { pre: 'mb.restoreAll(true);', js: `mb.setTime('day'); mb.teleport(-17.75, 12.47); mb.settle(); mb.ritual('make_tea'); mb.closeup(3.2, 5.0, 3.0, 0.8);` },
 };
 
 async function shot(browser, name, js) {
@@ -42,10 +42,16 @@ async function shot(browser, name, js) {
   page.on('pageerror', (e) => errors.push(String(e)));
   page.on('console', (m) => { if (m.type() === 'error') errors.push(m.text()); });
   // Every shot but the opening starts from a save that has already seen the opening.
-  if (name !== 'opening') await page.addInitScript(() => { try { localStorage.setItem('moss-and-bell/save', JSON.stringify({ v: 4, opened: true, at: { place: '', x: 0, z: 0 } })); } catch { /* fine */ } });
+  // Every shot starts from a save that has seen the opening and knows the grove (the map works).
+  await page.addInitScript(() => { try { localStorage.setItem('moss-and-bell/save', JSON.stringify({ v: 5, opened: true, places: ['home_valley', 'bamboo_grove'], at: { place: '', x: 0, z: 0 } })); } catch { /* fine */ } });
   await page.goto(`${file}?look=lanternfallplus`);
   await page.waitForFunction(() => window.__mb && window.__mb.fps > 0, null, { timeout: 240000 });
-  await page.evaluate((js) => { const mb = window.__mb; eval(js); }, js);
+  if (js.pre) await page.evaluate((code) => { const mb = window.__mb; eval(code); }, js.pre);
+  if (js.place) {
+    await page.evaluate((id) => window.__mb.travel(id), js.place);
+    await page.waitForFunction((id) => window.__mb.place === id && !window.__mb.travelling, js.place, { timeout: 300000, polling: 500 });
+  }
+  await page.evaluate((code) => { const mb = window.__mb; eval(code); }, js.js);
   // Let the camera, mist and particles settle (software GL runs at a few fps).
   await page.waitForTimeout(9000);
   const out = path.join(outDir, `${name}.jpg`);

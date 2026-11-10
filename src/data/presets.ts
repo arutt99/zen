@@ -94,6 +94,24 @@ export const PRESETS: Record<string, PlacePreset> = {
 };
 
 /**
+ * Phase 4: the bamboo grove's light. The home presets with a cooler, deeper green floor, bamboo-tinted
+ * grass, a green-gold haze and darker, clearer spring water. Only ground, grass, fog and water change, so
+ * the time of day reads the same in both places.
+ */
+const groveOf = (p: PlacePreset, id: string): PlacePreset => ({
+  ...p, id,
+  groundA: 0x4f7f42, groundB: 0x6f9a52, groundC: 0x9fb06a,
+  grass: [0x4a7a34, 0x9cbc58], grassDensity: 1.15,
+  pathA: 0xcdb98e, pathB: 0x987e58,
+  waterShallow: p.id === 'home_night' ? 0x4c7c7a : 0x8cc0a8, waterDeep: p.id === 'home_night' ? 0x163834 : 0x2f6a5c,
+  fog: p.id === 'home_night' ? 0x445c62 : p.id === 'home_dusk' ? 0xb4a490 : 0xd8e0b0,
+  fogDensity: p.fogDensity * 1.15,
+  flowers: [0xfff2c2, 0xc8a6e0, 0xffffff],
+});
+
+for (const k of ['day', 'dawn', 'golden', 'dusk', 'night']) PRESETS[`grove_${k}`] = groveOf(PRESETS[`home_${k}`]!, `grove_${k}`);
+
+/**
  * A place's day: preset keys at fractions of the day (0 = midnight, 0.5 = noon), blended smoothly
  * between neighbours and wrapping around midnight. Clock times assume a spring day (Phase 5 adds seasons).
  */
@@ -106,6 +124,15 @@ export const DAY_CYCLES: Record<string, [number, string][]> = {
     [0.74, 'home_golden'], // 17:45
     [0.8, 'home_dusk'], // 19:10
     [0.86, 'home_night'], // 20:40
+  ],
+  grove: [
+    [0.21, 'grove_night'],
+    [0.26, 'grove_dawn'],
+    [0.33, 'grove_day'],
+    [0.68, 'grove_day'],
+    [0.74, 'grove_golden'],
+    [0.8, 'grove_dusk'],
+    [0.86, 'grove_night'],
   ],
 };
 

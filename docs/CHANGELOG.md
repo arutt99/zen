@@ -1,5 +1,19 @@
 # Changelog
 
+## Phase 4: The first journey (2026-11-10)
+- **Places you travel between:** the game now builds one place at a time and fades between them; facts, the
+  caretaker, camera, HUD and settings carry over. Travel saves on both sides.
+- **The trail:** a trail past the bell tower through the open trail gate, walked the first time, to a new place,
+  **the bamboo grove**: tall bamboo, a spring pool, its own light along the same day, and an old wind shrine.
+- **Bamboo**, a new material (8 clumps, a culm per unit, a hollow knock on the scale). **The wind shrine**
+  (4 stone, 8 bamboo) heals the grove and brings **the crane**. Two poem stones, a note and three sit spots.
+- **The travel map** on a board by the trail gate and by the shrine, once the grove has been found.
+- **The tea house at home** (6 wood, 8 bamboo) reveals itself once the shrine is restored: bamboo walls, a
+  fenced garden, a water pipe that tocks, and **the tea ritual**.
+- Audio: bamboo, tock, pouring, travel; grove ambience with rustling bamboo and the shrine's chimes.
+- Save v5 (v4 migrates): places found. Journey bot for the gate route. Unit tests 71 → 85; the smoke test
+  walks the journey. Screenshots in `docs/phase4/`.
+
 ## Phase 3: Home grows (2026-11-10)
 - **Start of phase:** the unpicked looks (Painted, Painted+, Woodblock) and storybook proportions are gone from
   the code; plain Lanternfall stays as the light look for the smoke test. **Timber detail pass, roofs first:**

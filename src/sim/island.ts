@@ -105,6 +105,8 @@ const SOLID_R: Record<string, number> = {
   raked_gravel: 0, stepping_stone: 0, lotus: 0,
   // Phase 3: the old gate stands over the path; you walk through it, so it never blocks.
   old_gate: 0,
+  // Phase 4: the travel map board, and low bamboo fences.
+  map_board: 0.4, fence_bamboo: 0.25,
 };
 
 export class IslandWorld {
@@ -131,7 +133,7 @@ export class IslandWorld {
     this.extW = place.halfW + place.margin;
     this.extH = place.halfH + place.margin;
     this.pathWidth = place.pathWidth;
-    this.roads = [new RoadPath(resample(catmullRom(place.path)))];
+    this.roads = [place.path, ...place.trails].map((ctrl) => new RoadPath(resample(catmullRom(ctrl))));
     this.fw = Math.ceil(this.extW * 2 * FIELD_RES) + 1;
     this.fh = Math.ceil(this.extH * 2 * FIELD_RES) + 1;
     this.dist = new Float32Array(this.fw * this.fh).fill(FIELD_R);
@@ -271,6 +273,8 @@ export class IslandWorld {
     if (p.growth.some((q) => Math.hypot(x - q.x, z - q.z) < 1.4 + r)) return false;
     if (p.words.some((q) => Math.hypot(x - q.x, z - q.z) < 1.8 + r)) return false;
     if (p.sits.some((q) => Math.hypot(x - q.x, z - q.z) < 1.8 + r)) return false;
+    if (p.exits.some((q) => Math.hypot(x - q.x, z - q.z) < q.r + 2 + r)) return false;
+    if (Object.values(p.arrivals).some((q) => Math.hypot(x - q.x, z - q.z) < 2 + r)) return false;
     if (Math.hypot(x - p.pond.x, z - p.pond.z) < p.pond.r + 1 + r) return false;
     return true;
   }

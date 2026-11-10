@@ -1,6 +1,7 @@
 // Buildings as data (plan 3.3, 9.5). A building is an ordered list of parts, one part per unit of
 // cost; the render kit (src/render/kits.ts) supplies a model for each part id. Phase 3: the four
-// home-valley buildings of plan 9.6 (the tea house waits for bamboo, Phase 4).
+// home-valley buildings of plan 9.6. Phase 4: the bamboo grove's wind shrine, and the tea house at home
+// (it needs bamboo, and its site reveals itself once the shrine is restored: plan 4.1, 4.2).
 //
 // Mixed materials (settled in Phase 3): deposits are counted per material, so wood and stone parts can
 // arrive in any mix. To keep every mix looking whole, a part only ever rests on the ground or on an
@@ -9,9 +10,12 @@
 import type { MaterialId } from './gathering';
 import type { PlaceId } from './places';
 
-export type BuildingId = 'shelter' | 'gravel_garden' | 'meditation_hall' | 'bell_tower';
-/** Build order in the home valley (plan 9.6); each site opens when the ones it `requires` are done. */
-export const BUILDING_IDS: readonly BuildingId[] = ['shelter', 'gravel_garden', 'meditation_hall', 'bell_tower'];
+export type BuildingId = 'shelter' | 'gravel_garden' | 'meditation_hall' | 'bell_tower' | 'wind_shrine' | 'tea_house';
+/**
+ * Build order (plan 9.6), across places: each site opens when the buildings it `requires` are done,
+ * wherever they stand (the tea house at home waits for the grove's wind shrine).
+ */
+export const BUILDING_IDS: readonly BuildingId[] = ['shelter', 'gravel_garden', 'meditation_hall', 'bell_tower', 'wind_shrine', 'tea_house'];
 
 /**
  * Building kit styles (art decision point A5, due at the Phase 2 gate): the part set buildings are
@@ -167,6 +171,63 @@ export const BUILDINGS: Record<BuildingId, BuildingDef> = {
     restoration: 0.25,
     solidRadius: 1.6,
     siteRadius: 3.2,
+  },
+  // Phase 4 (plan 4.2): the bamboo grove's small shrine, 4 stone and 8 bamboo, both found in the grove. A
+  // low stone platform with a basin; four bamboo posts planted beside it, a split-bamboo roof and wind
+  // chimes under the eave. Restoring it heals the grove (it is the grove's only building) and brings the
+  // crane; at home, the tea house's site reveals itself and the travel map gains the shrine.
+  wind_shrine: {
+    id: 'wind_shrine',
+    name: 'Wind Shrine',
+    place: 'bamboo_grove',
+    kit: 'shrine_kit',
+    requires: [],
+    parts: [
+      { id: 'platform_back', material: 'stone' },
+      { id: 'post_back_left', material: 'bamboo' },
+      { id: 'post_back_right', material: 'bamboo' },
+      { id: 'platform_front', material: 'stone' },
+      { id: 'post_front_left', material: 'bamboo' },
+      { id: 'post_front_right', material: 'bamboo' },
+      { id: 'step', material: 'stone' },
+      { id: 'roof_back', material: 'bamboo', on: 'post_front_right' },
+      { id: 'roof_front', material: 'bamboo', on: 'post_front_right' },
+      { id: 'basin', material: 'stone', on: 'platform_front' },
+      { id: 'ridge', material: 'bamboo', on: 'roof_front' },
+      { id: 'chimes', material: 'bamboo', on: 'roof_front' },
+    ],
+    restoration: 1,
+    solidRadius: 1.5,
+    siteRadius: 3.2,
+  },
+  // Plan 9.6: the tea house, 6 wood and 8 bamboo (bamboo comes from the grove). Response: the tea ritual,
+  // and home feels lived in (the water pipe tocks, the tea set steams). It adds nothing to restoration (the
+  // valley is already whole); its own touches come and go with `requires` in the place's growth list.
+  tea_house: {
+    id: 'tea_house',
+    name: 'Tea House',
+    place: 'home_valley',
+    kit: 'teahouse_kit',
+    requires: ['wind_shrine'],
+    parts: [
+      { id: 'deck', material: 'wood' },
+      { id: 'wall_back', material: 'bamboo' },
+      { id: 'post_back_left', material: 'wood', on: 'deck' },
+      { id: 'post_back_right', material: 'wood', on: 'deck' },
+      { id: 'wall_left', material: 'bamboo' },
+      { id: 'wall_right', material: 'bamboo' },
+      { id: 'post_front_left', material: 'wood', on: 'deck' },
+      { id: 'post_front_right', material: 'wood', on: 'deck' },
+      { id: 'fence_left', material: 'bamboo' },
+      { id: 'roof', material: 'wood', on: 'post_front_right' },
+      { id: 'fence_right', material: 'bamboo' },
+      { id: 'water_pipe', material: 'bamboo' },
+      { id: 'bench', material: 'bamboo' },
+      { id: 'tea_set', material: 'bamboo', on: 'bench' },
+    ],
+    restoration: 0,
+    solidRadius: 1.9,
+    siteRadius: 3.4,
   },
 };
 

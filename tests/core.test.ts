@@ -104,7 +104,7 @@ test('a Phase 1 (v2) save migrates to v4 with default look, character, kit and c
   const v2 = { v: 2, at: { place: 'home_valley', x: 1, z: 2 }, satchel: { wood: 2 }, deposits: { shelter: { wood: 3 } }, settings: { quality: 'medium', sound: true, camera: 'a', scale: 'm' } };
   const { data, recovered } = parseSave(JSON.stringify(v2));
   assert.equal(recovered, null);
-  assert.equal(data.v, 4);
+  assert.equal(data.v, SAVE_VERSION);
   assert.deepEqual(data.deposits, v2.deposits);
   assert.deepEqual(data.collection, []);
   assert.equal(data.opened, true, 'someone who already played has seen the opening');

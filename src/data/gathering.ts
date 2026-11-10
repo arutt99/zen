@@ -1,11 +1,13 @@
 // Gathering and carrying balance (plan 3.1, 3.2, 9.6). Every tunable number for the core loop lives here.
 
-export type MaterialId = 'wood' | 'stone';
-export const MATERIALS: readonly MaterialId[] = ['wood', 'stone'];
+// Phase 4: bamboo, the bamboo grove's material (plan 4.2); it only grows in the grove.
+export type MaterialId = 'wood' | 'stone' | 'bamboo';
+export const MATERIALS: readonly MaterialId[] = ['wood', 'stone', 'bamboo'];
 
 export const MATERIAL_INFO: Record<MaterialId, { name: string }> = {
   wood: { name: 'Wood' },
   stone: { name: 'Stone' },
+  bamboo: { name: 'Bamboo' },
 };
 
 /** The beat: one unit gathered or deposited per beat (plan 3.1, default 0.55 s). */
@@ -15,7 +17,7 @@ export const FIRST_BEAT_SECONDS = 0.4;
 /** The satchel holds this much of each material. Never upgrades (plan 3.2). */
 export const SATCHEL_CAP = 20;
 
-export type NodeKindId = 'tree' | 'boulder';
+export type NodeKindId = 'tree' | 'boulder' | 'bamboo';
 
 export interface NodeKindDef {
   material: MaterialId;
@@ -38,4 +40,6 @@ export const NODE_KINDS: Record<NodeKindId, NodeKindDef> = {
   tree: { material: 'wood', units: 5, radius: 1.75, solidRadius: 0.42, restSeconds: 8, regrowSecondsPerUnit: 4, noteStep: 0 },
   // 5 units of stone; regrows in 10 + 5 x 5 = 35 s.
   boulder: { material: 'stone', units: 5, radius: 2.05, solidRadius: 0.8, restSeconds: 10, regrowSecondsPerUnit: 5, noteStep: 2 },
+  // Phase 4: a bamboo clump, one culm per unit; shoots come back quickly (bamboo grows fast): 6 + 4 x 4 = 22 s.
+  bamboo: { material: 'bamboo', units: 4, radius: 1.8, solidRadius: 0.5, restSeconds: 6, regrowSecondsPerUnit: 4, noteStep: 1 },
 };

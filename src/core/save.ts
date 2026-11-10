@@ -3,7 +3,7 @@
 
 import type { QualityTier } from '../data/quality';
 
-export const SAVE_VERSION = 4;
+export const SAVE_VERSION = 5;
 export const SAVE_KEY = 'moss-and-bell/save';
 
 export interface SaveSettings {
@@ -34,6 +34,8 @@ export interface SaveData {
   deposits: Record<string, Counts>;
   /** Words found (poem stones, caretaker notes), by id. Phase 5's collection book reads this. */
   collection: string[];
+  /** Places reached so far (Phase 4, plan 9.5's `places`): the travel map is derived from it. */
+  places: string[];
   /** True once the opening (plan 4.5) has been shown, so it never plays again. */
   opened: boolean;
   settings: SaveSettings;
@@ -53,6 +55,7 @@ export function freshSave(): SaveData {
     satchel: {},
     deposits: {},
     collection: [],
+    places: [],
     opened: false,
     settings: { quality: 'auto', sound: true, camera: 'a', scale: 'm', look: 'lanternfallplus', character: 'chibi', kit: 'timber', time: { mode: 'clock', at: 0.5 } },
   };
@@ -66,6 +69,8 @@ const migrations: Record<number, (old: Record<string, unknown>) => Record<string
   2: (old) => ({ ...old, v: 3 }),
   // v3 (Phase 2) had no collection. A player who had already started has seen the opening.
   3: (old) => ({ ...old, v: 4, collection: [], opened: true }),
+  // v4 (Phase 3) had only the home valley: anyone who had started had reached it.
+  4: (old) => ({ ...old, v: 5, places: old.opened === true ? ['home_valley'] : [] }),
 };
 
 const isNum = (n: unknown): n is number => typeof n === 'number' && Number.isFinite(n);
@@ -127,6 +132,7 @@ export function parseSave(raw: string | null): { data: SaveData; recovered: stri
           .filter(([, c]) => Object.keys(c).length > 0),
       ),
       collection: Array.isArray(obj.collection) ? [...new Set(obj.collection.filter((x): x is string => typeof x === 'string' && ID.test(x)))].sort() : [],
+      places: Array.isArray(obj.places) ? [...new Set(obj.places.filter((x): x is string => typeof x === 'string' && ID.test(x)))].sort() : [],
       opened: typeof obj.opened === 'boolean' ? obj.opened : base.opened,
       settings: {
         quality: quality === 'low' || quality === 'medium' || quality === 'high' || quality === 'ultra' ? quality : 'auto',
