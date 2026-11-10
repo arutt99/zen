@@ -1,8 +1,8 @@
 # Tasks
 
-**Current phase: 1, The feel. Waiting at the gate.** (plan section 10)
+**Current phase: 2, Warm the look. Waiting at the gate.** (plan section 10)
 
-The Phase 0 owner gate check (below) was still open when the owner asked for Phase 1 to be built; please do both checks together.
+The owner reported the Phase 0 and Phase 1 gate checks passed on their phone and PC (2026-11-10).
 
 ## Phase 0: Fork the engine
 - [x] TypeScript project at the repo root: build to one HTML file, serve, test, typecheck, manifest
@@ -18,15 +18,15 @@ The Phase 0 owner gate check (below) was still open when the owner asked for Pha
 - [x] `AGENTS.md`, `README.md`, `TASKS.md`, `docs/ART_PIPELINE.md`, `docs/CHANGELOG.md`
 - [x] Unit tests (25) and a Playwright smoke test at phone and laptop sizes
 - [x] **Owner:** art decision point **A1: 2D vs 3D** decided: **3D** (2026-11-10).
-- [ ] **Owner:** gate check on a real phone browser and on PC (see below)
+- [x] **Owner:** gate check on a real phone browser and on PC (passed, reported 2026-11-10)
 
 ### Gate checklist (owner)
-- [ ] `dist/index.html` opens on PC
-- [ ] …and in a phone browser (iPhone Safari and/or Android Chrome), landscape
-- [ ] The island renders with the painterly pipeline
-- [ ] Holds frame rate on Medium on the phone (fps shows bottom-left)
-- [ ] The caretaker walks around with the joystick
-- [ ] CI is green
+- [x] `dist/index.html` opens on PC
+- [x] …and in a phone browser (iPhone Safari and/or Android Chrome), landscape
+- [x] The island renders with the painterly pipeline
+- [x] Holds frame rate on Medium on the phone (fps shows bottom-left)
+- [x] The caretaker walks around with the joystick
+- [x] CI is green
 
 ### Engine status
 Copied from Lanternfall (`games/lanternfall/src` at commit `b282628`); each file's first line says where it came from and what changed.
@@ -34,7 +34,7 @@ Copied from Lanternfall (`games/lanternfall/src` at commit `b282628`); each file
 | Lanternfall | Here | Notes |
 |---|---|---|
 | `render/engine.ts` | `src/render/engine.ts` | quality table moved to `src/data/quality.ts`; RTS camera rig removed |
-| `render/materials.ts`, `render/mb.ts`, `render/style.ts` | same paths | unchanged (style storage key renamed) |
+| `render/materials.ts`, `render/mb.ts`, `render/style.ts` | same paths; `style.ts` → `render/look.ts` | Phase 2: driven by the look presets (`src/data/looks.ts`) |
 | `render/decor-models.ts` | same path | meadow-type kinds kept; cherry and bench added |
 | `render/stage.ts`, `render/biomes.ts` | `src/render/stage.ts`, `src/data/presets.ts` | lantern, rifts, build overlay removed; biome → place preset |
 | `sim/world.ts` | `src/sim/island.ts` | path + terrain + rim kept; build rules removed; pond and decor from place data |
@@ -43,7 +43,7 @@ Copied from Lanternfall (`games/lanternfall/src` at commit `b282628`); each file
 | `core/util.ts`, `core/util-render.ts`, `core/pacing.ts`, `ui/touch.ts` | same paths | unchanged (`damp`, `hashString` added to util) |
 | `core/save.ts` | not copied | Lanternfall's save is battle-specific; `src/core/save.ts` keeps its write-on-hide habit and adds versions, migrations and field repair |
 | `scripts/*.mjs` | `scripts/` | same approach (esbuild → one inlined HTML file, node:test runner); output goes to `dist/` |
-| `render/hero-models.ts` | not yet | Phase 2, for the real caretaker and animals |
+| `render/hero-models.ts` | not copied | Phase 2 built the caretaker and deer from scratch with `MB` instead (Lanternfall's heroes are fantasy-proportioned) |
 
 Known Phase 0 gaps: trees between the camera and the caretaker can hide them (Phase 1 camera work, A2); performance has only been measured with software rendering, not on a real phone.
 
@@ -67,13 +67,13 @@ See plan section 10. Owner direction (2026-11-10): **nothing jumps from 0 to 100
 - [x] **Art decision points A2 and A3:** three camera options and three caretaker sizes to try in Settings. Write-up with screenshots and a recommendation: [`docs/phase1/README.md`](docs/phase1/README.md)
 - [x] **Owner:** picked A2 **camera A (Classic)** and A3 **Medium caretaker** after trying them on the phone (2026-11-10). Trial settings removed
 - [x] Sharper image: Medium and High now draw at up to 2× device pixels (were 1.25×) after the owner found Ultra sharp and smooth on their phone
-- [ ] **Owner:** gate check (below)
+- [x] **Owner:** gate check (passed, reported 2026-11-10)
 
 ### Gate checklist (owner)
-- [ ] On a phone, someone new to the game gathers and builds the shelter without being told how
-- [ ] …and keeps gathering afterwards
-- [ ] Closing the tab mid-deposit and reopening keeps exactly what was delivered
-- [ ] Holds frame rate on Medium on the phone with the new effects (mist, particles)
+- [x] On a phone, someone new to the game gathers and builds the shelter without being told how
+- [x] …and keeps gathering afterwards
+- [x] Closing the tab mid-deposit and reopening keeps exactly what was delivered
+- [x] Holds frame rate on Medium on the phone with the new effects (mist, particles)
 
 ### Known Phase 1 gaps
 - Only the first site exists, so after the shelter there is nothing to build with what you gather (Phase 3 adds the rest). The pacing bot's 9.8 s is a perfect player on a short first loop: below the plan's ~30 s for the shelter and 30–90 s cycle target. Real players walk less directly; the target is checked properly once Phase 3 adds the longer buildings.
@@ -81,3 +81,36 @@ See plan section 10. Owner direction (2026-11-10): **nothing jumps from 0 to 100
 - In mixed-material buildings, parts of one material can appear before the parts of another that sit under them (deposits are per material). Only matters from the gravel garden on; to settle with A5 (the building kit) in Phase 2.
 - Trees between the camera and the caretaker still hide them (A2).
 - Performance has only been measured with software rendering in a container (1–5 fps there), not on a phone.
+
+## Phase 2: Warm the look
+See plan section 10. Owner choices before the build (2026-11-10): wildcard look = **woodblock print**; two
+caretaker styles (**chibi** + **storybook**); two kits on the shelter (**temple** + **timber**).
+
+- [x] Look presets in `src/data/looks.ts`: **Painted** (plan 7.1 retuning checklist applied), **Lanternfall-like**, **Woodblock** (wildcard). Look switcher in Settings (reloads); `?look=` for screenshots
+- [x] Every shader reads the look: tone steps and softness, shadow tint, brush, color remap, outline color/width/classes, ground edges, grass, haze, bloom, grade, paper grain, posterize
+- [x] Time of day: dawn, day, golden hour, dusk, night presets, blended from the clock (`src/core/daylight.ts`); lantern glow, fireflies, stars; Settings → Time (follow clock / choose) with a debug slider
+- [x] The real caretaker (robe, hakama, bun, face, sandals, wicker basket that fills) in two proportion styles (A4)
+- [x] The deer, in the same styles, with a headless wander rule; arrives with restoration (temporarily the shelter's level, Phase 3 moves it to the gravel garden)
+- [x] Building kit library (footings, floors, posts, beams, screens, roofs, lanterns, noren, scaffolding) in two styles (A5); the shelter assembled from it
+- [x] Zen kit decor: maple, bamboo, mossy stone, stone lantern, wooden and rope fences, raked gravel, stepping stones, lotus; placed in the home valley for review
+- [x] Tree and boulder depletion/regrowth states (Phase 1 views, kept) plus a ground ring that marks gatherable nodes as you approach
+- [x] Canopy fade between the camera and the caretaker (the A2 occlusion gap)
+- [x] Save v3 (v2 migrates); unit tests; browser smoke test
+- [x] Screenshot sets of every preset at phone size, day and dusk, plus caretaker and kit styles: [`docs/phase2/README.md`](docs/phase2/README.md)
+- [ ] **Owner:** try the looks, caretakers and kits on the phone and decide **A4, A5, A6** (see `docs/phase2/README.md`)
+- [ ] **Owner:** gate check (below)
+
+### Gate checklist (owner)
+- [ ] Tried the three looks on the phone and picked a direction (A6)
+- [ ] Picked a caretaker style (A4) and a building kit style (A5)
+- [ ] If Painted: a phone screenshot next to `docs/art-reference.jpg` reads as the same world, not as Lanternfall
+- [ ] Holds frame rate on Medium on the phone in the chosen look, by day and at night (fps bottom-left)
+- [ ] Then: `docs/ART_PIPELINE.md` records the final values, and the unpicked options are removed
+
+### Known Phase 2 gaps
+- The time-of-day presets only change light, sky, fog, water and particles; ground and foliage colors stay the day's (seasons, Phase 5, will add palettes).
+- The deer's arrival is tied to the shelter for now (plan 4.2 says the gravel garden, Phase 3).
+- Fences block only at their middle (one collision circle per prop); they're placed off the walking routes. A segment collider comes with Phase 3's layout work.
+- The Zen-kit pieces are placed for review, not as the final valley layout (Phase 3).
+- Switching the look reloads the page; caretaker, kit and time switch live.
+- All screenshots and frame rates here come from software rendering in a container (a few fps), not from a phone.

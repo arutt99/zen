@@ -32,7 +32,7 @@ test('save round trip keeps every fact', () => {
   const store = memStore();
   const s = freshSave();
   s.at = { place: 'home_valley', x: 3.25, z: -1.5 };
-  s.settings = { quality: 'high', sound: false, camera: 'b', scale: 's' };
+  s.settings = { quality: 'high', sound: false, camera: 'b', scale: 's', look: 'woodblock', character: 'storybook', kit: 'timber', time: { mode: 'fixed', at: 0.8 } };
   s.satchel = { wood: 3, stone: 1 };
   s.deposits = { shelter: { wood: 4 } };
   assert.ok(writeSave(store, s));
@@ -98,4 +98,22 @@ test('phones default to Medium unless clearly weak; GPU rules follow Lanternfall
   assert.equal(defaultTier({ coarsePointer: false, gpu: 'angle (google, swiftshader device)' }), 'low');
   assert.equal(defaultTier({ coarsePointer: false, gpu: 'intel(r) uhd graphics 620' }), 'medium');
   assert.equal(defaultTier({ coarsePointer: false, gpu: 'nvidia geforce rtx 3060' }), 'high');
+});
+
+test('a Phase 1 (v2) save migrates to v3 with default look, character, kit and clock time', () => {
+  const v2 = { v: 2, at: { place: 'home_valley', x: 1, z: 2 }, satchel: { wood: 2 }, deposits: { shelter: { wood: 3 } }, settings: { quality: 'medium', sound: true, camera: 'a', scale: 'm' } };
+  const { data, recovered } = parseSave(JSON.stringify(v2));
+  assert.equal(recovered, null);
+  assert.equal(data.v, 3);
+  assert.deepEqual(data.deposits, v2.deposits);
+  assert.deepEqual(data.satchel, v2.satchel);
+  assert.deepEqual([data.settings.look, data.settings.character, data.settings.kit], ['painted', 'chibi', 'temple']);
+  assert.deepEqual(data.settings.time, { mode: 'clock', at: 0.5 });
+});
+
+test('a bad time setting is repaired', () => {
+  const { data } = parseSave(JSON.stringify({ v: 3, settings: { time: { mode: 'sometimes', at: 1.25 } } }));
+  assert.equal(data.settings.time.mode, 'clock');
+  assert.ok(Math.abs(data.settings.time.at - 0.25) < 1e-9);
+  assert.deepEqual(parseSave(JSON.stringify({ v: 3, settings: { time: 'noon' } })).data.settings.time, freshSave().settings.time);
 });

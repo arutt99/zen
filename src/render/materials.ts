@@ -1,15 +1,26 @@
-// Copied from Lanternfall (games/lanternfall/src/render/materials.ts @ b282628). Unchanged.
+// Copied from Lanternfall (games/lanternfall/src/render/materials.ts @ b282628).
+// Phase 2: driven by the active look preset (src/data/looks.ts) instead of the ink/classic switch:
+// tone steps, shadow tint, brush, rim, a global color remap, outline color/width and which objects get
+// outlines. Adds a time-of-day light level, lantern glow strength and the canopy fade between the camera
+// and the caretaker.
 // The painterly material system: brush-stroke albedo variation, soft rim light, and wind.
 import * as THREE from 'three';
-import { INK } from './style';
+import type { OutlineClass } from '../data/looks';
+import { f, look, outlined, v3 } from './look';
 import { makeRng } from '../core/util';
 
 export const shared = {
   uTime: { value: 0 },
   uBrush: { value: null as THREE.Texture | null },
   uRim: { value: new THREE.Color(0.4, 0.34, 0.3) },
-  /** Scales lighting so the painted tone bands fall in the same place under any biome's sun. */
+  /** Scales lighting so the painted tone bands fall in the same place under any light. */
   uInkRef: { value: 1 },
+  /** Overall brightness of the time of day relative to full day (night is dimmer, never black). */
+  uLight: { value: 1 },
+  /** Lantern glow strength: low by day, full at night. */
+  uGlow: { value: 1 },
+  /** The caretaker's chest, world space; canopies between it and the camera thin out. w = on (1) / off (0). */
+  uFocus: { value: new THREE.Vector4(0, 0, 0, 0) },
 };
 
 export function makeBrushTexture(): THREE.Texture {
@@ -61,6 +72,36 @@ export interface PaintOpts {
   wind?: number;
   rim?: number;
   brush?: number;
+  /** Thin out where it stands between the camera and the caretaker (foliage). */
+  fade?: boolean;
+}
+
+/** The canopy fade: dithered see-through where the fragment sits near the camera→caretaker line. */
+export const FADE_GLSL = /* glsl */ `
+  uniform vec4 uFocus;
+  void canopyFade(vec3 p) {
+    if (uFocus.w < 0.5) return;
+    vec3 a = cameraPosition;
+    vec3 ab = uFocus.xyz - a;
+    float t = dot(p - a, ab) / dot(ab, ab);
+    if (t > 1.02) return;
+    float d = length(p - (a + ab * clamp(t, 0.0, 1.0)));
+    float k = (1.0 - smoothstep(0.8, 1.6, d)) * smoothstep(0.15, 0.35, t);
+    float n = fract(52.9829189 * fract(dot(gl_FragCoord.xy, vec2(0.06711056, 0.00583715))));
+    if (n < k * 0.88) discard;
+  }
+`;
+
+/** A global color remap from the look: saturation, then a lift toward warm paper. */
+export function albedoGlsl(v: string) {
+  const a = look().albedo;
+  if (a.sat === 1 && a.lift === 0) return '';
+  return /* glsl */ `
+    {
+      float alL = dot(${v}, vec3(0.2126, 0.7152, 0.0722));
+      ${v} = mix(vec3(alL), ${v}, ${f(a.sat)});
+      ${v} = mix(${v}, ${v3(a.toward)} * max(alL * 1.4, 0.45), ${f(a.lift)});
+    }`;
 }
 
 const PAINT_VERT_HEAD = /* glsl */ `
@@ -76,19 +117,22 @@ const PAINT_FRAG_HEAD = /* glsl */ `
   uniform float uBrushAmt;
 `;
 
-/** Replaces smooth shading with three painted tones. Keeps the light's color, so each biome keeps its mood. */
+/** Replaces smooth shading with the look's painted tones. Keeps some of the light's hue, so dusk stays warm. */
 export function celPatch(frag: string) {
-  if (!INK) return frag;
+  const sh = look().shading;
+  const lo = sh.steps[0], hi = sh.steps[1], w = sh.softness;
   const line = 'vec3 totalDiffuse = reflectedLight.directDiffuse + reflectedLight.indirectDiffuse;';
-  return 'uniform float uInkRef;\n' + frag.replace(line, /* glsl */ `${line}
+  return 'uniform float uInkRef;\nuniform float uLight;\n' + frag.replace(line, /* glsl */ `${line}
     {
       vec3 inkAlb = max(material.diffuseColor, vec3(0.002));
       vec3 inkIll = totalDiffuse / inkAlb;
       float inkL = dot(inkIll, vec3(0.2126, 0.7152, 0.0722)) * uInkRef;
-      float inkBand = 0.6 + 0.3 * smoothstep(0.62, 0.68, inkL) + 0.32 * smoothstep(1.02, 1.08, inkL);
-      vec3 inkShade = mix(vec3(0.8, 0.82, 1.08), vec3(1.0), smoothstep(0.62, 0.72, inkL));
-      vec3 inkHue = mix(vec3(1.0), inkIll * uInkRef / max(inkL, 0.001), 0.55);
-      totalDiffuse = inkAlb * inkHue * inkShade * inkBand;
+      float inkBand = ${f(sh.levels[0])}
+        + ${f(sh.levels[1] - sh.levels[0])} * smoothstep(${f(lo - w)}, ${f(lo + w)}, inkL)
+        + ${f(sh.levels[2] - sh.levels[1])} * smoothstep(${f(hi - w)}, ${f(hi + w)}, inkL);
+      vec3 inkShade = mix(${v3(sh.shadowTint)}, vec3(1.0), smoothstep(${f(lo - w - 0.03)}, ${f(lo + w + 0.04)}, inkL));
+      vec3 inkHue = mix(vec3(1.0), inkIll * uInkRef / max(inkL, 0.001), ${f(sh.lightHue)});
+      totalDiffuse = inkAlb * inkHue * inkShade * inkBand * uLight;
     }`);
 }
 
@@ -98,15 +142,17 @@ export const inkShared = {
   uWidth: { value: 1.9 / 720 },
 };
 
-function outlineMaterial(wind: number) {
+function outlineMaterial(wind: number, fade: boolean) {
+  const o = look().outline;
   return new THREE.ShaderMaterial({
     side: THREE.BackSide,
     vertexColors: true,
-    uniforms: { uTime: shared.uTime, uWind: { value: wind }, uAspect: inkShared.uAspect, uWidth: inkShared.uWidth },
+    uniforms: { uTime: shared.uTime, uWind: { value: wind }, uAspect: inkShared.uAspect, uWidth: inkShared.uWidth, uFocus: shared.uFocus, uLight: shared.uLight },
     vertexShader: /* glsl */ `
       attribute vec3 aInk;
       uniform float uTime, uWind, uAspect, uWidth;
       varying vec3 vInkCol;
+      varying vec3 vPWorld;
       void main() {
         vec3 t = position;
         #ifdef USE_INSTANCING
@@ -121,6 +167,7 @@ function outlineMaterial(wind: number) {
           t.x += sway * uWind * wh * wh;
           t.z += cos(uTime * 1.05 + wb.z * 0.41) * uWind * 0.6 * wh * wh;
         }
+        vPWorld = (modelMatrix * im * vec4(t, 1.0)).xyz;
         vec4 mv = modelViewMatrix * im * vec4(t, 1.0);
         vec4 clip = projectionMatrix * mv;
         vec3 nv = mat3(modelViewMatrix) * mat3(im) * aInk;
@@ -138,30 +185,40 @@ function outlineMaterial(wind: number) {
     `,
     fragmentShader: /* glsl */ `
       varying vec3 vInkCol;
-      void main() { gl_FragColor = vec4(mix(vec3(0.035, 0.022, 0.04), vInkCol * 0.1, 0.45), 1.0); }
+      varying vec3 vPWorld;
+      uniform float uLight;
+      ${fade ? FADE_GLSL : ''}
+      void main() {
+        ${fade ? 'canopyFade(vPWorld);' : ''}
+        gl_FragColor = vec4(mix(${v3(o.color)}, vInkCol * ${v3(o.color)} * 2.0, ${f(o.albedoMix)}) * mix(0.6, 1.0, uLight), 1.0);
+      }
     `,
   });
 }
 
-/** Adds the ink outline to a mesh built by MB. Instanced meshes need nothing extra. */
-export function inked<T extends THREE.Mesh>(mesh: T): T {
-  if (!INK || !mesh.geometry.getAttribute('aInk')) return mesh;
-  const base = mesh.material as THREE.Material;
+/** Adds the ink outline to a mesh built by MB, if the look outlines this class of object. Instanced meshes need nothing extra. */
+export function inked<T extends THREE.Mesh>(mesh: T, cls: OutlineClass = 'nature'): T {
+  if (!outlined(cls) || !mesh.geometry.getAttribute('aInk')) return mesh;
+  const base = (Array.isArray(mesh.material) ? mesh.material[0] : mesh.material) as THREE.Material;
   mesh.material = [base, base === Mats.stdFoliage ? Mats.outlineFoliage : Mats.outline];
   return mesh;
 }
 
 /** Patches a standard/lambert material with the game's painterly look. */
 export function paint<T extends THREE.Material>(mat: T, opts: PaintOpts = {}): T {
+  const L = look();
   const wind = opts.wind ?? 0;
-  const rim = (opts.rim ?? 1) * (INK ? 0.4 : 1);
-  const brush = (opts.brush ?? 1) * (INK ? 0.42 : 1);
+  const rim = (opts.rim ?? 1) * L.rim;
+  const brush = (opts.brush ?? 1) * L.brush;
+  const fade = !!opts.fade;
   const hasNormal = !(mat instanceof THREE.MeshLambertMaterial);
   mat.onBeforeCompile = (s) => {
     s.uniforms.uTime = shared.uTime;
     s.uniforms.uBrush = shared.uBrush;
     s.uniforms.uRim = shared.uRim;
     s.uniforms.uInkRef = shared.uInkRef;
+    s.uniforms.uLight = shared.uLight;
+    s.uniforms.uFocus = shared.uFocus;
     s.uniforms.uWind = { value: wind };
     s.uniforms.uRimAmt = { value: rim };
     s.uniforms.uBrushAmt = { value: brush };
@@ -188,7 +245,11 @@ export function paint<T extends THREE.Material>(mat: T, opts: PaintOpts = {}): T
         #endif
         vPWorld = (modelMatrix * pWorld).xyz;
       `);
-    s.fragmentShader = PAINT_FRAG_HEAD + celPatch(s.fragmentShader)
+    s.fragmentShader = PAINT_FRAG_HEAD + (fade ? FADE_GLSL : '') + celPatch(s.fragmentShader)
+      .replace('#include <clipping_planes_fragment>', /* glsl */ `
+        #include <clipping_planes_fragment>
+        ${fade ? 'canopyFade(vPWorld);' : ''}
+      `)
       .replace('#include <color_fragment>', /* glsl */ `
         #include <color_fragment>
         {
@@ -199,6 +260,7 @@ export function paint<T extends THREE.Material>(mat: T, opts: PaintOpts = {}): T
           diffuseColor.rgb *= 1.0 + bm * 0.62 * uBrushAmt;
           diffuseColor.rgb += bm * vec3(0.05, 0.015, -0.045) * uBrushAmt;
         }
+        ${albedoGlsl('diffuseColor.rgb')}
       `)
       .replace('#include <emissivemap_fragment>', /* glsl */ `
         #include <emissivemap_fragment>
@@ -210,7 +272,7 @@ export function paint<T extends THREE.Material>(mat: T, opts: PaintOpts = {}): T
         ` : ''}
       `);
   };
-  mat.customProgramCacheKey = () => `paint-${wind}-${rim}-${brush}-${mat.type}`;
+  mat.customProgramCacheKey = () => `paint-${L.id}-${wind}-${rim}-${brush}-${fade}-${mat.type}`;
   return mat;
 }
 
@@ -226,19 +288,22 @@ export const Mats = {
 
 export function initMaterials() {
   shared.uBrush.value = makeBrushTexture();
+  const L = look();
+  inkShared.uWidth.value = L.outline.width;
   Mats.std = paint(new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.82, metalness: 0.04 }));
-  Mats.stdFoliage = paint(new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.9, metalness: 0 }), { wind: 0.0042, rim: 1.3 });
+  Mats.stdFoliage = paint(new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.9, metalness: 0 }), { wind: 0.0042, rim: 1.3, fade: true });
   Mats.metal = paint(new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.42, metalness: 0.72 }), { brush: 0.5 });
   Mats.glow = new THREE.MeshBasicMaterial({ vertexColors: true, toneMapped: true });
-  if (INK) {
-    // Caps brightness while keeping the hue, so magic reads as a saturated color instead of blowing out to white.
-    Mats.glow.onBeforeCompile = (s) => {
-      s.fragmentShader = s.fragmentShader.replace('#include <opaque_fragment>', /* glsl */ `
-        #include <opaque_fragment>
-        gl_FragColor.rgb *= min(1.0, 1.35 / max(max(gl_FragColor.r, gl_FragColor.g), max(gl_FragColor.b, 0.001)));
-      `);
-    };
-  }
-  Mats.outline = outlineMaterial(0);
-  Mats.outlineFoliage = outlineMaterial(0.0042);
+  // Caps brightness while keeping the hue, and scales it with the time of day (lanterns glow at night).
+  Mats.glow.onBeforeCompile = (s) => {
+    s.uniforms.uGlow = shared.uGlow;
+    s.fragmentShader = 'uniform float uGlow;\n' + s.fragmentShader.replace('#include <opaque_fragment>', /* glsl */ `
+      #include <opaque_fragment>
+      gl_FragColor.rgb *= min(1.0, 1.35 / max(max(gl_FragColor.r, gl_FragColor.g), max(gl_FragColor.b, 0.001)));
+      gl_FragColor.rgb *= uGlow;
+    `);
+  };
+  Mats.glow.customProgramCacheKey = () => 'glow-time';
+  Mats.outline = outlineMaterial(0, false);
+  Mats.outlineFoliage = outlineMaterial(0.0042, true);
 }

@@ -3,15 +3,21 @@
 
 import type { QualityTier } from '../data/quality';
 
-export const SAVE_VERSION = 2;
+export const SAVE_VERSION = 3;
 export const SAVE_KEY = 'moss-and-bell/save';
 
 export interface SaveSettings {
   quality: QualityTier | 'auto';
   sound: boolean;
-  /** Trial options for art decision points A2 and A3 (src/data/feel.ts); not locked yet. */
+  /** Art decision points A2 and A3 (decided; src/data/feel.ts). Kept so older saves load. */
   camera: string;
   scale: string;
+  /** Phase 2 trial options: look preset (A6), character style (A4), building kit style (A5). */
+  look: string;
+  character: string;
+  kit: string;
+  /** Time of day: the device clock, or a fixed moment (debug slider), 0..1 of the day. */
+  time: { mode: 'clock' | 'fixed'; at: number };
 }
 
 /** Counts of each material, by material id. */
@@ -40,7 +46,7 @@ export function freshSave(): SaveData {
     at: { place: '', x: 0, z: 0 },
     satchel: {},
     deposits: {},
-    settings: { quality: 'auto', sound: true, camera: 'a', scale: 'm' },
+    settings: { quality: 'auto', sound: true, camera: 'a', scale: 'm', look: 'painted', character: 'chibi', kit: 'temple', time: { mode: 'clock', at: 0.5 } },
   };
 }
 
@@ -48,6 +54,8 @@ export function freshSave(): SaveData {
 const migrations: Record<number, (old: Record<string, unknown>) => Record<string, unknown>> = {
   // v1 (Phase 0) had only position and settings: start with an empty satchel and no deposits.
   1: (old) => ({ ...old, v: 2, satchel: {}, deposits: {} }),
+  // v2 (Phase 1) had no look, character, kit or time settings: field repair below fills the defaults.
+  2: (old) => ({ ...old, v: 3 }),
 };
 
 const isNum = (n: unknown): n is number => typeof n === 'number' && Number.isFinite(n);
@@ -60,6 +68,13 @@ function counts(o: unknown): Counts {
   if (!isObj(o)) return out;
   for (const [k, v] of Object.entries(o)) if (ID.test(k) && isNum(v) && v > 0) out[k] = Math.floor(v);
   return out;
+}
+
+function timeSetting(o: unknown, fallback: SaveSettings['time']): SaveSettings['time'] {
+  if (!isObj(o)) return { ...fallback };
+  const mode = o.mode === 'fixed' || o.mode === 'clock' ? o.mode : fallback.mode;
+  const at = isNum(o.at) ? ((o.at % 1) + 1) % 1 : fallback.at;
+  return { mode, at };
 }
 
 /** Parse and validate raw text. Returns a fresh save (and a reason) for anything unusable. */
@@ -106,6 +121,10 @@ export function parseSave(raw: string | null): { data: SaveData; recovered: stri
         sound: typeof settings?.sound === 'boolean' ? settings.sound : base.settings.sound,
         camera: typeof settings?.camera === 'string' && ID.test(settings.camera) ? settings.camera : base.settings.camera,
         scale: typeof settings?.scale === 'string' && ID.test(settings.scale) ? settings.scale : base.settings.scale,
+        look: typeof settings?.look === 'string' && ID.test(settings.look) ? settings.look : base.settings.look,
+        character: typeof settings?.character === 'string' && ID.test(settings.character) ? settings.character : base.settings.character,
+        kit: typeof settings?.kit === 'string' && ID.test(settings.kit) ? settings.kit : base.settings.kit,
+        time: timeSetting(settings?.time, base.settings.time),
       },
     },
     recovered: null,

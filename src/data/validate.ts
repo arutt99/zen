@@ -4,11 +4,18 @@ import { BUILDINGS, buildingCost } from './buildings';
 import { CAMERA_OPTIONS, SCALE_OPTIONS } from './feel';
 import { MATERIALS, NODE_KINDS, SATCHEL_CAP } from './gathering';
 import { PLACES } from './places';
-import { PRESETS } from './presets';
+import { ANIMALS } from './animals';
+import { CARETAKER, CHARACTER_STYLES, CARETAKER_HEIGHT, caretakerHeight } from './characters';
+import { LOOKS, LOOK_IDS } from './looks';
+import { DAY_CYCLES, PRESETS } from './presets';
 import { QUALITY, QUALITY_TIERS } from './quality';
 
 /** Decor kinds the renderer knows (src/render/decor-models.ts). Kept here so sim/tests need no three.js. */
-export const DECOR_KINDS = ['oak', 'birch', 'bush', 'pine', 'willow', 'reedclump', 'rock', 'cherry', 'bench'] as const;
+export const DECOR_KINDS = [
+  'oak', 'birch', 'bush', 'pine', 'willow', 'reedclump', 'rock', 'cherry', 'bench',
+  // Phase 2, the Zen kit:
+  'maple', 'bamboo', 'mossy_stone', 'stone_lantern', 'fence_wood', 'fence_rope', 'raked_gravel', 'stepping_stone', 'lotus',
+] as const;
 
 const isColor = (n: unknown) => typeof n === 'number' && Number.isInteger(n) && n >= 0 && n <= 0xffffff;
 
@@ -17,7 +24,15 @@ export function validateData(): string[] {
   const kinds = new Set<string>(DECOR_KINDS);
   for (const [key, p] of Object.entries(PLACES)) {
     if (p.id !== key) problems.push(`place ${key}: id "${p.id}" does not match its key`);
-    if (!PRESETS[p.preset]) problems.push(`place ${key}: unknown preset "${p.preset}"`);
+    const cycle = DAY_CYCLES[p.daylight];
+    if (!cycle) problems.push(`place ${key}: unknown day cycle "${p.daylight}"`);
+    else {
+      cycle.forEach(([t, id], i) => {
+        if (!PRESETS[id]) problems.push(`day cycle ${p.daylight}: unknown preset "${id}"`);
+        if (!(t >= 0 && t < 1)) problems.push(`day cycle ${p.daylight}: time ${t} is outside [0, 1)`);
+        if (i > 0 && !(t > cycle[i - 1]![0])) problems.push(`day cycle ${p.daylight}: times must increase`);
+      });
+    }
     if (p.halfW <= 0 || p.halfH <= 0) problems.push(`place ${key}: halfW and halfH must be positive`);
     const inside = (x: number, z: number, m: number) => Math.abs(x) <= p.halfW - m && Math.abs(z) <= p.halfH - m;
     if (!inside(p.spawn.x, p.spawn.z, 1)) problems.push(`place ${key}: spawn is outside the valley floor`);
@@ -87,5 +102,26 @@ export function validateData(): string[] {
   if (new Set(CAMERA_OPTIONS.map((c) => c.id)).size !== CAMERA_OPTIONS.length) problems.push('camera options: duplicate id');
   if (new Set(SCALE_OPTIONS.map((c) => c.id)).size !== SCALE_OPTIONS.length) problems.push('scale options: duplicate id');
   for (const t of QUALITY_TIERS) if (!QUALITY[t]) problems.push(`quality tier ${t} is missing`);
+  for (const id of LOOK_IDS) {
+    const l = LOOKS[id];
+    if (!l || l.id !== id) { problems.push(`look ${id}: missing or id mismatch`); continue; }
+    const [a, b, c] = l.shading.levels;
+    if (!(a > 0 && a <= b && b <= c)) problems.push(`look ${id}: shading levels must rise`);
+    if (!(l.shading.steps[0] < l.shading.steps[1])) problems.push(`look ${id}: shading steps must rise`);
+    if (!(l.shading.softness > 0)) problems.push(`look ${id}: shading softness must be positive`);
+    if (!(l.outline.width >= 0 && l.outline.width < 0.01)) problems.push(`look ${id}: outline width looks wrong`);
+    if (!(l.albedo.sat >= 0 && l.albedo.lift >= 0 && l.albedo.lift <= 1)) problems.push(`look ${id}: albedo remap out of range`);
+  }
+  for (const s of CHARACTER_STYLES) {
+    const h = caretakerHeight(CARETAKER[s]);
+    if (Math.abs(h - CARETAKER_HEIGHT) > 0.08) problems.push(`caretaker ${s}: ${h.toFixed(2)} m tall, should be ~${CARETAKER_HEIGHT} m (A3)`);
+    if (!(CARETAKER[s].hip < CARETAKER[s].shoulder)) problems.push(`caretaker ${s}: hip must be below the shoulders`);
+  }
+  for (const [key, a] of Object.entries(ANIMALS)) {
+    if (a.id !== key) problems.push(`animal ${key}: id mismatch`);
+    if (!PLACES[a.place]) problems.push(`animal ${key}: unknown place "${a.place}"`);
+    if (!(a.minRestoration >= 0 && a.minRestoration <= 1)) problems.push(`animal ${key}: minRestoration must be in [0, 1]`);
+    if (!(a.linger[0] > 0 && a.linger[0] <= a.linger[1])) problems.push(`animal ${key}: linger must be a positive range`);
+  }
   return problems;
 }

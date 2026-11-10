@@ -2,7 +2,7 @@
   "name": "moss-and-bell",
   "version": "0.0.1",
   "private": true,
-  "description": "Moss & Bell: a calm, restorative caretaking game. Phase 1: the core loop.",
+  "description": "Moss & Bell: a calm, restorative caretaking game. Phase 2: warm the look.",
   "type": "module",
   "scripts": {
     "build": "node scripts/build.mjs",
@@ -10,7 +10,8 @@
     "dev": "node scripts/build.mjs --watch",
     "typecheck": "tsc --noEmit",
     "test": "node scripts/test.mjs",
-    "smoke": "node scripts/smoke.cjs"
+    "smoke": "node scripts/smoke.cjs",
+    "shots": "node scripts/shots.cjs docs/phase2"
   },
   "dependencies": {
     "three": "0.187.0"

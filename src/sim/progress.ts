@@ -3,6 +3,7 @@ import { BUILDINGS, buildingCost, type BuildingDef, type BuildingId } from '../d
 import { MATERIALS, type MaterialId } from '../data/gathering';
 import type { PlaceDef } from '../data/places';
 import { clamp } from '../core/util';
+import { ANIMALS, type AnimalDef } from '../data/animals';
 import type { Bag } from './state';
 
 /** Which of the building's parts are in place. A part of material m is built once m's count reaches it. */
@@ -51,4 +52,10 @@ export function restoration(place: PlaceDef, deposits: Record<string, Bag>): num
 /** How much mist hangs over the place, 1 (full) to 0 (lifted). */
 export function mistAmount(place: PlaceDef, level: number): number {
   return 1 - clamp(level / Math.max(1e-6, place.mist.clearAt));
+}
+
+/** Animal friends present at a place: those whose arrival level its restoration has reached (plan 4.3). */
+export function animalsPresent(place: PlaceDef, deposits: Record<string, Bag>): AnimalDef[] {
+  const level = restoration(place, deposits);
+  return Object.values(ANIMALS).filter((a) => a.place === place.id && level >= a.minRestoration - 1e-9);
 }
