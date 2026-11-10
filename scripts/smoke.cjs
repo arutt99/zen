@@ -32,7 +32,8 @@ async function run(name, contextOpts, drive, { needMove = true } = {}) {
   const moved = Math.hypot(end.x - start.x, end.z - start.z);
   // Non-blank check: sample the composited screenshot for colour variety.
   const shot = path.join(outDir, `smoke-${name}.png`);
-  await page.screenshot({ path: shot });
+  // Software GL can take well over 30 s to hand back a 1280x720 frame in a busy container.
+  await page.screenshot({ path: shot, timeout: 120000 });
   const variety = await page.evaluate(async (b64) => {
     const img = new Image();
     img.src = 'data:image/png;base64,' + b64;

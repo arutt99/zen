@@ -80,22 +80,17 @@ const FinalShader = {
     uDesat: { value: 0 },
     uGrain: { value: 0 },
     uPx: { value: 1 },
+    tPaper: { value: null as THREE.Texture | null },
   },
   vertexShader: /* glsl */ `varying vec2 vUv; void main(){ vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }`,
   fragmentShader: /* glsl */ `
     uniform sampler2D tDiffuse; uniform vec2 uTexel; uniform float uTilt, uSat, uVignette, uTime, uFade, uDesat, uGrain, uPx;
     uniform vec3 uLift, uGain;
+    uniform sampler2D tPaper;
     varying vec2 vUv;
     float rnd(vec2 p){ return fract(sin(dot(p, vec2(12.9898, 78.233))) * 43758.5453); }
-    float vnoise(vec2 p) {
-      vec2 i = floor(p), q = fract(p);
-      q = q * q * (3.0 - 2.0 * q);
-      return mix(mix(rnd(i), rnd(i + vec2(1.0, 0.0)), q.x), mix(rnd(i + vec2(0.0, 1.0)), rnd(i + vec2(1.0, 1.0)), q.x), q.y);
-    }
-    // Still paper: a fine tooth, soft blotches and long fibres, fixed to the screen in CSS pixels.
-    float paper(vec2 px) {
-      return vnoise(px * 0.55) * 0.45 + vnoise(px * 0.07) * 0.35 + vnoise(vec2(px.x * 0.6 + px.y * 0.2, px.y * 0.04)) * 0.2;
-    }
+    // Still paper (a pre-drawn tile), fixed to the screen in CSS pixels.
+    float paper(vec2 px) { return texture2D(tPaper, px / 256.0).r; }
     void main() {
       vec3 c = texture2D(tDiffuse, vUv).rgb;
       // Tilt-shift gives the battlefield the feel of a handcrafted miniature.
@@ -127,6 +122,42 @@ const FinalShader = {
     }
   `,
 };
+
+let paperTex: THREE.Texture | null = null;
+/** A 256 px tile of paper: fine tooth, soft blotches and long fibres (the look's grain overlay). */
+function paperTexture(): THREE.Texture {
+  if (paperTex) return paperTex;
+  const size = 256;
+  const c = document.createElement('canvas');
+  c.width = c.height = size;
+  const g = c.getContext('2d')!;
+  g.fillStyle = '#808080';
+  g.fillRect(0, 0, size, size);
+  let seed = 7;
+  const r = () => ((seed = (seed * 16807) % 2147483647) / 2147483647);
+  for (let i = 0; i < 90; i++) { // soft blotches
+    const v = Math.floor(128 + (r() - 0.5) * 60);
+    g.fillStyle = `rgba(${v},${v},${v},0.18)`;
+    g.beginPath(); g.arc(r() * size, r() * size, 10 + r() * 30, 0, Math.PI * 2); g.fill();
+  }
+  for (let i = 0; i < 260; i++) { // fibres
+    const v = Math.floor(128 + (r() - 0.5) * 120);
+    g.strokeStyle = `rgba(${v},${v},${v},0.35)`;
+    g.lineWidth = 0.6 + r() * 0.8;
+    const x = r() * size, y = r() * size, a = (r() - 0.5) * 0.8, l = 8 + r() * 30;
+    g.beginPath(); g.moveTo(x, y); g.lineTo(x + Math.cos(a) * l, y + Math.sin(a) * l); g.stroke();
+  }
+  const img = g.getImageData(0, 0, size, size);
+  for (let i = 0; i < img.data.length; i += 4) { // fine tooth
+    const n = (r() - 0.5) * 50;
+    img.data[i] = img.data[i + 1] = img.data[i + 2] = Math.max(0, Math.min(255, img.data[i]! + n));
+  }
+  g.putImageData(img, 0, 0);
+  paperTex = new THREE.CanvasTexture(c);
+  paperTex.wrapS = paperTex.wrapT = THREE.RepeatWrapping;
+  paperTex.colorSpace = THREE.NoColorSpace;
+  return paperTex;
+}
 
 export class Engine {
   renderer: THREE.WebGLRenderer;
@@ -191,6 +222,7 @@ export class Engine {
       }` : '');
     this.finalPass = new ShaderPass({ ...FinalShader, fragmentShader: fs });
     this.finalPass.uniforms.uGrain.value = p.grain;
+    if (p.grain > 0) this.finalPass.uniforms.tPaper.value = paperTexture();
     this.finalPass.uniforms.uVignette.value = p.vignette;
     const output = new OutputPass();
     this.composer.addPass(this.renderPass);
