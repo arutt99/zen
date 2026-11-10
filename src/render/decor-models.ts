@@ -81,18 +81,19 @@ export function leafCluster(l: MB, x: number, y: number, z: number, r: number, c
 export function leafyCrown(l: MB, x: number, y: number, z: number, r: number, col: [number, number], seed: number, flatten = 1): void {
   l.ico(r * 0.94, col, { p: [x, y, z], s: [1, flatten, 1], wobble: r * 0.1, wobbleFreq: 1.6, flat: false, puff: 0.75 }, 2);
   const rng = makeRng(9001 + seed * 97);
-  const n = Math.round(12 + r * r * 9);
+  const n = Math.round(6 + r * r * 3.5);
   for (let i = 0; i < n; i++) {
     // A direction on the sphere, mostly the upper part.
     const up = -0.45 + 1.4 * Math.sqrt(rng());
     const cy = Math.min(1, up);
     const ring = Math.sqrt(Math.max(0, 1 - cy * cy));
     const a = rng() * Math.PI * 2;
-    const rr = r * (0.15 + rng() * 0.09);
-    const d = r * (0.86 + rng() * 0.08);
+    // Broad, shallow lobes sunk well into the crown: the outline scallops instead of sprouting bumps.
+    const rr = r * (0.26 + rng() * 0.1);
+    const d = r * (0.72 + rng() * 0.07);
     l.ico(rr, col, {
       p: [x + Math.cos(a) * ring * d, y + cy * d * flatten, z + Math.sin(a) * ring * d],
-      s: [1.15, 0.75, 1.15], r: [rng() * 0.6, rng() * 6.28, rng() * 0.6], wobble: rr * 0.1, flat: false, puff: 0.55,
+      s: [1.2, 0.7, 1.2], r: [rng() * 0.6, rng() * 6.28, rng() * 0.6], wobble: rr * 0.1, flat: false, puff: 0.7,
     }, 1);
   }
 }
