@@ -169,25 +169,16 @@ function boot(): void {
   const menu = $('menu');
   const qualitySel = $('quality') as HTMLSelectElement;
   const soundSel = $('sound') as HTMLSelectElement;
-  const cameraSel = $('camera') as HTMLSelectElement;
-  const scaleSel = $('scale') as HTMLSelectElement;
-  const trialNote = $('trial-note');
   qualitySel.value = engine.qualityId;
   soundSel.value = save.settings.sound ? 'on' : 'off';
-  for (const o of CAMERA_OPTIONS) cameraSel.add(new Option(o.name, o.id));
-  for (const o of SCALE_OPTIONS) scaleSel.add(new Option(o.name, o.id));
-  const applyTrials = () => {
-    const c = CAMERA_OPTIONS.find((o) => o.id === save.settings.camera) ?? CAMERA_OPTIONS[0]!;
-    const sc = SCALE_OPTIONS.find((o) => o.id === save.settings.scale) ?? SCALE_OPTIONS[0]!;
-    cameraSel.value = c.id;
-    scaleSel.value = sc.id;
-    cam.setOption(c.id);
-    caretaker.size = sc.caretaker;
-    trialNote.textContent = `${c.note} ${sc.note}`;
-  };
-  applyTrials();
-  cameraSel.addEventListener('change', () => { save.settings.camera = cameraSel.value; applyTrials(); persist(); });
-  scaleSel.addEventListener('change', () => { save.settings.scale = scaleSel.value; applyTrials(); persist(); });
+  // Camera and caretaker size are decided (A2: camera A, A3: Medium). An older save that picked a trial
+  // option that no longer exists falls back to the decided one.
+  const chosenCamera = CAMERA_OPTIONS.find((o) => o.id === save.settings.camera) ?? CAMERA_OPTIONS[0]!;
+  const chosenScale = SCALE_OPTIONS.find((o) => o.id === save.settings.scale) ?? SCALE_OPTIONS[0]!;
+  save.settings.camera = chosenCamera.id;
+  save.settings.scale = chosenScale.id;
+  cam.setOption(chosenCamera.id);
+  caretaker.size = chosenScale.caretaker;
   const toggleMenu = () => { menu.classList.toggle('show'); audio.play('click'); };
   $('menu-btn').addEventListener('click', toggleMenu);
   $('menu-close').addEventListener('click', toggleMenu);
@@ -412,9 +403,8 @@ function boot(): void {
     get nodes() { return loop.nodes.map((n) => ({ id: n.id, units: n.units, phase: n.phase, x: n.x, z: n.z })); },
     get work() { return loop.work?.kind ?? null; },
     get mist() { return mist.amount; },
-    /** Smoke tests and screenshots: put the caretaker somewhere, and pick a trial camera / size. */
+    /** Smoke tests and screenshots: put the caretaker somewhere. */
     teleport(x: number, z: number) { walker.x = x; walker.z = z; walker.vx = walker.vz = 0; },
-    trial(camera: string, scale: string) { save.settings.camera = camera; save.settings.scale = scale; applyTrials(); },
     zoom(dir: 1 | -1) { cam.toggleZoom(dir); },
     renderer: engine.renderer,
   };

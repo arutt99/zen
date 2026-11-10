@@ -65,7 +65,8 @@ See plan section 10. Owner direction (2026-11-10): **nothing jumps from 0 to 100
 - [x] Pacing bot (`src/sim/pacing-bot.ts`) runs in the tests: a perfect bot builds the shelter in 9.8 s of play (one cycle). See gaps
 - [x] Browser smoke test: gather and deposit in the real build, then reload and check the facts came back exactly
 - [x] **Art decision points A2 and A3:** three camera options and three caretaker sizes to try in Settings. Write-up with screenshots and a recommendation: [`docs/phase1/README.md`](docs/phase1/README.md)
-- [ ] **Owner:** pick A2 (camera) and A3 (scale) after trying them on the phone
+- [x] **Owner:** picked A2 **camera A (Classic)** and A3 **Medium caretaker** after trying them on the phone (2026-11-10). Trial settings removed
+- [x] Sharper image: Medium and High now draw at up to 2× device pixels (were 1.25×) after the owner found Ultra sharp and smooth on their phone
 - [ ] **Owner:** gate check (below)
 
 ### Gate checklist (owner)

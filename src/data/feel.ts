@@ -1,5 +1,6 @@
-// Movement and camera feel (plan 10, Phase 1), plus the trial options for art decision points
-// A2 (camera) and A3 (world scale). Nothing here is locked: the owner picks at the Phase 1 gate.
+// Movement and camera feel (plan 10, Phase 1), plus the camera and caretaker size chosen at art
+// decision points A2 and A3 (owner, 2026-11-10: camera A, Medium caretaker). The options that were
+// trialled and not picked are described in docs/phase1/README.md.
 
 export interface WalkerTuning {
   /** Metres per second at full stick. */
@@ -34,25 +35,16 @@ export interface CameraOption {
   fov: number;
 }
 
-/** Art decision point A2: camera angle, height and zoom range. Try them on the phone in Settings. */
+/**
+ * Art decision point A2, decided (owner, 2026-11-10): camera A, Classic (~40°). Models, paths and
+ * build sites are sized for this view from here on. One entry; the list shape stays so saves still load.
+ */
 export const CAMERA_OPTIONS: CameraOption[] = [
   {
     id: 'a', name: 'A · Classic (~40°)',
-    note: 'Phase 0 camera. Balanced: the caretaker, nearby trees and the site fit together.',
+    note: 'The caretaker, nearby trees and the site fit together on one phone screen.',
     zooms: [{ distance: 13, height: 11, lookAhead: 0.4 }, { distance: 22, height: 19, lookAhead: 0.6 }],
     fov: 34,
-  },
-  {
-    id: 'b', name: 'B · High (~55°)',
-    note: 'Steeper and closer to top-down. Trees hide the caretaker less; reads more like a board.',
-    zooms: [{ distance: 9, height: 13, lookAhead: 0.45 }, { distance: 14, height: 21, lookAhead: 0.6 }],
-    fov: 34,
-  },
-  {
-    id: 'c', name: 'C · Low and close (~28°)',
-    note: 'Lower, more cinematic, like the painted reference. More sky and depth; less overview.',
-    zooms: [{ distance: 12, height: 6.5, lookAhead: 0.35 }, { distance: 19, height: 11, lookAhead: 0.55 }],
-    fov: 38,
   },
 ];
 
@@ -65,13 +57,11 @@ export interface ScaleOption {
 }
 
 /**
- * Art decision point A3: world scale. Phase 1 only trials the caretaker's size against Lanternfall-size
- * trees (4–6 m) and the current spacing; once picked, layouts and collision are built around it.
+ * Art decision point A3, decided (owner, 2026-11-10): Medium caretaker (1.8 m) against 4–6 m trees
+ * (about 2.5x). Layouts, radii, collision and the Phase 2 kit are built around it.
  */
 export const SCALE_OPTIONS: ScaleOption[] = [
-  { id: 'm', name: 'Medium caretaker (1.8 m)', note: 'Phase 0 size. Trees are about 2.5x the caretaker.', caretaker: 1 },
-  { id: 's', name: 'Small caretaker (1.4 m)', note: 'Chibi-leaning: the world feels bigger, trees about 3.3x.', caretaker: 0.78 },
-  { id: 'l', name: 'Large caretaker (2.2 m)', note: 'Toy-like world: trees about 2x, everything reads at phone size.', caretaker: 1.22 },
+  { id: 'm', name: 'Medium caretaker (1.8 m)', note: 'Trees are about 2.5x the caretaker.', caretaker: 1 },
 ];
 
 /** Camera ease-out when a building completes (plan 3.3): extra distance, and how long it lasts. */

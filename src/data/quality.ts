@@ -7,7 +7,12 @@ export const QUALITY_TIERS: readonly QualityTier[] = ['low', 'medium', 'high', '
 
 export interface QualitySettings {
   label: string;
-  /** Highest device pixel ratio used. */
+  /**
+   * Highest device pixel ratio used. Medium and High were 1.25 (Lanternfall's value), which drew a 3x
+   * phone screen at about 40% of its resolution and looked soft; raised to 2 on 2026-11-10 after the
+   * owner found Ultra (2) sharp and smooth on their phone. The resolution governor still lowers it on
+   * devices that can't keep up.
+   */
   dpr: number;
   /** Shadow map size. */
   shadow: number;
@@ -27,8 +32,8 @@ export interface QualitySettings {
 
 export const QUALITY: Record<QualityTier, QualitySettings> = {
   low: { label: 'Low', dpr: 1, shadow: 1024, msaa: 0, tilt: false, painterly: false, grass: 5000, terrainStep: 1, particles: 5000, rays: false, ambient: 0.4 },
-  medium: { label: 'Medium', dpr: 1.25, shadow: 2048, msaa: 2, tilt: true, painterly: false, grass: 20000, terrainStep: 0.5, particles: 9000, rays: true, ambient: 0.7 },
-  high: { label: 'High', dpr: 1.25, shadow: 3072, msaa: 4, tilt: true, painterly: true, grass: 48000, terrainStep: 0.5, particles: 14000, rays: true, ambient: 1 },
+  medium: { label: 'Medium', dpr: 2, shadow: 2048, msaa: 2, tilt: true, painterly: false, grass: 20000, terrainStep: 0.5, particles: 9000, rays: true, ambient: 0.7 },
+  high: { label: 'High', dpr: 2, shadow: 3072, msaa: 4, tilt: true, painterly: true, grass: 48000, terrainStep: 0.5, particles: 14000, rays: true, ambient: 1 },
   ultra: { label: 'Ultra', dpr: 2, shadow: 4096, msaa: 4, tilt: true, painterly: true, grass: 90000, terrainStep: 0.5, particles: 20000, rays: true, ambient: 1.4 },
 };
 

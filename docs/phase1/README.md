@@ -1,8 +1,7 @@
 # Phase 1 gate: art decision points A2 (camera) and A3 (world scale)
 
-Nothing here is locked. Both are **trial settings** in the game: open ☰ Settings → *Camera* and
-*Caretaker size*. They are saved, so you can play a while with each. Please try them **on your phone**,
-then tell the agent which you want; it records the choice in plan 7.4 and `docs/ART_PIPELINE.md`.
+> **Decided (owner, 2026-11-10): A2 camera A (Classic), A3 Medium caretaker (1.8 m).** The trial settings
+> were removed from the game; this page stays as the record of what was compared.
 
 Screenshots: phone landscape (844 × 390, 2× pixels), Medium quality, the same spot between the trees
 and a half-built shelter. They were rendered with software graphics in a container, not on a phone.
