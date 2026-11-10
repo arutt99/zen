@@ -1,6 +1,6 @@
 # Tasks
 
-**Current phase: 2, Warm the look. Waiting at the gate.** (plan section 10)
+**Current phase: 2, Warm the look. Waiting at the gate (A6 decided: Lanternfall+; A4 and A5 open).** (plan section 10)
 
 The owner reported the Phase 0 and Phase 1 gate checks passed on their phone and PC (2026-11-10).
 
@@ -82,6 +82,12 @@ See plan section 10. Owner direction (2026-11-10): **nothing jumps from 0 to 100
 - Trees between the camera and the caretaker still hide them (A2).
 - Performance has only been measured with software rendering in a container (1–5 fps there), not on a phone.
 
+## Owner direction notes (2026-11-10)
+- **Story frame, chapter 1:** the caretaker is on a mindfulness journey and stumbles on an old Zen monastery
+  to fix up (plan 4.5). Opening text and the walk-in are drafted in Phase 3.
+- **A future mindfulness edition:** two versions, the calm world-building game and one that adds real-time
+  meditations and moments of reflection with guidance (plan 13). Noted, not planned; no work until later.
+
 ## Phase 2: Warm the look
 See plan section 10. Owner choices before the build (2026-11-10): wildcard look = **woodblock print**; two
 caretaker styles (**chibi** + **storybook**); two kits on the shelter (**temple** + **timber**).
@@ -105,14 +111,15 @@ caretaker styles (**chibi** + **storybook**); two kits on the shelter (**temple*
 - [x] Lanternfall+ **rich** detail (owner: PC first, all six ideas): leafy inked crowns, roots, inked wood/bark/
   stone marks, ground dressing, pond ripples/shoreline/koi, butterflies, drifting leaves, bobbing lotus,
   swaying lantern, lantern light at night
-- [ ] **Owner:** try the looks, caretakers and kits on the phone and decide **A4, A5, A6** (see `docs/phase2/README.md`)
+- [x] **Owner:** decided **A6: Lanternfall+** (2026-11-10). Plan 7.1, AGENTS.md and ART_PIPELINE updated
+- [ ] **Owner:** decide **A4** (caretaker: chibi or storybook) and **A5** (building kit: temple or timber), in Lanternfall+ (see `docs/phase2/README.md`)
 - [ ] **Owner:** gate check (below)
 
 ### Gate checklist (owner)
-- [ ] Tried the three looks on the phone and picked a direction (A6)
+- [x] Picked a direction (A6): **Lanternfall+**, judged on PC (owner set phones aside for now)
 - [ ] Picked a caretaker style (A4) and a building kit style (A5)
-- [ ] If Painted: a phone screenshot next to `docs/art-reference.jpg` reads as the same world, not as Lanternfall
-- [ ] Holds frame rate on Medium on the phone in the chosen look, by day and at night (fps bottom-left)
+- [x] ~~If Painted: a phone screenshot next to the reference~~ (not applicable: Lanternfall+ chosen)
+- [ ] Holds frame rate on the owner's PC in Lanternfall+, by day and at night (fps bottom-left). Phone check deferred by the owner
 - [ ] Then: `docs/ART_PIPELINE.md` records the final values, and the unpicked options are removed
 
 ### Known Phase 2 gaps

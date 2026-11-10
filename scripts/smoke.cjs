@@ -10,14 +10,14 @@ const file = 'file://' + path.resolve(__dirname, '../dist/index.html');
 const outDir = path.resolve(__dirname, '../test-results');
 fs.mkdirSync(outDir, { recursive: true });
 
-async function run(name, contextOpts, drive, { needMove = true } = {}) {
+async function run(name, contextOpts, drive, { needMove = true, query = '' } = {}) {
   const browser = await chromium.launch({ args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader'] });
   const ctx = await browser.newContext(contextOpts);
   const page = await ctx.newPage();
   const errors = [];
   page.on('pageerror', (e) => errors.push(String(e)));
   page.on('console', (m) => { if (m.type() === 'error') errors.push(m.text()); });
-  await page.goto(file);
+  await page.goto(file + query);
   // Software GL in CI containers can run at a few fps, so give it time.
   await page.waitForFunction(() => window.__mb && window.__mb.fps > 0, null, { timeout: 90000 });
   // Let shader compilation and the first frames settle before driving.
@@ -58,14 +58,19 @@ async function run(name, contextOpts, drive, { needMove = true } = {}) {
 (async () => {
   // Software GL renders a 1280x720 frame in a second or more, too slow for input to show up in time,
   // so the laptop run checks layout and rendering, and keyboard movement is checked in a small window.
+  // The laptop run loads the default look (Lanternfall+, A6). Its rich detail runs at 1-2 fps in software
+  // GL, too slow for the movement checks, so those use plain Lanternfall: same game, lighter drawing.
+  const LIGHT = '?look=lanternfall';
   const laptop = await run('laptop', { viewport: { width: 1280, height: 720 } }, async (page) => {
     await page.waitForTimeout(3000);
+    const look = await page.evaluate(() => window.__mb.look);
+    if (look !== 'lanternfallplus') throw new Error(`default look is ${look}, expected lanternfallplus`);
   }, { needMove: false });
   const keyboard = await run('keyboard', { viewport: { width: 640, height: 360 } }, async (page) => {
     await page.keyboard.down('KeyD');
     await page.waitForTimeout(4000);
     await page.keyboard.up('KeyD');
-  });
+  }, { query: LIGHT });
   const phone = await run('phone', { ...devices['iPhone 13 landscape'] }, async (page) => {
     // Drag a floating joystick on the left of the screen with a synthetic touch pointer.
     await page.evaluate(async () => {
@@ -76,7 +81,7 @@ async function run(name, contextOpts, drive, { needMove = true } = {}) {
       await new Promise((r) => setTimeout(r, 3000));
       window.dispatchEvent(new PointerEvent('pointerup', { pointerId: 7, pointerType: 'touch', clientX: 210, clientY: 250 }));
     });
-  });
+  }, { query: LIGHT });
   // The core loop in the real build: stand by a tree until wood arrives, then on the shelter site until
   // some is delivered, then reload and check the delivered amount and satchel came back exactly.
   const loopRun = await run('loop', { viewport: { width: 640, height: 360 } }, async (page) => {
@@ -99,6 +104,6 @@ async function run(name, contextOpts, drive, { needMove = true } = {}) {
     await page.keyboard.down('KeyS');
     await page.waitForTimeout(4000);
     await page.keyboard.up('KeyS');
-  });
+  }, { query: LIGHT });
   process.exit(laptop && keyboard && phone && loopRun ? 0 : 1);
 })().catch((e) => { console.error(e); process.exit(1); });

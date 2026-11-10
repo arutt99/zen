@@ -4,7 +4,7 @@
 **Built by:** an AI coding agent (Codex, Claude Code or similar) as engineer; the owner as director and tastemaker.
 **Kind of project:** personal passion project. No commercial pressure, no monetization.
 **Tech:** TypeScript + three.js + esbuild, starting from the engine of **Lanternfall** (the owner's own game in `arutt99/eGiAdMfElS/games/lanternfall`). Ships as one offline HTML file that can be installed as a web app.
-**Platforms:** phone and PC as equals from the first playable build, both in the browser. App-store builds are optional later.
+**Platforms:** phone and PC as equals from the first playable build, both in the browser. App-store builds are optional later. *(2026-11-10, owner: for the Lanternfall+ detail pass, PC comes first and phone performance is set aside for now; phones get a trimmed budget before release.)*
 
 ---
 
@@ -105,6 +105,18 @@ Only places 0 and 1 are in the first complete version. The others show the patte
 - **Notes from earlier caretakers:** a handful per place, a sentence or two each, giving the valley a history without a plot.
 - **Poems:** original short verse. The agent writes placeholders marked `PLACEHOLDER`; the owner writes or approves the final text. Never use published translations of classic haiku: translations are often still under copyright.
 
+### 4.5 Story frame: chapter 1 (owner direction, 2026-11-10)
+The first chapter frames the whole game: **the caretaker is on a mindfulness journey and stumbles upon an
+old, overgrown Zen monastery that they set about fixing up.** This is the "why" behind the arrival in
+section 1, told the Moss & Bell way: through the place itself, the opening line, notes from earlier
+caretakers and what you restore, not through quests or dialogue (pillar 5 and the non-goals still hold).
+- The opening line (4.4) and the first moments should carry it: someone walking, arriving, finding the
+  monastery quiet and neglected. Text and pacing to be drafted in Phase 3 and approved by the owner.
+- "Chapter 1" names the home valley and its monastery. Later journeys (4.2) can be later chapters of the
+  same journey. Chapters are a frame, not a quest log: no objectives list, no completion percentage.
+- Open: whether the caretaker's journey has a visible start (a short walk in along the trail before the
+  valley) or begins at the gate. Decide when Phase 3 lays out the valley.
+
 ---
 
 ## 5. Time and seasons (real-world clock)
@@ -138,34 +150,31 @@ Only places 0 and 1 are in the first complete version. The others show the patte
 
 ## 7. Art direction
 
-### 7.1 Current direction (not final): **the painted storybook reference is the target; Lanternfall's engine is the toolkit.**
+### 7.1 Decided (owner, 2026-11-10): **Lanternfall+** — Lanternfall's crisp, inked look, grounded and richly detailed
 
-> The owner is not yet sure about the art direction ("I'll know it when I see it"). Treat this as the leading candidate, keep the look easy to change, and follow the art decision points in 7.4.
-The target look is the owner's reference image, `docs/art-reference.jpg`: a soft, hand-painted storybook Japanese garden. **It is not Lanternfall's look.** Lanternfall supplies the technology (painterly materials, procedural models, post-processing, phone performance), and those tools are retuned toward the reference. The two games should look related at most, never the same.
+> After trying five presets (Painted, Painted+, Lanternfall-like, Lanternfall+, Woodblock), the owner chose
+> **Lanternfall+** as the art direction going forward (art decision point A6). This replaces the earlier
+> target (the painted storybook reference). Moss & Bell will read as a sibling of Lanternfall, on purpose.
 
-**The reference image, described** (the image itself is `docs/art-reference.jpg`; open it before any art work):
-- Warm afternoon light, low contrast, gentle and slightly desaturated colors. Nothing is deep or saturated.
-- Visible brushwork everywhere: ground, stone, wood and foliage look painted (gouache or watercolor), with soft color variation inside each shape.
-- Linework is soft, thin and **warm brown**, not black, and it is absent on distant or soft things such as foliage edges, ground and mist.
-- A chibi caretaker: big head, dark hair in a bun, cream top, brown hakama-style trousers, sandals, and a woven wicker basket on the back. Simple dot-and-line face.
-- A Japanese garden vocabulary: a cherry tree with pink blossom and falling petals, a stone lantern with warm glow, moss on rocks, raked gravel circles around a mossy stone, stepping stones on packed earth, a lotus pond with lily pads and a stone edge, low wooden and rope fences, and a wooden hall with a tiled roof, paper lanterns and a noren curtain with a lotus.
-- Soft depth: the background goes hazy and lighter. Shadows are soft and warm, never black.
+**What the look is** (values in `src/data/looks.ts`, rules in `docs/ART_PIPELINE.md`):
+- **Crisp shading:** hard three-tone light and shadow bands, so shapes read sharp and graphic.
+- **Ink outlines on everything:** dark lines on figures, buildings and nature, so objects pop off the ground.
+- **Rich color:** deep greens and real contrast; no paper grain and no haze over the image.
+- **Grounded:** soft occlusion where things meet each other and the ground, soft contact shadows.
+- **Rich detail** where you look (PC first): leafy inked tree crowns with roots, inked wood grain, bark and
+  stone cracks, ground dressing (path edging, pebbles, moss, petals, clover, twigs), a living pond (ripples,
+  inked shoreline, koi), butterflies, drifting leaves, a swaying lantern, and lantern light at night.
 
-**Lanternfall vs. the target, so the agent knows what to change:**
+**Kept from the earlier reference (`docs/art-reference.jpg`):** the Japanese garden vocabulary (cherry blossom
+and falling petals, stone lanterns with warm glow, moss on rocks, raked gravel, stepping stones, a lotus pond
+with a stone edge, low wooden and rope fences, a wooden hall with a tiled roof, paper lanterns and a noren
+curtain) and the caretaker's look (bun, cream top, brown hakama, wicker basket). Proportions are A4.
 
-| Lanternfall today | Moss & Bell target (the reference) |
-|---|---|
-| Deep, saturated greens and teal water | Warm, light, slightly desaturated greens; soft jade water |
-| Dark ink outlines on everything | Thin warm-brown lines on characters and buildings only, or none; no outlines on foliage and ground |
-| Hard three-tone cel bands | Softer shading: wider, blended tone steps with brush texture doing most of the work |
-| Night, fireflies, the long dark | Warm daylight by default; night is one gentle mood of the real clock |
-| Dense, chunky forest from high up | Open garden spaces, readable props, lots of room to walk |
-| Purple fantasy mushrooms | Cherry blossom, moss, lotus, stone lanterns |
-| Heroic fantasy proportions | Chibi caretaker and animals with big heads and soft round shapes |
+**Not carried over from the earlier target:** soft blended bands, warm-brown thin lines, paper grain, haze
+and the desaturated palette. Painted and Painted+ stay in the switcher only until the Phase 2 gate closes.
 
-**What carries over from Lanternfall unchanged:** the procedural model builders, brush texture and wind, the post-process chain (retuned), water and lily pads, particles, quality tiers, touch, save and audio.
-
-**Retuning checklist for Phase 2:** raise brush texture strength; soften the tone ramp; change outline color to warm brown, thin it, and limit it to characters and buildings; warm the color grade and lower saturation; add a paper-grain overlay and gentle haze with distance; lighten shadows and tint them warm; a lighter, warmer palette.
+**What carries over from Lanternfall unchanged:** the procedural model builders, brush texture and wind, the
+post-process chain, water and lily pads, particles, quality tiers, touch, save and audio.
 
 ### 7.2 Look and feel
 - A living storybook, matching the reference image: warm, soft, painted, readable silhouettes. Readability at phone size beats detail.
@@ -184,7 +193,7 @@ The owner wants to see options before committing. So the look is built to be **t
 - **Look presets.** Everything that defines the style lives in one data file of named presets (`src/data/looks.ts`): palette, outline color and width, which objects get outlines, tone ramp softness, brush strength, paper grain, haze, shadow tint, color grade, bloom, and character proportions. Lanternfall already switches between two looks this way (`render/style.ts`); extend that idea.
 - **A look switcher** in the settings or debug menu changes presets live (or with a quick reload) on the phone, so the owner can compare in the real game. Keep at least three presets until the owner picks one: **Painted** (the reference), **Lanternfall-like**, and one wildcard the agent proposes.
 - **Painted+** (added 2026-11-10 at the owner's request) is a fourth preset: Painted nudged a little toward a soft-lit diorama (baked occlusion, contact shadows, finer models). It is an option for A6, not a decision.
-- **Lanternfall+** (added 2026-11-10): the owner currently likes Lanternfall-like best (crisp bands, ink on everything, rich color, no grain or haze). Lanternfall+ is that look with Painted+'s grounding and detail. If the owner picks a Lanternfall look for A6, section 7.1's "never the same" target must be rewritten at that point.
+- **Lanternfall+** (added 2026-11-10): Lanternfall-like (crisp bands, ink on everything, rich color, no grain or haze) with Painted+'s grounding and a rich detail level. **Chosen for A6 by the owner (2026-11-10)**; section 7.1 rewritten accordingly.
 - **Screenshot sets.** At each art checkpoint, the agent captures the same views in every preset (phone size, day and dusk) and shows them side by side.
 
 **Cheap to change at any time** (data and shader values, no rework): colors and palettes, outlines, shading softness, brush and paper texture, haze, color grade, lighting presets, particles.
@@ -198,7 +207,7 @@ The owner wants to see options before committing. So the look is built to be **t
 | A3 | **World scale and spacing:** how big the caretaker is versus trees, buildings and walking space | Every place layout and the collision setup are built around it | **Decided: Medium caretaker, 1.8 m** (owner, 2026-11-10) |
 | A4 | **Character proportions and style** (chibi vs taller, how faces are drawn) | All animation, the basket, animals and later residents follow it | Phase 2 gate |
 | A5 | **Building kit style:** the part set buildings are assembled from (posts, beams, roofs) and how a partly built building looks | Every building and every partial state is made from it | Phase 2 gate |
-| A6 | **Shading family:** painted-soft vs inked-cel vs another | Models are tuned against it; switching late means re-tuning every model | Phase 2 gate |
+| A6 | **Shading family:** painted-soft vs inked-cel vs another | Models are tuned against it; switching late means re-tuning every model | **Decided: Lanternfall+** (inked-cel, grounded, rich detail; owner, 2026-11-10) |
 | A7 | **Final palette per season** | Many places and props get tuned to it; cheap per item, costly in total | Phase 5 gate |
 
 **The agent's duty:** before a phase that would build on an undecided point, and again at the gate where it's due, the agent **stops and warns the owner in plain words**: which decision, the options with screenshots, what becomes expensive to change after this, and a recommendation. It never locks one of these silently, and never builds lots of content on an undecided point. Decisions are recorded in the table above (replace "Decide by" with the choice and the date).
@@ -372,7 +381,10 @@ Riverbank, mountain pass and further journeys · quiet residents · more rituals
 
 | Decision | Current default | Decided at |
 |---|---|---|
-| Art style | Leading candidate: the painted reference (`docs/art-reference.jpg`), built with Lanternfall's engine. **Not final:** the owner picks from look presets | Art decision points A1–A7 in 7.4 |
+| Art style | **Decided: Lanternfall+** (A6, owner, 2026-11-10). A4 (characters), A5 (building kit) and A7 (seasonal palettes) still open | Art decision points A1–A7 in 7.4 |
+| Phone budget for Lanternfall+ | Set aside: PC first (owner, 2026-11-10). Phones need a trimmed detail level and a frame-rate check | Before release to phones (Phase 6 at the latest) |
+| Chapter 1 opening (walk in vs start at the gate) | Not decided | Phase 3 layout |
+| A mindfulness edition (section 13) | Noted, not planned | After the game's first complete version |
 | Where the code lives | The `zen` repo, with the engine copied from Lanternfall | Phase 0 (alternative: a `games/moss-and-bell` folder next to Lanternfall) |
 | Shared engine with Lanternfall | Copy now, adapt freely | Revisit only if both games keep changing the same engine code |
 | When quiet residents arrive | After the first complete version | After Phase 6 |
@@ -380,6 +392,31 @@ Riverbank, mountain pass and further journeys · quiet residents · more rituals
 | Second journey destination | Riverbank | After Phase 6 |
 | Music or silence by default | Ambience only, music optional | Phase 6 |
 | Final name | Moss & Bell | Any time |
+
+---
+
+## 13. Future idea: a mindfulness edition (noted 2026-11-10, not planned)
+
+The owner is thinking about making Moss & Bell also a real mindfulness helper. "We'll cross that bridge
+later." Recorded here so later work doesn't close the door on it:
+
+- **Two versions of the game:**
+  1. **Moss & Bell** (this plan): the calm, ASMR-like world building and exploring.
+  2. **A mindfulness edition:** everything in (1) plus mindfulness practice: meditations done in real time
+     and moments of reflection, with guidance.
+- **How it might fit:** the game already has a home for it. Stillness (2, 3.5) is "sit, the HUD fades,
+  watch the place". A guided session could start from a sitting spot, use the real clock and the place's
+  sounds (bell, water, wind), and end with the world just as it was. The bell is already the signature
+  sound.
+- **Open questions for later:** what "real live meditations" means (guided sessions played in the app,
+  timed sits with a bell, or sessions led live by a person, which would need servers and accounts, a
+  current non-goal); who writes and voices the guidance and whether the owner records it; whether the two
+  editions are one app with a setting or two builds; how to keep pillar 4 ("respect for Zen", no
+  caricature of real practice) and the no-streaks, no-pressure rules in an app that helps a habit form;
+  and keeping clear of health claims.
+- **What to keep in mind until then (no work now):** keep stillness and sitting as their own system, not
+  tangled into gathering and building; keep audio easy to layer (a voice bus could join the existing
+  buses); keep all words in data so guidance text could live there too.
 
 ---
 
@@ -394,7 +431,7 @@ Riverbank, mountain pass and further journeys · quiet residents · more rituals
 - Game rules live in src/sim and never import three.js.
 - Every proximity interaction implements the interface in src/sim/proximity.ts.
 - Models are built in code; follow docs/ART_PIPELINE.md for scale, outlines and palette.
-- The art target is the painted reference (plan section 7.1, docs/art-reference.jpg), NOT Lanternfall's look. It is not final yet.
+- The art direction is decided: Lanternfall+ (plan section 7.1, owner 2026-11-10): crisp bands, ink on everything, rich color, grounded, richly detailed. PC first for now; phones get a trimmed budget later.
 - ART DECISIONS: before building on an undecided art decision point (plan 7.4, A1–A7), STOP and warn the owner: what must be decided, options with screenshots, what gets expensive to change afterwards, and your recommendation. Never lock one silently.
 - No external assets without source + license logged in docs/ART_PIPELINE.md.
 - Never claim a test, build, or device check that you did not actually run.

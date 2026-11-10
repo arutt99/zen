@@ -46,7 +46,7 @@ export function freshSave(): SaveData {
     at: { place: '', x: 0, z: 0 },
     satchel: {},
     deposits: {},
-    settings: { quality: 'auto', sound: true, camera: 'a', scale: 'm', look: 'painted', character: 'chibi', kit: 'temple', time: { mode: 'clock', at: 0.5 } },
+    settings: { quality: 'auto', sound: true, camera: 'a', scale: 'm', look: 'lanternfallplus', character: 'chibi', kit: 'temple', time: { mode: 'clock', at: 0.5 } },
   };
 }
 
