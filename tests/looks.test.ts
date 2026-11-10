@@ -72,7 +72,7 @@ test('lanternfall+ rich detail: inked marks, leafy crowns, a swaying lantern, dr
   assert.ok(codes(decorGeo('rock').solid).has(4), 'stone on rocks');
   assert.ok(codes(partGeo('shelter_kit', 'post_back_left', 'temple').solid).has(2), 'wood on posts');
   const roof = partGeo('shelter_kit', 'roof', 'temple');
-  assert.ok(roof.swing && count(roof.swing.glow) > 0, 'the hanging lantern is its own swaying piece');
+  assert.ok(roof.swing && count(roof.swing.glow!) > 0, 'the hanging lantern is its own swaying piece');
   const world = new IslandWorld(PLACES.home_valley);
   const plan = dressingPlan(world);
   for (const k of DRESS_KINDS) assert.ok(plan[k].mats.length > 0, `dressing ${k}`);

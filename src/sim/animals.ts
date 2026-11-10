@@ -35,9 +35,20 @@ export class Wanderer {
     return a + this.rng() * (b - a);
   }
 
-  /** A walkable spot inside the home circle. */
+  /** While the caretaker sits, where they sit. */
+  private near: { x: number; z: number } | null = null;
+
+  /** A walkable spot inside the home circle (or, now and then, a calm distance from a sitting caretaker). */
   private pickSpot(): { x: number; z: number } {
     const h = this.def.home;
+    const n = this.near;
+    if (n && Math.hypot(n.x - h.x, n.z - h.z) < h.r + 8 && this.rng() < 0.75) {
+      for (let i = 0; i < 20; i++) {
+        const a = this.rng() * Math.PI * 2, r = this.def.shyRadius + 0.6 + this.rng() * 1.6;
+        const x = n.x + Math.cos(a) * r, z = n.z + Math.sin(a) * r;
+        if (this.walkable(x, z)) return { x, z };
+      }
+    }
     for (let i = 0; i < 40; i++) {
       const a = this.rng() * Math.PI * 2, r = Math.sqrt(this.rng()) * h.r;
       const x = h.x + Math.cos(a) * r, z = h.z + Math.sin(a) * r;
@@ -46,8 +57,13 @@ export class Wanderer {
     return { x: this.x ?? h.x, z: this.z ?? h.z };
   }
 
-  update(dt: number, caretaker: { x: number; z: number; speed: number }): void {
+  /**
+   * @param caretaker where the caretaker is; `sitting` makes the animal drift closer more often
+   * (plan 3.5: sitting makes animals approach), never right up to them.
+   */
+  update(dt: number, caretaker: { x: number; z: number; speed: number; sitting?: boolean }): void {
     if (!(dt > 0)) return;
+    this.near = caretaker.sitting ? caretaker : null;
     // Shy, not afraid: if the caretaker walks close, amble a few steps away.
     const cdx = this.x - caretaker.x, cdz = this.z - caretaker.z;
     const cd = Math.hypot(cdx, cdz);

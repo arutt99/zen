@@ -3,6 +3,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { blendPresets, clockLabel, dayFraction, inkRef, lightLevel, presetAt, timeOfDay } from '../src/core/daylight';
 import { ANIMALS } from '../src/data/animals';
+import { BUILDINGS } from '../src/data/buildings';
 import { CARETAKER, CARETAKER_HEIGHT, CHARACTER_STYLES, caretakerHeight } from '../src/data/characters';
 import { LOOKS, lookById } from '../src/data/looks';
 import { PLACES } from '../src/data/places';
@@ -61,8 +62,9 @@ test('the chibi caretaker stands ~1.8 m tall (A3) and under 3 heads tall (A4)', 
 });
 
 test('the deer arrives with restoration, wanders near home, and steps away from a moving caretaker', () => {
-  assert.equal(animalsPresent(place, { shelter: { wood: 3, stone: 0 } }).length, 0);
-  assert.deepEqual(animalsPresent(place, { shelter: { wood: 6, stone: 0 } }).map((a) => a.id), ['deer']);
+  // Plan 4.2 / 9.6: the gravel garden brings the deer (not the shelter alone).
+  assert.equal(animalsPresent(place, { shelter: { wood: 6, stone: 0 } }).length, 0);
+  assert.deepEqual(animalsPresent(place, { shelter: { wood: 6, stone: 0 }, gravel_garden: { wood: 4, stone: 6 } }).map((a) => a.id), ['deer']);
   const world = new IslandWorld(place);
   const walk = (x: number, z: number) => world.walkable(x, z);
   const d = new Wanderer(ANIMALS.deer, walk, 5, true);
@@ -86,11 +88,12 @@ test('the deer arrives with restoration, wanders near home, and steps away from 
 test('every Zen-kit prop is placed on the valley floor (lotus on the water), clear of nodes and the site', () => {
   const world = new IslandWorld(place);
   const kinds = new Set(place.props.map((p) => p.kind));
-  for (const k of ['maple', 'bamboo', 'mossy_stone', 'stone_lantern', 'fence_wood', 'fence_rope', 'raked_gravel', 'stepping_stone', 'lotus']) assert.ok(kinds.has(k), k);
+  // Raked gravel now comes with the gravel garden (Phase 3), not as a loose prop.
+  for (const k of ['maple', 'bamboo', 'mossy_stone', 'stone_lantern', 'fence_wood', 'fence_rope', 'stepping_stone', 'lotus']) assert.ok(kinds.has(k), k);
   for (const p of place.props) {
     const h = world.height(p.x, p.z);
     if (p.kind === 'lotus') assert.ok(h < world.waterLevel - 0.1, `${p.id} should be in the pond`);
     for (const n of place.nodes) assert.ok(Math.hypot(n.x - p.x, n.z - p.z) > 2.2, `${p.id} crowds ${n.id}`);
-    for (const s of place.sites) assert.ok(Math.hypot(s.x - p.x, s.z - p.z) > 3.4, `${p.id} sits on site ${s.id}`);
+    for (const s of place.sites) assert.ok(Math.hypot(s.x - p.x, s.z - p.z) > BUILDINGS[s.building].siteRadius, `${p.id} sits on site ${s.id}`);
   }
 });

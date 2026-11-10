@@ -197,6 +197,28 @@ export class MB {
     return this.add(new THREE.LatheGeometry(pts, seg), col, o);
   }
 
+  /**
+   * Adds a copy of an already-built model (e.g. a decor kind) as one part, moved into place. Its colors,
+   * baked light and marks are kept; outline data is rebuilt with the rest.
+   */
+  place(built: THREE.BufferGeometry, o: Pick<PartOpts, 'p' | 'r' | 's'> = {}): this {
+    const g = built.index ? built.toNonIndexed() : built.clone();
+    g.deleteAttribute('aInk');
+    g.clearGroups();
+    if (rich() && !g.getAttribute('aMark')) {
+      const mark = new Float32Array(g.getAttribute('position').count * 4);
+      for (let i = 0; i < mark.length; i += 4) { mark[i + 1] = 1; mark[i + 3] = MARK_CODE.none; }
+      g.setAttribute('aMark', new THREE.BufferAttribute(mark, 4));
+    }
+    if (!rich()) g.deleteAttribute('aMark');
+    const p = o.p ?? [0, 0, 0], r = o.r ?? [0, 0, 0], s = o.s ?? 1;
+    tmpQ.setFromEuler(tmpE.set(r[0], r[1], r[2]));
+    if (typeof s === 'number') tmpS.set(s, s, s); else tmpS.set(s[0], s[1], s[2]);
+    g.applyMatrix4(tmpM.compose(tmpV.set(p[0], p[1], p[2]), tmpQ, tmpS));
+    this.parts.push(g);
+    return this;
+  }
+
   get empty() {
     return this.parts.length === 0;
   }

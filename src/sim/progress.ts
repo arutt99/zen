@@ -38,14 +38,52 @@ export function nextDeposit(b: BuildingDef, delivered: Bag, satchel: Bag): Mater
   return null;
 }
 
+/** The buildings complete at a place. */
+export function completedBuildings(place: PlaceDef, deposits: Record<string, Bag>): Set<BuildingId> {
+  const done = new Set<BuildingId>();
+  for (const s of place.sites) {
+    const b = BUILDINGS[s.building];
+    const d = deposits[s.id];
+    if (b && d && isComplete(b, d)) done.add(b.id);
+  }
+  return done;
+}
+
+/**
+ * True when a building's site has revealed itself: every building it requires is complete (plan 3.3,
+ * "then the next site gently reveals itself"). A site that already has deposits stays open regardless,
+ * so a repaired or odd save never hides work already done.
+ */
+export function siteOpen(b: BuildingDef, done: ReadonlySet<BuildingId>, delivered?: Bag): boolean {
+  if (delivered && MATERIALS.some((m) => delivered[m] > 0)) return true;
+  return b.requires.every((r) => done.has(r));
+}
+
+/** True when something gated on a building (a sit spot, a note) is there: no gate, or the building is done. */
+export function unlocked(requires: BuildingId | undefined, done: ReadonlySet<BuildingId>): boolean {
+  return !requires || done.has(requires);
+}
+
+/**
+ * Restoration props (plan 3.4): 1 when shown at this level, 0 when not. Overgrowth (`max`) is gone once
+ * the level reaches it; new growth (`min`) is there once the level reaches it.
+ */
+export function growthShown(g: { min?: number; max?: number }, level: number): number {
+  const eps = 1e-6;
+  if (g.min !== undefined && level < g.min - eps) return 0;
+  if (g.max !== undefined && level >= g.max - eps) return 0;
+  return 1;
+}
+
+/** How murky the pond is, 0 (clear) .. place.water.murk, falling as restoration rises (plan 3.4). */
+export function waterMurk(place: PlaceDef, level: number): number {
+  return place.water.murk * (1 - clamp(level / Math.max(1e-6, place.water.clearAt)));
+}
+
 /** A place's restoration level, 0..1: the sum of its completed buildings' contributions. */
 export function restoration(place: PlaceDef, deposits: Record<string, Bag>): number {
   let r = 0;
-  for (const s of place.sites) {
-    const b = BUILDINGS[s.building as BuildingId];
-    const d = deposits[s.id];
-    if (b && d && isComplete(b, d)) r += b.restoration;
-  }
+  for (const id of completedBuildings(place, deposits)) r += BUILDINGS[id].restoration;
   return clamp(r);
 }
 

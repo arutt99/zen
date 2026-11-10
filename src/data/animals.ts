@@ -8,10 +8,7 @@ export interface AnimalDef {
   id: AnimalId;
   name: string;
   place: PlaceId;
-  /**
-   * Arrives once the place's restoration reaches this. Phase 2 (temporary): the shelter (0.2), so the
-   * deer can be seen now. Plan 4.2 ties it to the gravel garden, which Phase 3 adds; retarget then.
-   */
+  /** Arrives once the place's restoration reaches this (the deer: the gravel garden, plan 4.2 and 9.6). */
   minRestoration: number;
   /** Where it likes to be, and where it walks in from the first time. */
   home: CircleArea;
@@ -28,7 +25,7 @@ export const ANIMALS: Record<AnimalId, AnimalDef> = {
     id: 'deer',
     name: 'Deer',
     place: 'home_valley',
-    minRestoration: 0.2,
+    minRestoration: 0.45,
     home: { x: -9, z: -2, r: 8.5 },
     enterFrom: { x: -21, z: 8 },
     walkSpeed: 1.1,

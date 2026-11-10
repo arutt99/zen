@@ -103,6 +103,8 @@ const SOLID_R: Record<string, number> = {
   maple: 0.35, bamboo: 0.6, mossy_stone: 0.8, stone_lantern: 0.45, fence_wood: 0.25, fence_rope: 0.15,
   // Walk over (or on) these.
   raked_gravel: 0, stepping_stone: 0, lotus: 0,
+  // Phase 3: the old gate stands over the path; you walk through it, so it never blocks.
+  old_gate: 0,
 };
 
 export class IslandWorld {
@@ -265,7 +267,10 @@ export class IslandWorld {
     if (p.props.some((q) => Math.hypot(x - q.x, z - q.z) < 2 + r)) return false;
     // Gather nodes need room to walk around; build sites need their whole footprint and margin.
     if (p.nodes.some((q) => Math.hypot(x - q.x, z - q.z) < 2.6 + r)) return false;
-    if (p.sites.some((q) => Math.hypot(x - q.x, z - q.z) < 5 + r)) return false;
+    if (p.sites.some((q) => Math.hypot(x - q.x, z - q.z) < 5.5 + r)) return false;
+    if (p.growth.some((q) => Math.hypot(x - q.x, z - q.z) < 1.4 + r)) return false;
+    if (p.words.some((q) => Math.hypot(x - q.x, z - q.z) < 1.8 + r)) return false;
+    if (p.sits.some((q) => Math.hypot(x - q.x, z - q.z) < 1.8 + r)) return false;
     if (Math.hypot(x - p.pond.x, z - p.pond.z) < p.pond.r + 1 + r) return false;
     return true;
   }

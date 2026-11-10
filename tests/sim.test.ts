@@ -95,7 +95,8 @@ test('the home island is deterministic', () => {
 test('the home island has a pond, a path, a rim and enough trees', () => {
   const p = PLACES.home_valley;
   assert.ok(home.height(p.pond.x, p.pond.z) < home.waterLevel, 'pond centre is under water');
-  assert.ok(home.roadDistance(p.path[2]![0], p.path[2]![1]) < 0.5, 'path control points lie on the path');
+  // The distance field is sampled every 0.5 m from path points 1 m apart, so allow that much slack.
+  assert.ok(home.roadDistance(p.path[2]![0], p.path[2]![1]) < 0.75, 'path control points lie on the path');
   assert.ok(home.height(home.extW, home.extH) < -10, 'the island falls away at its corners');
   assert.equal(home.walkable(p.pond.x, p.pond.z), false);
   assert.ok(home.blockers.filter((b) => b.kind !== 'rock').length > 40, 'groves of trees around the valley');

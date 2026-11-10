@@ -4,8 +4,10 @@
 import { MATERIALS } from '../data/gathering';
 import type { PlaceDef } from '../data/places';
 import { CoreLoop, type GroundQuery } from './loop';
+import type { GatherNode } from './nodes';
 import { remaining } from './progress';
 import { GameState } from './state';
+import { makeRng } from '../core/util';
 
 export interface PacingReport {
   /** Seconds of play from spawn until each site was finished, by site id. */
@@ -18,9 +20,21 @@ export interface PacingReport {
   timedOut: boolean;
 }
 
-export function runPacingBot(place: PlaceDef, ground: GroundQuery, opts: { dt?: number; maxSeconds?: number } = {}): PacingReport {
+/**
+ * - 'perfect': full stick, straight to the nearest useful node, no pauses (a lower bound).
+ * - 'relaxed': a stand-in for a calm first-time player (plan 9.6 pacing): three-quarter stick, a short
+ *   look around after each node and each delivery, and now and then a farther node than the nearest.
+ *   It still knows where everything is, so a real first visit (finding things, reading, sitting) is longer.
+ */
+export type BotStyle = 'perfect' | 'relaxed';
+
+export function runPacingBot(place: PlaceDef, ground: GroundQuery, opts: { dt?: number; maxSeconds?: number; style?: BotStyle; seed?: number } = {}): PacingReport {
   const dt = opts.dt ?? 1 / 30;
-  const maxSeconds = opts.maxSeconds ?? 900;
+  const maxSeconds = opts.maxSeconds ?? 1800;
+  const relaxed = opts.style === 'relaxed';
+  const rng = makeRng(opts.seed ?? 7);
+  let pause = 0;
+  let wanted: string | null = null;
   const state = new GameState([place]);
   const loop = new CoreLoop(place, ground, state, place.spawn);
   const w = loop.walker;
@@ -29,9 +43,10 @@ export function runPacingBot(place: PlaceDef, ground: GroundQuery, opts: { dt?: 
   let lastCycleEnd = 0;
   let deliveredThisTrip = 0;
   state.on((e) => {
-    if (e.type === 'gathered') report.gathered++;
+    if (e.type === 'gathered') { report.gathered++; if (relaxed && e.left === 0) pause = 1.2; }
     if (e.type === 'deposited') deliveredThisTrip++;
     if (e.type === 'completed') {
+      if (relaxed) pause = 6; // watch the completion and the land respond
       report.completedAt[e.site] = t;
       report.cycles.push(t - lastCycleEnd);
       lastCycleEnd = t;
@@ -53,16 +68,22 @@ export function runPacingBot(place: PlaceDef, ground: GroundQuery, opts: { dt?: 
     } else {
       // Keep working the node we're at while it still gives what we need.
       const cur = loop.nodes.find((n) => loop.sensor.current?.id === `node:${n.id}`);
-      const pick = cur && cur.canGather && stillToGather.includes(cur.def.material) ? cur
-        : loop.nodes
-          .filter((n) => n.canGather && stillToGather.includes(n.def.material))
-          .sort((a, b) => Math.hypot(a.x - w.x, a.z - w.z) - Math.hypot(b.x - w.x, b.z - w.z))[0];
+      const options = loop.nodes
+        .filter((n) => n.canGather && stillToGather.includes(n.def.material))
+        .sort((a, b) => Math.hypot(a.x - w.x, a.z - w.z) - Math.hypot(b.x - w.x, b.z - w.z));
+      // A relaxed player keeps heading for the node they chose, and sometimes chooses the second nearest.
+      const kept: GatherNode | undefined = wanted ? options.find((n) => n.id === wanted) : undefined;
+      const choice: GatherNode | undefined = kept ?? (relaxed && options.length > 1 && rng() < 0.35 ? options[1] : options[0]);
+      wanted = choice?.id ?? null;
+      const pick = cur && cur.canGather && stillToGather.includes(cur.def.material) ? cur : choice;
       goal = pick ? { x: pick.x, z: pick.z, r: pick.def.radius * 0.8 } : { x: w.x, z: w.z, r: 1 }; // wait for regrowth
     }
     const dx = goal.x - w.x, dz = goal.z - w.z, d = Math.hypot(dx, dz);
     let mx = 0, mz = 0;
-    if (d > goal.r) {
-      mx = dx / d; mz = dz / d;
+    if (pause > 0) pause -= dt;
+    else if (d > goal.r) {
+      const stick = relaxed ? 0.75 : 1;
+      mx = (dx / d) * stick; mz = (dz / d) * stick;
       if (sidestep > 0) { sidestep -= dt; const sx = -mz * sideSign, sz = mx * sideSign; mx = sx; mz = sz; }
     }
     const before = state.deposits[site.id]!;
@@ -72,7 +93,7 @@ export function runPacingBot(place: PlaceDef, ground: GroundQuery, opts: { dt?: 
 
     const moved = Math.hypot(w.x - lastX, w.z - lastZ);
     lastX = w.x; lastZ = w.z;
-    if (d > goal.r && moved < 0.3 * w.tuning.maxSpeed * dt) {
+    if (pause <= 0 && d > goal.r && moved < 0.3 * w.tuning.maxSpeed * dt * (relaxed ? 0.75 : 1)) {
       stuckFor += dt;
       if (stuckFor > 0.4) { sidestep = 0.7; sideSign = -sideSign; stuckFor = 0; }
     } else stuckFor = 0;
@@ -83,6 +104,8 @@ export function runPacingBot(place: PlaceDef, ground: GroundQuery, opts: { dt?: 
       report.cycles.push(t - lastCycleEnd);
       lastCycleEnd = t;
       deliveredThisTrip = 0;
+      wanted = null;
+      if (relaxed) pause = 2.5; // a look at what just went up
     }
   }
   report.timedOut = loop.sites.some((s) => !loop.siteComplete(s));

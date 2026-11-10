@@ -341,6 +341,136 @@ const builders: Record<string, () => DecorGeo> = {
     m.sphere(0.07, 0xf2d070, { p: [0, 0.16, 0] }, 6, 5);
     return { solid: m.build(), floats: true };
   },
+  // --- Phase 3: the old gate at the valley's mouth, restoration props, poem stones and note posts.
+  old_gate() {
+    // A weathered timber gate over the path (3.4 m between posts): two leaning log posts, a sagging
+    // lintel lashed with rope, a second tie beam, moss on top, a faded paper strip hanging from it.
+    const m = new MB(); const l = new MB();
+    const LOG: [number, number] = [0x4f3c2c, 0x7c6248];
+    for (const sx of [-1, 1]) {
+      m.cyl(0.13, 0.16, 3.2, LOG, { p: [sx * 1.7, 1.55, 0], r: [0, 0, sx * -0.03], wobble: 0.012, mark: 'bark' }, 8, 2);
+      m.ico(0.24, GREY, { p: [sx * 1.7, 0.08, 0], s: [1.4, 0.5, 1.3], wobble: 0.03, mark: 'stone' }, 1);
+      m.torus(0.15, 0.03, 0xb49a68, { p: [sx * 1.7, 2.62, 0], r: [Math.PI / 2, 0, 0] }, 5, 10);
+    }
+    m.cyl(0.13, 0.15, 4.4, LOG, { p: [0, 3.12, 0], r: [0, 0, Math.PI / 2 + 0.03], wobble: 0.015, mark: 'bark' }, 8, 2);
+    m.cyl(0.08, 0.08, 3.6, LOG, { p: [0, 2.62, 0], r: [0, 0, Math.PI / 2 - 0.02], wobble: 0.01, mark: 'bark' }, 7);
+    // A short centre strut and a hanging paper strip, faded.
+    m.box(0.12, 0.42, 0.06, LOG, { p: [0, 2.86, 0.02], mark: 'wood' });
+    for (let i = 0; i < 3; i++) m.box(0.1, 0.22, 0.01, [0xd8ccb0, 0xeee4cc], { p: [-0.5 + i * 0.5, 2.38 - (i % 2) * 0.06, 0.08], r: [0, 0, (i - 1) * 0.08] });
+    m.cyl(0.012, 0.012, 1.4, 0xb49a68, { p: [0, 2.52, 0.08], r: [0, 0, Math.PI / 2] }, 3);
+    for (const x of [-1.2, 0.3, 1.5]) l.ico(0.28, MOSS, { p: [x, 3.26, 0.02], s: [1.6, 0.4, 0.9], flat: false, puff: 0.5 }, 1);
+    return { ...finish(m, l), ink: 'building' };
+  },
+  bramble() {
+    // A tangled thorny thicket: dark arching canes over a low, dull mound (the valley before it heals).
+    const m = new MB(); const l = new MB();
+    l.ico(0.8, [0x3a4a26, 0x6a7a3a], { p: [0, 0.4, 0], s: [1.3, 0.6, 1.1], wobble: 0.16, wobbleFreq: 2.4, flat: false, puff: 0.5 }, 2);
+    for (let i = 0; i < 9; i++) {
+      const a = i * 2.39, r = 0.4 + (i % 3) * 0.25;
+      m.cyl(0.025, 0.035, 1.5, [0x3a2a24, 0x5e4436], { p: [Math.cos(a) * r * 0.6, 0.65, Math.sin(a) * r * 0.6], r: [Math.sin(a) * 0.9, 0, -Math.cos(a) * 0.9] }, 4);
+      m.sphere(0.04, 0x7a2a3a, { p: [Math.cos(a) * r * 1.2, 0.95 - (i % 2) * 0.2, Math.sin(a) * r * 1.2] }, 4, 3);
+    }
+    return finish(m, l);
+  },
+  tall_weeds() {
+    // Rank, tired grass gone to seed: leaning stalks with drooping heads.
+    const l = new MB();
+    for (let i = 0; i < 16; i++) {
+      const a = i * 2.39, r = ((i * 7) % 9) * 0.07;
+      const h = 0.9 + ((i * 5) % 6) * 0.14;
+      const lean: [number, number, number] = [Math.sin(a) * 0.25, 0, -Math.cos(a) * 0.25];
+      l.cone(0.045, h, [0x5a6a34, 0xa8a464], { p: [Math.cos(a) * r, h / 2, Math.sin(a) * r], r: lean }, 4);
+      if (i % 2 === 0) l.cyl(0.035, 0.02, 0.22, [0x9a8a58, 0xc8b884], { p: [Math.cos(a) * r, h + 0.02, Math.sin(a) * r], r: lean }, 4);
+    }
+    return { solid: new MB().sphere(0.01, 0, {}, 3, 2).build(), leaf: l.build({ ground: true }) };
+  },
+  flower_bed() {
+    // A drift of small flowers in three colours over a low leafy mat.
+    const m = new MB(); const l = new MB();
+    l.ico(0.7, [0x4a7a34, 0x86b056], { p: [0, 0.08, 0], s: [1.4, 0.18, 1.1], wobble: 0.08, flat: false, puff: 0.6 }, 1);
+    const cols = [0xf6d2dc, 0xffffff, 0xf2c45a, 0xb8a0e0];
+    for (let i = 0; i < 22; i++) {
+      const a = i * 2.39, r = Math.sqrt((i + 0.5) / 22) * 0.95;
+      const x = Math.cos(a) * r * 1.3, z = Math.sin(a) * r;
+      const h = 0.18 + ((i * 3) % 5) * 0.05;
+      l.cyl(0.012, 0.014, h, 0x4f7a32, { p: [x, h / 2, z] }, 3);
+      m.sphere(0.065, cols[i % cols.length]!, { p: [x, h + 0.02, z], s: [1, 0.55, 1] }, 6, 4);
+    }
+    return finish(m, l);
+  },
+  iris() {
+    // Blue flag iris at the water's edge: sword leaves and a few violet flowers.
+    const m = new MB(); const l = new MB();
+    for (let i = 0; i < 11; i++) {
+      const a = i * 2.39, r = ((i * 5) % 6) * 0.06;
+      const h = 0.7 + ((i * 3) % 5) * 0.1;
+      l.cone(0.06, h, [0x3f6a34, 0x7aa858], { p: [Math.cos(a) * r, h / 2, Math.sin(a) * r], r: [Math.sin(a) * 0.15, 0, -Math.cos(a) * 0.15], s: [1, 1, 0.3] }, 4);
+    }
+    for (let i = 0; i < 4; i++) {
+      const a = i * 1.7;
+      const x = Math.cos(a) * 0.18, z = Math.sin(a) * 0.18;
+      m.cyl(0.012, 0.012, 0.85, 0x4f7a32, { p: [x, 0.42, z] }, 3);
+      for (let k = 0; k < 3; k++) m.sphere(0.07, [0x5a3a9a, 0x9a7ad8], { p: [x + Math.cos(k * 2.1) * 0.05, 0.88, z + Math.sin(k * 2.1) * 0.05], s: [0.6, 0.9, 0.4], r: [0.6, k * 2.1, 0] }, 5, 4);
+    }
+    return finish(m, l);
+  },
+  path_lantern() {
+    // A paper lantern on a post along the path (the meditation hall's response). The paper glows.
+    const m = new MB().setMark('wood'); const g = new MB();
+    m.box(0.13, 1.5, 0.13, CEDAR, { p: [0, 0.75, 0], wobble: 0.004 });
+    m.box(0.5, 0.08, 0.1, CEDAR, { p: [0.18, 1.48, 0] });
+    m.ico(0.16, GREY, { p: [0, 0.05, 0], s: [1.5, 0.5, 1.5], mark: 'stone' }, 1);
+    m.cyl(0.01, 0.01, 0.14, 0x3a2e28, { p: [0.36, 1.37, 0] }, 3);
+    m.cyl(0.12, 0.14, 0.04, 0x3a2e28, { p: [0.36, 1.29, 0] }, 8);
+    m.cyl(0.14, 0.12, 0.04, 0x3a2e28, { p: [0.36, 0.95, 0] }, 8);
+    g.lathe([[0.001, -0.16], [0.1, -0.15], [0.15, -0.06], [0.155, 0.04], [0.12, 0.14], [0.001, 0.16]], [0xf0a050, 0xffd090], { p: [0.36, 1.12, 0], gain: 1.6 }, 10);
+    return { solid: m.build({ ground: true }), glow: g.build({ off: true }), ink: 'building' };
+  },
+  trail_gate_shut() {
+    // The way to the bamboo grove, closed: two posts and a rope gate with a fallen branch across it.
+    const m = new MB(); const l = new MB();
+    for (const sx of [-1, 1]) m.cyl(0.11, 0.13, 2.0, CEDAR, { p: [sx * 1.2, 1.0, 0], wobble: 0.01, mark: 'bark' }, 7);
+    for (const y of [0.55, 1.05]) for (let i = 0; i < 8; i++) {
+      const t = (i + 0.5) / 8, x = -1.2 + t * 2.4, sag = 0.12 * Math.sin(t * Math.PI);
+      m.cyl(0.02, 0.02, 0.32, 0xb49a68, { p: [x, y - sag, 0], r: [0, 0, Math.PI / 2 + (t - 0.5) * 0.4] }, 4);
+    }
+    m.cyl(0.07, 0.1, 2.9, [0x3f2a1e, 0x6e4c32], { p: [0.1, 0.75, 0.15], r: [0.1, 0.3, Math.PI / 2 - 0.35], mark: 'bark' }, 6);
+    l.ico(0.45, [0x3a4a26, 0x6a7a3a], { p: [-0.8, 0.35, 0.25], s: [1.3, 0.7, 1], wobble: 0.1, flat: false, puff: 0.5 }, 1);
+    l.ico(0.4, [0x3a4a26, 0x6a7a3a], { p: [0.9, 0.3, 0.2], s: [1.2, 0.7, 1], wobble: 0.1, flat: false, puff: 0.5 }, 1);
+    return { ...finish(m, l), ink: 'building' };
+  },
+  trail_gate_open() {
+    // The same gate, open: the rope tied back, a small sign pointing on, a lantern at the post.
+    const m = new MB(); const g = new MB();
+    for (const sx of [-1, 1]) m.cyl(0.11, 0.13, 2.0, CEDAR, { p: [sx * 1.2, 1.0, 0], wobble: 0.01, mark: 'bark' }, 7);
+    m.cyl(0.08, 0.08, 2.8, CEDAR, { p: [0, 2.0, 0], r: [0, 0, Math.PI / 2], mark: 'bark' }, 7);
+    for (const sx of [-1, 1]) for (let i = 0; i < 4; i++) m.torus(0.13, 0.022, 0xb49a68, { p: [sx * 1.2, 0.7 + i * 0.07, 0], r: [Math.PI / 2, 0, 0] }, 4, 9);
+    m.box(0.07, 1.1, 0.07, CEDAR, { p: [1.75, 0.55, 0.35], mark: 'wood' });
+    m.box(0.62, 0.2, 0.04, [0xb89a6e, 0xd9c39d], { p: [1.95, 0.98, 0.37], r: [0, 0, -0.06], mark: 'wood' });
+    m.cone(0.13, 0.18, [0xb89a6e, 0xd9c39d], { p: [2.3, 0.97, 0.37], r: [0, 0, -Math.PI / 2], s: [1, 1, 0.3] }, 3);
+    g.lathe([[0.001, -0.14], [0.1, -0.13], [0.13, -0.04], [0.13, 0.05], [0.1, 0.13], [0.001, 0.14]], [0xf0a050, 0xffd090], { p: [-1.2, 1.65, 0.22], gain: 1.6 }, 10);
+    return { solid: m.build({ ground: true }), glow: g.build({ off: true }), ink: 'building' };
+  },
+  poem_stone() {
+    // An upright, weathered stone with a carved panel of short lines; moss on its shoulder.
+    const m = new MB(); const l = new MB();
+    stone(m, 0.5, GREY, { p: [0, 0.6, 0], s: [0.85, 1.35, 0.42], wobble: 0.04 });
+    m.box(0.42, 0.62, 0.04, [0x7a796e, 0x8e8c80], { p: [0, 0.7, 0.18], mark: 'none' });
+    for (let i = 0; i < 3; i++) m.box(0.035, 0.42 - i * 0.08, 0.02, 0x4a4840, { p: [0.12 - i * 0.12, 0.74 + i * 0.03, 0.205] });
+    l.ico(0.2, MOSS, { p: [0.18, 1.16, 0], s: [1.4, 0.4, 1.1], flat: false, puff: 0.5 }, 1);
+    stone(m, 0.18, GREY, { p: [-0.42, 0.08, 0.2], s: [1.3, 0.5, 1], wobble: 0.02 });
+    return finish(m, l);
+  },
+  note_post() {
+    // A small wooden board on a post, a note left by an earlier caretaker, with a little roof.
+    const m = new MB().setMark('wood');
+    m.box(0.1, 1.15, 0.1, CEDAR, { p: [0, 0.58, 0] });
+    m.box(0.55, 0.4, 0.05, [0xb89a6e, 0xd9c39d], { p: [0, 1.0, 0.07] });
+    for (let i = 0; i < 4; i++) m.box(0.025, 0.28, 0.01, 0x3a2e28, { p: [0.16 - i * 0.1, 1.0, 0.1], mark: 'none' });
+    m.box(0.68, 0.05, 0.24, [0x7a6040, 0xa48660], { p: [0, 1.27, 0.04], r: [0.25, 0, 0] });
+    m.box(0.68, 0.05, 0.24, [0x7a6040, 0xa48660], { p: [0, 1.27, -0.1], r: [-0.25, 0, 0] });
+    return { ...finish(m), ink: 'building' };
+  },
 };
 
 /**
