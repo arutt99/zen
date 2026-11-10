@@ -136,10 +136,12 @@ Only places 0 and 1 are in the first complete version. The others show the patte
 
 ## 7. Art direction
 
-### 7.1 Decision: **the painted storybook reference is the target; Lanternfall's engine is the toolkit.**
-The target look is the owner's reference image: a soft, hand-painted storybook Japanese garden. **It is not Lanternfall's look.** Lanternfall supplies the technology (painterly materials, procedural models, post-processing, phone performance), and those tools are retuned toward the reference. The two games should look related at most, never the same.
+### 7.1 Current direction (not final): **the painted storybook reference is the target; Lanternfall's engine is the toolkit.**
 
-**The reference image, described** (keep it as `docs/art-reference.jpg` if the owner adds it to the repo):
+> The owner is not yet sure about the art direction ("I'll know it when I see it"). Treat this as the leading candidate, keep the look easy to change, and follow the art decision points in 7.4.
+The target look is the owner's reference image, `docs/art-reference.jpg`: a soft, hand-painted storybook Japanese garden. **It is not Lanternfall's look.** Lanternfall supplies the technology (painterly materials, procedural models, post-processing, phone performance), and those tools are retuned toward the reference. The two games should look related at most, never the same.
+
+**The reference image, described** (the image itself is `docs/art-reference.jpg`; open it before any art work):
 - Warm afternoon light, low contrast, gentle and slightly desaturated colors. Nothing is deep or saturated.
 - Visible brushwork everywhere: ground, stone, wood and foliage look painted (gouache or watercolor), with soft color variation inside each shape.
 - Linework is soft, thin and **warm brown**, not black, and it is absent on distant or soft things such as foliage edges, ground and mist.
@@ -173,6 +175,29 @@ The target look is the owner's reference image: a soft, hand-painted storybook J
 
 ### 7.3 Asset reality
 Like Lanternfall, **every model is built in code** (canopy blobs, trunks, pine tiers, building parts) and textures come from canvases. There are no model files to make, buy or license, which suits an AI agent: it can build and tune art directly, and the owner judges it on screen. `docs/ART_PIPELINE.md` records the style rules: scale (1 unit = 1 m), outline widths, the tone bands, the palette per place and season, poly budgets, and how to add a new procedural model. If any external file (a sound, a font) is ever added, its source and license go there too.
+
+### 7.4 Exploring the look, and art decision points
+The owner wants to see options before committing. So the look is built to be **tried and switched, not decided up front**:
+
+- **Look presets.** Everything that defines the style lives in one data file of named presets (`src/data/looks.ts`): palette, outline color and width, which objects get outlines, tone ramp softness, brush strength, paper grain, haze, shadow tint, color grade, bloom, and character proportions. Lanternfall already switches between two looks this way (`render/style.ts`); extend that idea.
+- **A look switcher** in the settings or debug menu changes presets live (or with a quick reload) on the phone, so the owner can compare in the real game. Keep at least three presets until the owner picks one: **Painted** (the reference), **Lanternfall-like**, and one wildcard the agent proposes.
+- **Screenshot sets.** At each art checkpoint, the agent captures the same views in every preset (phone size, day and dusk) and shows them side by side.
+
+**Cheap to change at any time** (data and shader values, no rework): colors and palettes, outlines, shading softness, brush and paper texture, haze, color grade, lighting presets, particles.
+
+**Expensive to change later** (cause rework if changed after the deadline). These are the **art decision points**:
+
+| # | Decision | Why it's expensive later | Decide by |
+|---|---|---|---|
+| A1 | **2D vs 3D world.** (Current: 3D.) | Every system that draws or places things depends on it | End of Phase 0 |
+| A2 | **Camera angle, height and zoom range** | Sets how big every model, path and build site must be, and what's readable on a phone | Phase 1 gate |
+| A3 | **World scale and spacing:** how big the caretaker is versus trees, buildings and walking space | Every place layout and the collision setup are built around it | Phase 1 gate |
+| A4 | **Character proportions and style** (chibi vs taller, how faces are drawn) | All animation, the basket, animals and later residents follow it | Phase 2 gate |
+| A5 | **Building kit style:** the part set buildings are assembled from (posts, beams, roofs) and how stages look | Every building and its growth stages are made from it | Phase 2 gate |
+| A6 | **Shading family:** painted-soft vs inked-cel vs another | Models are tuned against it; switching late means re-tuning every model | Phase 2 gate |
+| A7 | **Final palette per season** | Many places and props get tuned to it; cheap per item, costly in total | Phase 5 gate |
+
+**The agent's duty:** before a phase that would build on an undecided point, and again at the gate where it's due, the agent **stops and warns the owner in plain words**: which decision, the options with screenshots, what becomes expensive to change after this, and a recommendation. It never locks one of these silently, and never builds lots of content on an undecided point. Decisions are recorded in the table above (replace "Decide by" with the choice and the date).
 
 ---
 
@@ -281,6 +306,7 @@ There is **one** sequence. Each phase ends at a gate the owner checks by playing
 - Input: one move vector (keyboard, gamepad, touch joystick) plus one context action.
 - GitHub Actions runs `npm run typecheck`, `npm test` and `npm run build` on every push.
 - `AGENTS.md` (see Appendix A), `README.md`, `TASKS.md`, `docs/ART_PIPELINE.md`, `docs/CHANGELOG.md`.
+- **Art decision point A1 (2D vs 3D) is due at this gate.** The agent must ask the owner to confirm before Phase 1.
 - **Gate:** the built `index.html` opens on PC and in a phone browser, the island renders with the engine's painterly pipeline (Lanternfall's look is fine for now; Phase 2 retunes it), holds frame rate on Medium on the phone, and the capsule walks around with the joystick. CI is green.
 
 ### Phase 1: The feel
@@ -289,14 +315,16 @@ There is **one** sequence. Each phase ends at a gate the owner checks by playing
 - One build site (the shelter) with automatic deposit and staged growth from simple procedural parts, a completion bell, and a first restoration response (mist lifts).
 - Saving and loading of deposits, satchel and position; autosave when the page is hidden.
 - The headless loop in `sim/` with unit tests: gather awards, satchel cap, deposit never exceeds cost, derived progress, save round trip, corrupt save fallback. A first pacing-bot run reports the cycle time.
+- **Art decision points A2 (camera) and A3 (world scale) are due at this gate.** Offer two or three camera and scale options to try on the phone.
 - **Gate:** on a phone, someone new to the game gathers and builds the shelter without being told how, and keeps gathering afterwards. Closing the tab mid-deposit and reopening keeps exactly what was delivered.
 
 ### Phase 2: Warm the look
 - The Zen kit as procedural models: cherry, maple and bamboo; mossy stones; stone lanterns; rope and post fences; raked gravel; stepping stones; lotus. Building parts (posts, beams, walls, tiled roof) that buildings assemble from in stages.
 - The real caretaker model (robe, bun, wicker basket that fills) and the deer.
 - Presets for time of day (dawn, day, golden hour, dusk, night) blended from the clock, with a debug slider.
-- Apply the retuning checklist from 7.1 so the world moves from Lanternfall's look to the painted reference.
-- **Gate:** the owner holds a phone screenshot next to the reference image and says it's the same world. It should not look like Lanternfall. `docs/ART_PIPELINE.md` records the final shader values and rules.
+- Build the look presets and the look switcher from 7.4, with at least the Painted, Lanternfall-like and wildcard presets, applying the retuning checklist from 7.1 for Painted.
+- **Art decision points A4, A5 and A6 are due at this gate.** Show screenshot sets of every preset and warn the owner before locking.
+- **Gate:** the owner has tried the presets on their phone and picked a direction. If it's Painted, a phone screenshot next to the reference image should read as the same world, not as Lanternfall. `docs/ART_PIPELINE.md` records the final shader values and rules.
 
 ### Phase 3: Home grows
 - All home-valley buildings except the tea house, the restoration system across the valley, real-clock time of day with settings, sit-and-watch, rituals (bell, rake, lanterns at dusk), poem stones and caretaker notes, the deer.
@@ -313,6 +341,7 @@ There is **one** sequence. Each phase ends at a gate the owner checks by playing
 - A few seasonal findables per place.
 - The collection book (poems, animals, seasonal finds), wordless where possible.
 - Decorating v1: place, rotate and remove decorations on decoration-allowed ground at home. Decorations come from shrines and buildings, never from purchases.
+- **Art decision point A7 (seasonal palettes) is due at this gate.**
 - **Gate:** setting the season to each of the four makes both places look clearly different; decorations persist; nothing seasonal blocks progress.
 
 ### Phase 6: Polish and share
@@ -338,7 +367,7 @@ Riverbank, mountain pass and further journeys · quiet residents · more rituals
 
 | Decision | Current default | Decided at |
 |---|---|---|
-| Art style | **Decided:** the painted storybook reference image, built with Lanternfall's engine (not Lanternfall's look) | Matched to the reference at the Phase 2 gate |
+| Art style | Leading candidate: the painted reference (`docs/art-reference.jpg`), built with Lanternfall's engine. **Not final:** the owner picks from look presets | Art decision points A1–A7 in 7.4 |
 | Where the code lives | The `zen` repo, with the engine copied from Lanternfall | Phase 0 (alternative: a `games/moss-and-bell` folder next to Lanternfall) |
 | Shared engine with Lanternfall | Copy now, adapt freely | Revisit only if both games keep changing the same engine code |
 | When quiet residents arrive | After the first complete version | After Phase 6 |
@@ -360,7 +389,8 @@ Riverbank, mountain pass and further journeys · quiet residents · more rituals
 - Game rules live in src/sim and never import three.js.
 - Every proximity interaction implements the interface in src/sim/proximity.ts.
 - Models are built in code; follow docs/ART_PIPELINE.md for scale, outlines and palette.
-- The art target is the painted reference (plan section 7.1), NOT Lanternfall's look.
+- The art target is the painted reference (plan section 7.1, docs/art-reference.jpg), NOT Lanternfall's look. It is not final yet.
+- ART DECISIONS: before building on an undecided art decision point (plan 7.4, A1–A7), STOP and warn the owner: what must be decided, options with screenshots, what gets expensive to change afterwards, and your recommendation. Never lock one silently.
 - No external assets without source + license logged in docs/ART_PIPELINE.md.
 - Never claim a test, build, or device check that you did not actually run.
 - Report: changed files, how to try it, test results, gaps, next step.
