@@ -214,6 +214,7 @@ export class Stage {
   private islets: { obj: THREE.Object3D; y: number; phase: number }[] = [];
   private ambientMat?: THREE.ShaderMaterial;
   private fieldTex!: THREE.DataTexture;
+  private waterFog?: THREE.IUniform<number>;
 
   constructor(public world: IslandWorld, preset: Biome, public q: Quality, pixelRatio: number) {
     this.biome = preset;
@@ -500,6 +501,7 @@ export class Stage {
       },
     });
     this.track(mat);
+    this.waterFog = mat.uniforms.uFogDensity as THREE.IUniform<number>;
     const geo = this.track(new THREE.PlaneGeometry(w.extW * 2, w.extH * 2));
     geo.rotateX(-Math.PI / 2);
     const mesh = new THREE.Mesh(geo, mat);
@@ -890,6 +892,12 @@ export class Stage {
     pts.frustumCulled = false;
     pts.renderOrder = 8;
     this.scene.add(pts);
+  }
+
+  /** Fog density for the whole scene (the mist response, plan 3.4 changes it as the place heals). */
+  setFogDensity(d: number) {
+    (this.scene.fog as THREE.FogExp2).density = d;
+    if (this.waterFog) this.waterFog.value = d;
   }
 
   update(time: number) {

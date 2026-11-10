@@ -5,7 +5,7 @@
 import { renderTake } from './synth-kit';
 import { SFX, type SfxBus, type SfxDef, type SfxName } from './sfx-recipes';
 
-export { pentatonicHz, PENTATONIC } from './sfx-recipes';
+export { pentatonicHz, pentatonicRate, PENTATONIC } from './sfx-recipes';
 export type { SfxName };
 
 const DEFS = SFX as Record<SfxName, SfxDef>;
@@ -100,7 +100,8 @@ export class AudioEngine {
     }
   }
 
-  play(name: SfxName, volume = 1) {
+  /** `rate` shifts pitch (and length) by playback speed: gathering notes use it to walk the scale. */
+  play(name: SfxName, volume = 1, rate = 1) {
     const ctx = this.ctx;
     if (!ctx || ctx.state !== 'running') return;
     const takes = this.bank.get(name);
@@ -128,7 +129,7 @@ export class AudioEngine {
     const src = ctx.createBufferSource();
     const buffer = takes[take]!;
     src.buffer = buffer;
-    src.playbackRate.value = 1 + (def.jitter ?? 0) * (Math.random() * 2 - 1);
+    src.playbackRate.value = rate * (1 + (def.jitter ?? 0) * (Math.random() * 2 - 1));
     const dry = ctx.createGain();
     dry.gain.value = gain;
     dry.connect(this.buses[def.bus ?? 'effects']);

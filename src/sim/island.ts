@@ -94,8 +94,6 @@ function resample(raw: [number, number][]): Float32Array {
 
 export interface Blocker { x: number; z: number; r: number; kind: string; scale: number; rot: number; tint: number }
 
-export interface Blocker { x: number; z: number; r: number; kind: string; scale: number; rot: number; tint: number }
-
 const FIELD_RES = 2; // cells per world unit
 const FIELD_R = 16; // world units of tracked path distance
 
@@ -260,6 +258,9 @@ export class IslandWorld {
     if (this.roadDistance(x, z) < this.pathWidth * 0.5 + 0.6 + r) return false;
     if (p.clearings.some((c) => Math.hypot(x - c.x, z - c.z) < c.r + r)) return false;
     if (p.props.some((q) => Math.hypot(x - q.x, z - q.z) < 2 + r)) return false;
+    // Gather nodes need room to walk around; build sites need their whole footprint and margin.
+    if (p.nodes.some((q) => Math.hypot(x - q.x, z - q.z) < 2.6 + r)) return false;
+    if (p.sites.some((q) => Math.hypot(x - q.x, z - q.z) < 5 + r)) return false;
     if (Math.hypot(x - p.pond.x, z - p.pond.z) < p.pond.r + 1 + r) return false;
     return true;
   }

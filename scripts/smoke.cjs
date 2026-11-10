@@ -1,5 +1,6 @@
 // Browser smoke test: loads dist/index.html at phone and laptop sizes, checks it boots without
-// errors, the canvas is not blank, keyboard and touch move the caretaker, and saves a screenshot.
+// errors, the canvas is not blank, keyboard and touch move the caretaker, the core loop gathers and
+// deposits, a reload keeps exactly what was delivered, and saves a screenshot of each run.
 // Needs Playwright (`npm i -D playwright` locally; preinstalled in some CI images).
 const path = require('node:path');
 const fs = require('node:fs');
@@ -75,5 +76,28 @@ async function run(name, contextOpts, drive, { needMove = true } = {}) {
       window.dispatchEvent(new PointerEvent('pointerup', { pointerId: 7, pointerType: 'touch', clientX: 210, clientY: 250 }));
     });
   });
-  process.exit(laptop && keyboard && phone ? 0 : 1);
+  // The core loop in the real build: stand by a tree until wood arrives, then on the shelter site until
+  // some is delivered, then reload and check the delivered amount and satchel came back exactly.
+  const loopRun = await run('loop', { viewport: { width: 640, height: 360 } }, async (page) => {
+    const wait = (fn) => page.waitForFunction(fn, null, { timeout: 120000, polling: 200 });
+    const tree = await page.evaluate(() => window.__mb.nodes.find((n) => n.id.startsWith('tree')));
+    await page.evaluate((t) => window.__mb.teleport(t.x - 1.3, t.z), tree);
+    await wait(() => window.__mb.satchel.wood >= 3);
+    await page.evaluate(() => window.__mb.teleport(9.5, -1.1));
+    await wait(() => (window.__mb.deposits.shelter?.wood ?? 0) >= 2);
+    await page.evaluate(() => window.__mb.teleport(2, 9)); // walk off mid-deposit
+    const before = await page.evaluate(() => ({ s: window.__mb.satchel, d: window.__mb.deposits }));
+    await page.reload();
+    await wait(() => window.__mb && window.__mb.fps > 0);
+    const after = await page.evaluate(() => ({ s: window.__mb.satchel, d: window.__mb.deposits }));
+    const same = JSON.stringify(before) === JSON.stringify(after);
+    console.log(`   loop: before reload ${JSON.stringify(before)}, after ${JSON.stringify(after)} → ${same ? 'kept' : 'CHANGED'}`);
+    if (!same) throw new Error('reload changed the saved facts');
+    // The reload cleared the speed tracker; restart it and walk south so the movement check passes too.
+    await page.evaluate(() => { window.__topSpeed = 0; setInterval(() => { window.__topSpeed = Math.max(window.__topSpeed, window.__mb.speed); }, 50); });
+    await page.keyboard.down('KeyS');
+    await page.waitForTimeout(4000);
+    await page.keyboard.up('KeyS');
+  });
+  process.exit(laptop && keyboard && phone && loopRun ? 0 : 1);
 })().catch((e) => { console.error(e); process.exit(1); });

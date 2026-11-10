@@ -1,5 +1,19 @@
 # Changelog
 
+## Phase 1: The feel (2026-11-10)
+- The core loop runs headless in `src/sim`: `state.ts` (facts + events), `progress.ts` (derived), `nodes.ts`,
+  `loop.ts` (beat clock, gather, deposit, regrowth via the proximity rule) and `pacing-bot.ts`.
+- Balance and feel as data: `src/data/gathering.ts`, `buildings.ts`, `feel.ts`; nodes, the shelter site and
+  the mist in `places.ts`. Boot validation covers all of it.
+- Automatic, animated chopping and chipping on a 0.55 s beat with climbing pentatonic notes; trees and
+  boulders deplete piece by piece and regrow gradually; the basket fills item by item; HUD carry chip.
+- The shelter grows one part per unit delivered (ghost outline, scaffolding, parts arcing in), completes
+  with the bell, petals and a camera ease-out, and lifts the valley's mist.
+- Movement: harder braking on reversal; collisions with nodes and the shelter.
+- Save v2 with a migration from v1; deposits are saved the moment they happen.
+- Art decision points A2 and A3 offered as trial settings, with screenshots in `docs/phase1/`.
+- 41 unit tests (16 new); the browser smoke test now plays the loop and checks a reload.
+
 ## Phase 0: Fork the engine (2026-11-10)
 - New TypeScript + three.js + esbuild project at the repo root; builds to one offline, installable `dist/index.html`.
 - Lanternfall's engine copied in and trimmed (commit `b282628`): renderer and post chain, quality tiers,

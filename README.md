@@ -40,6 +40,7 @@ file as a downloadable artifact.
 | Action | Phone | PC |
 |---|---|---|
 | Move | Floating joystick, left 60% of the screen | WASD / arrows / left stick / d-pad |
+| Gather, deposit | Automatic: walk up to a tree, a mossy boulder or the build site | Automatic |
 | Context action (sit) | The round button that appears when useful | E / Space / Enter / gamepad A |
 | Zoom (two presets) | Pinch | Mouse wheel, `-`/`=`, bumpers |
 | Menu | ☰ button | Esc / Start |
@@ -55,9 +56,12 @@ adapted; Lanternfall itself is untouched. `TASKS.md` lists which file came from 
 src/
   main.ts          boot, game loop, HUD wiring
   core/            save (versioned, corrupt-safe), seeded random + noise, frame pacing
-  data/            places, place presets, quality tiers, data validation  (all tunable numbers live here)
-  sim/             headless rules: island geometry, input vector, proximity rule, walker  (no three.js)
-  render/          engine + post chain, painterly materials, model builder, decor, stage, camera, caretaker, particles
+  data/            places, buildings, gathering balance, feel (movement, camera/scale trials), presets,
+                   quality tiers, data validation  (all tunable numbers live here)
+  sim/             headless rules (no three.js): state (facts), progress (derived), core loop (beat,
+                   gather, deposit, regrowth), gather nodes, pacing bot, island geometry, proximity, walker
+  render/          engine + post chain, painterly materials, model builder, decor, stage, camera, caretaker,
+                   gather nodes, building kits, mist, effects, particles
   audio/           synth kit, audio engine (buses, sound bank), sound recipes
   ui/              keyboard / gamepad / touch joystick input, touch detection
 public/            HTML shell, web manifest, icon (inlined into the build)

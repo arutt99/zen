@@ -29,6 +29,15 @@ Phase 0 uses a Lanternfall-like look on purpose: banded cel shading and dark out
 | Post | `engine.ts` | bloom 0.24, grade from the place preset, vignette 0.32 | warmer grade, lower saturation, paper grain, distance haze |
 | Classic look | `style.ts` (`?style=classic`) | smooth shading + Kuwahara paint filter + tilt-shift (High/Ultra) | a candidate for the look switcher |
 
+## Phase 1 models (placeholders; A5 decides the building kit)
+- Gather nodes (`src/render/nodes.ts`): built from separate parts so they can deplete one unit at a time.
+  Tree: stump (0.5 m), upper trunk (2.1 m), a core puff plus one canopy puff per unit, and a notch per chop.
+  Boulder: a core rock with a moss cap plus one chunk per unit. Parts ease in and out (`damp`), never pop.
+- Building kits (`src/render/kits.ts`): one model per part id, in the building's local space facing +z;
+  the kit for the shelter is a 2.8 × 2.4 m deck, four posts and a gabled roof. Add a part model there and
+  list it in the building's `parts` (a test checks every part has a model).
+- Ghost parts use a pale transparent material; the site marker is a terrain-following disc.
+
 ## Palette
 Home valley, spring day: `src/data/presets.ts` (`home_day`), Lanternfall's meadow nudged toward the plan's
 palette (plan 7.2). Path `#D9C39D`/`#A48A62`, water `#9CC7B8`→`#3F7F7A`, cherry blossom `#D98AA0`→`#F6D2DC`.
@@ -37,8 +46,8 @@ palette (plan 7.2). Path `#D9C39D`/`#A48A62`, water `#9CC7B8`→`#3F7F7A`, cherr
 | # | Decision | Status |
 |---|---|---|
 | A1 | 2D vs 3D | **Decided: 3D** (owner, 2026-11-10) |
-| A2 | Camera angle, height, zoom | Phase 1 gate. Current: two presets in `src/render/camera.ts`; trees can hide the caretaker |
-| A3 | World scale and spacing | Phase 1 gate |
+| A2 | Camera angle, height, zoom | **Due now (Phase 1 gate).** Three trial options in `src/data/feel.ts` (`CAMERA_OPTIONS`), switchable in Settings; see `docs/phase1/README.md`. Trees can hide the caretaker |
+| A3 | World scale and spacing | **Due now (Phase 1 gate).** Three trial caretaker sizes (`SCALE_OPTIONS`); trees and spacing unchanged so far |
 | A4–A6 | Character style, building kit, shading family | Phase 2 gate |
 | A7 | Seasonal palettes | Phase 5 gate |
 
