@@ -288,5 +288,7 @@ Started at the owner's request with Phase 3's gate still open (2026-11-10).
 - The trail between places is the two places' own trails, not a separate trail map (a fade covers the join).
 - Collision is still one circle per building: the tea house's fences and bench and the shrine's posts can be
   walked into a little.
+- The grove's background bamboo is the Phase 2 decor clump (big flat leaf ovals); a finer bamboo crown would suit
+  the grove (a cheap detail pass, listed in `docs/phase4/README.md`).
 - All screenshots and the smoke test come from software rendering in a container; nothing in this phase has been
   checked on a phone or on the owner's PC.
