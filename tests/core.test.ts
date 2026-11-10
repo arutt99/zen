@@ -107,7 +107,7 @@ test('a Phase 1 (v2) save migrates to v3 with default look, character, kit and c
   assert.equal(data.v, 3);
   assert.deepEqual(data.deposits, v2.deposits);
   assert.deepEqual(data.satchel, v2.satchel);
-  assert.deepEqual([data.settings.look, data.settings.character, data.settings.kit], ['painted', 'chibi', 'temple']);
+  assert.deepEqual([data.settings.look, data.settings.character, data.settings.kit], ['lanternfallplus', 'chibi', 'timber']);
   assert.deepEqual(data.settings.time, { mode: 'clock', at: 0.5 });
 });
 

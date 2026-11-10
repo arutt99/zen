@@ -15,7 +15,7 @@ const place = PLACES.home_valley;
 
 test('look presets: painted (the target), painted+, lanternfall-like and the woodblock wildcard', () => {
   assert.deepEqual([...LOOK_IDS], ['painted', 'paintedplus', 'lanternfall', 'lanternfallplus', 'woodblock']);
-  assert.equal(lookById('nonsense').id, 'painted');
+  assert.equal(lookById('nonsense').id, 'lanternfallplus', 'unknown looks fall back to the decided one (A6)');
   // Painted applies the plan 7.1 checklist: softer bands, warm light shadows, more brush, brown thin lines
   // on figures and buildings only, warmer and less saturated, paper grain, more haze.
   const p = LOOKS.painted, l = LOOKS.lanternfall;

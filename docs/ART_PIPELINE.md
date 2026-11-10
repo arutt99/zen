@@ -1,8 +1,12 @@
 # Art pipeline
 
-The rules for building and tuning art. The **target look** is the painted storybook reference,
-`docs/art-reference.jpg` (plan 7.1). It is not final: the owner picks from the look presets at the Phase 2
-gate (A6). Until then every model must read well in all five presets.
+The rules for building and tuning art. **The look is decided: Lanternfall+** (A6, owner, 2026-11-10; plan
+7.1): crisp three-tone bands, ink outlines on everything, rich color, no grain or haze, baked occlusion and
+contact shadows, and the rich detail level. New models are built and judged in Lanternfall+ (`?look=lanternfallplus`)
+on a PC first, with the chibi caretaker (A4) and timber buildings (A5). The other presets, storybook and temple are
+only reachable with `?trial` (Settings) or `?look=`; the unpicked looks and storybook leave the code at the
+start of Phase 3. Temple stays as a future per-building style (Phase 5).
+`docs/art-reference.jpg` remains the reference for the Japanese garden vocabulary and the caretaker's look.
 
 ## Scale
 - **1 unit = 1 metre.** The caretaker is ~1.8 m tall including the hair bun (placeholder), walk speed 4.2 m/s.
@@ -170,9 +174,9 @@ palette (plan 7.2). Path `#D9C39D`/`#A48A62`, water `#9CC7B8`→`#3F7F7A`, cherr
 | A1 | 2D vs 3D | **Decided: 3D** (owner, 2026-11-10) |
 | A2 | Camera angle, height, zoom | **Decided: camera A, Classic ~40°** (owner, 2026-11-10). Options B and C are recorded in `docs/phase1/README.md`. Trees can still hide the caretaker (Phase 2: fade canopies in between) |
 | A3 | World scale and spacing | **Decided: Medium caretaker, 1.8 m** (owner, 2026-11-10). Trees and spacing unchanged |
-| A4 | Character proportions | Phase 2 gate: **chibi** or **storybook** to try in Settings (`docs/phase2/README.md`) |
-| A5 | Building kit style | Phase 2 gate: **temple** or **timber** to try in Settings |
-| A6 | Shading family | Phase 2 gate: **Painted**, **Painted+**, **Lanternfall-like**, **Lanternfall+** or **Woodblock** to try in Settings. Owner leaning toward Lanternfall-like (2026-11-10), not decided |
+| A4 | Character proportions | **Decided: chibi** (owner, 2026-11-10) |
+| A5 | Building kit style | **Decided: timber by default**, temple and others as a free per-building style later (Phase 5); timber detail pass (roofs first) before Phase 3's buildings (owner, 2026-11-10) |
+| A6 | Shading family | **Decided: Lanternfall+** (owner, 2026-11-10) |
 | A7 | Seasonal palettes | Phase 5 gate |
 
 ## External assets

@@ -1,5 +1,18 @@
 # Changelog
 
+## Phase 2 gate decisions (2026-11-10)
+- **A4 decided: chibi** (locked). **A5 decided: rustic timber is the default building style**; temple stays as a
+  future per-building style choice (Phase 5). A timber detail pass, roofs first, is queued for a future session.
+- The Art trial menu is hidden (`?trial` shows it); the game always opens in Lanternfall+, chibi and timber.
+  The default saved kit is now timber.
+
+## Decisions and direction (2026-11-10)
+- **A6 decided: Lanternfall+.** Plan 7.1 rewritten (Lanternfall's crisp inked look, grounded and richly
+  detailed; Moss & Bell reads as Lanternfall's sibling on purpose). AGENTS.md's art rule and
+  `docs/ART_PIPELINE.md` updated. PC first; phone budget deferred.
+- **Story frame:** chapter 1 is a mindfulness journey that stumbles on an old Zen monastery to fix up (plan 4.5).
+- **Noted for later:** a mindfulness edition with real-time meditations and reflection (plan 13).
+
 ## Phase 2 follow-up: Lanternfall+ goes richer (2026-11-10)
 - Owner: "ditch the worry about the phone right now and just focus on PC", do all six detail ideas.
   Lanternfall+ now builds a new **rich** detail level: leafy inked crowns with roots and twigs; inked wood

@@ -231,7 +231,7 @@ export const LOOKS: Record<LookId, LookDef> = {
   },
 };
 
-export const DEFAULT_LOOK: LookId = 'painted';
+export const DEFAULT_LOOK: LookId = 'lanternfallplus';
 
 export function lookById(id: string | null | undefined): LookDef {
   return (LOOK_IDS as readonly string[]).includes(id ?? '') ? LOOKS[id as LookId] : LOOKS[DEFAULT_LOOK];

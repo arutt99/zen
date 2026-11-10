@@ -1,6 +1,6 @@
 # Tasks
 
-**Current phase: 2, Warm the look. Waiting at the gate.** (plan section 10)
+**Current phase: 2, Warm the look. Waiting at the gate: A4, A5 and A6 decided; the owner's PC frame-rate check is the last item.** (plan section 10)
 
 The owner reported the Phase 0 and Phase 1 gate checks passed on their phone and PC (2026-11-10).
 
@@ -78,9 +78,15 @@ See plan section 10. Owner direction (2026-11-10): **nothing jumps from 0 to 100
 ### Known Phase 1 gaps
 - Only the first site exists, so after the shelter there is nothing to build with what you gather (Phase 3 adds the rest). The pacing bot's 9.8 s is a perfect player on a short first loop: below the plan's ~30 s for the shelter and 30–90 s cycle target. Real players walk less directly; the target is checked properly once Phase 3 adds the longer buildings.
 - Gather trees look like decor trees (only the boulders got a moss cap to tell them apart). A gentle highlight or a distinct gatherable tree kind would help new players; Phase 2's Zen kit is the place for it.
-- In mixed-material buildings, parts of one material can appear before the parts of another that sit under them (deposits are per material). Only matters from the gravel garden on; to settle with A5 (the building kit) in Phase 2.
+- In mixed-material buildings, parts of one material can appear before the parts of another that sit under them (deposits are per material). Only matters from the gravel garden on; settle with the first mixed-material building in Phase 3 (A5 is decided: timber).
 - Trees between the camera and the caretaker still hide them (A2).
 - Performance has only been measured with software rendering in a container (1–5 fps there), not on a phone.
+
+## Owner direction notes (2026-11-10)
+- **Story frame, chapter 1:** the caretaker is on a mindfulness journey and stumbles on an old Zen monastery
+  to fix up (plan 4.5). Opening text and the walk-in are drafted in Phase 3.
+- **A future mindfulness edition:** two versions, the calm world-building game and one that adds real-time
+  meditations and moments of reflection with guidance (plan 13). Noted, not planned; no work until later.
 
 ## Phase 2: Warm the look
 See plan section 10. Owner choices before the build (2026-11-10): wildcard look = **woodblock print**; two
@@ -105,15 +111,28 @@ caretaker styles (**chibi** + **storybook**); two kits on the shelter (**temple*
 - [x] Lanternfall+ **rich** detail (owner: PC first, all six ideas): leafy inked crowns, roots, inked wood/bark/
   stone marks, ground dressing, pond ripples/shoreline/koi, butterflies, drifting leaves, bobbing lotus,
   swaying lantern, lantern light at night
-- [ ] **Owner:** try the looks, caretakers and kits on the phone and decide **A4, A5, A6** (see `docs/phase2/README.md`)
+- [x] **Owner:** decided **A6: Lanternfall+** (2026-11-10). Plan 7.1, AGENTS.md and ART_PIPELINE updated
+- [x] **Owner:** decided **A4: chibi** (locked) and **A5: timber as the default style**, with temple kept as a
+  style to choose per building later (Phase 5 decorating), 2026-11-10. The Art trial menu is hidden
+  (`?trial` shows it); the game always opens in Lanternfall+, chibi, timber
 - [ ] **Owner:** gate check (below)
 
 ### Gate checklist (owner)
-- [ ] Tried the three looks on the phone and picked a direction (A6)
-- [ ] Picked a caretaker style (A4) and a building kit style (A5)
-- [ ] If Painted: a phone screenshot next to `docs/art-reference.jpg` reads as the same world, not as Lanternfall
-- [ ] Holds frame rate on Medium on the phone in the chosen look, by day and at night (fps bottom-left)
-- [ ] Then: `docs/ART_PIPELINE.md` records the final values, and the unpicked options are removed
+- [x] Picked a direction (A6): **Lanternfall+**, judged on PC (owner set phones aside for now)
+- [x] Picked a caretaker style (A4: chibi) and a building kit style (A5: timber by default)
+- [x] ~~If Painted: a phone screenshot next to the reference~~ (not applicable: Lanternfall+ chosen)
+- [ ] Holds frame rate on the owner's PC in Lanternfall+, by day and at night (fps bottom-left). Phone check deferred by the owner
+- [x] `docs/ART_PIPELINE.md` records the decisions; the unpicked options are out of the menu
+- [ ] Unpicked options removed from the code (Painted, Painted+, Woodblock looks; storybook proportions).
+  Deferred to the start of Phase 3: they're hidden, and plain Lanternfall stays as the light look the smoke
+  test drives (software GL can't run Lanternfall+ fast enough). Temple stays: it's a future style choice
+
+### Next, at the start of Phase 3
+- **Timber detail pass, roofs first** (owner: "as long as we can make roofs more detailed"; a future pass):
+  layered thatch bundles with a ragged eave, a bound ridge cap with crossed, lashed ridge poles and a little
+  moss, rafter poles and purlins under the eaves, bark grain and rope lashings at the joints, a firmer log
+  floor. Every Phase 3 building is built in timber first, so this comes before them.
+- Remove the unpicked looks and storybook proportions from the code (see the gate list).
 
 ### Known Phase 2 gaps
 - The time-of-day presets only change light, sky, fog, water and particles; ground and foliage colors stay the day's (seasons, Phase 5, will add palettes).

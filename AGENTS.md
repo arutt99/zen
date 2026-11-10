@@ -6,7 +6,7 @@
 - Game rules live in src/sim and never import three.js.
 - Every proximity interaction implements the interface in src/sim/proximity.ts.
 - Models are built in code; follow docs/ART_PIPELINE.md for scale, outlines and palette.
-- The art target is the painted reference (plan section 7.1, docs/art-reference.jpg), NOT Lanternfall's look. It is not final yet.
+- The art direction is decided: Lanternfall+ (plan section 7.1, owner 2026-11-10): crisp bands, ink on everything, rich color, grounded, richly detailed. PC first for now; phones get a trimmed budget later.
 - ART DECISIONS: before building on an undecided art decision point (plan 7.4, A1–A7), STOP and warn the owner: what must be decided, options with screenshots, what gets expensive to change afterwards, and your recommendation. Never lock one silently.
 - No external assets without source + license logged in docs/ART_PIPELINE.md.
 - Never claim a test, build, or device check that you did not actually run.

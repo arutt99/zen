@@ -1,6 +1,10 @@
 # Phase 2 gate: art decision points A4 (characters), A5 (building kit), A6 (shading family)
 
-> **Not decided yet.** Everything below can be switched live in the game: ☰ → *Art trial (Phase 2)*.
+> **Decided (owner, 2026-11-10): A6 Lanternfall+, A4 chibi, A5 timber by default** (temple later as a
+> per-building style). Kept below as the record of what was compared. The trial menu is now hidden; add
+> `?trial` to the address to show it again.
+>
+> *Before the decisions:* everything below could be switched live in the game: ☰ → *Art trial (Phase 2)*.
 > Look reloads the page (a second or two); caretaker, kit and time switch at once. Your progress is kept.
 > On a computer you can also add `?look=painted`, `?look=paintedplus`, `?look=lanternfall`, `?look=lanternfallplus` or `?look=woodblock`
 > to the address.
