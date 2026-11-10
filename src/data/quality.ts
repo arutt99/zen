@@ -1,39 +1,55 @@
-// Quality tiers (plan 6): pixel ratio, shadows, grass, particles, painterly pass.
-// Balance-style numbers live here, not in render code.
+// Quality tiers (plan 6). The table is Lanternfall's (render/engine.ts QUALITY), moved to data/ so
+// every tunable number lives here. Lanternfall's grass and particle counts are for a 140 m battlefield;
+// the home island is smaller, so the stage scales them by area.
 
 export type QualityTier = 'low' | 'medium' | 'high' | 'ultra';
 export const QUALITY_TIERS: readonly QualityTier[] = ['low', 'medium', 'high', 'ultra'];
 
 export interface QualitySettings {
-  maxPixelRatio: number;
-  shadows: boolean;
-  shadowMapSize: number;
-  grassBlades: number;
+  label: string;
+  /** Highest device pixel ratio used. */
+  dpr: number;
+  /** Shadow map size. */
+  shadow: number;
+  msaa: number;
+  /** Tilt-shift blur (classic look only). */
+  tilt: boolean;
+  /** Kuwahara paint filter (classic look only). */
+  painterly: boolean;
+  grass: number;
+  /** Terrain grid spacing in metres. */
+  terrainStep: number;
   particles: number;
-  painterlyPass: boolean;
-  antialias: boolean;
+  rays: boolean;
+  /** Multiplier on ambient particle counts (pollen, fireflies). */
+  ambient: number;
 }
 
 export const QUALITY: Record<QualityTier, QualitySettings> = {
-  low: { maxPixelRatio: 1, shadows: false, shadowMapSize: 512, grassBlades: 600, particles: 40, painterlyPass: false, antialias: false },
-  medium: { maxPixelRatio: 1.5, shadows: true, shadowMapSize: 1024, grassBlades: 2000, particles: 90, painterlyPass: true, antialias: false },
-  high: { maxPixelRatio: 2, shadows: true, shadowMapSize: 2048, grassBlades: 4500, particles: 160, painterlyPass: true, antialias: true },
-  ultra: { maxPixelRatio: 3, shadows: true, shadowMapSize: 4096, grassBlades: 9000, particles: 260, painterlyPass: true, antialias: true },
+  low: { label: 'Low', dpr: 1, shadow: 1024, msaa: 0, tilt: false, painterly: false, grass: 5000, terrainStep: 1, particles: 5000, rays: false, ambient: 0.4 },
+  medium: { label: 'Medium', dpr: 1.25, shadow: 2048, msaa: 2, tilt: true, painterly: false, grass: 20000, terrainStep: 0.5, particles: 9000, rays: true, ambient: 0.7 },
+  high: { label: 'High', dpr: 1.25, shadow: 3072, msaa: 4, tilt: true, painterly: true, grass: 48000, terrainStep: 0.5, particles: 14000, rays: true, ambient: 1 },
+  ultra: { label: 'Ultra', dpr: 2, shadow: 4096, msaa: 4, tilt: true, painterly: true, grass: 90000, terrainStep: 0.5, particles: 20000, rays: true, ambient: 1.4 },
 };
 
 export interface DeviceHints {
   coarsePointer: boolean;
   deviceMemoryGb?: number | undefined;
   hardwareConcurrency?: number | undefined;
-  screenMinSide: number;
+  /** UNMASKED_RENDERER_WEBGL, lower-cased, if the browser shares it. */
+  gpu?: string | undefined;
 }
 
-/** Pick a default tier from what the browser tells us. Phones default to Medium (plan 6 target). */
+/**
+ * Pick a default tier. GPU rules are Lanternfall's detectQuality(); phones default to Medium (plan 6).
+ * iOS Safari under-reports cores and hides memory, so only clearly weak phones get Low.
+ */
 export function defaultTier(h: DeviceHints): QualityTier {
+  const gpu = h.gpu ?? '';
+  if (/swiftshader|llvmpipe|software|basic render/.test(gpu)) return 'low';
   const mem = h.deviceMemoryGb ?? 4;
   const cores = h.hardwareConcurrency ?? 4;
-  // iOS Safari under-reports cores and hides memory, so only clearly weak phones get Low.
   if (h.coarsePointer) return mem <= 2 || cores <= 2 ? 'low' : 'medium';
-  if (mem >= 8 && cores >= 8) return 'high';
-  return 'medium';
+  if (/intel(\(r\))? (hd|uhd) graphics|adreno|mali/.test(gpu)) return 'medium';
+  return 'high';
 }

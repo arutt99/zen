@@ -24,7 +24,8 @@ export interface KeyValueStore {
 }
 
 export function freshSave(): SaveData {
-  return { v: SAVE_VERSION, at: { place: 'home_valley', x: 0, z: 6 }, settings: { quality: 'auto', sound: true } };
+  // An empty place means "no position saved yet": the game starts at the place's spawn point.
+  return { v: SAVE_VERSION, at: { place: '', x: 0, z: 0 }, settings: { quality: 'auto', sound: true } };
 }
 
 /** One entry per old version: migrations[n] upgrades a version-n object to version n+1. */

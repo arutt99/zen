@@ -5,36 +5,39 @@ The rules for building and tuning art. The **target look** is the painted storyb
 Phase 0 uses a Lanternfall-like look on purpose: banded cel shading and dark outlines. Phase 2 retunes it.
 
 ## Scale
-- **1 unit = 1 metre.** The caretaker is ~1.5 m tall (placeholder), walk speed 4.2 m/s.
-- Home island: walkable radius 26 m (`src/data/places.ts`).
+- **1 unit = 1 metre.** The caretaker is ~1.8 m tall including the hair bun (placeholder), walk speed 4.2 m/s.
+- Home valley floor: 48 × 36 m, plus 16 m of hills and rim (`src/data/places.ts`). Lanternfall's trees are
+  4–6 m tall; they were kept at that size for now. Scale is art decision point A3 (Phase 1 gate).
 
 ## Models
-- Every model is built in code (`src/render/models.ts`), deterministic from a seed. No model files.
-- To add a model: write a builder that returns a `THREE.Group`, use `paintMaterial()` for surfaces,
-  `addOutline()` for the outline shell, set `castShadow`/`receiveShadow`, and keep the origin on the ground.
-- Poly budget guide (Phase 0): tree ≤ 600 tris, rock ≤ 120, prop ≤ 300. Grass is instanced.
+- Every model is built in code with Lanternfall's model builder `MB` (`src/render/mb.ts`): primitives with
+  vertex colors (a two-color gradient bottom to top), optional wobble and puffy normals, merged into one
+  geometry. `MB.build()` also adds the averaged normals the ink outline needs.
+- Decor kinds live in `src/render/decor-models.ts` as `{ solid, leaf?, glow? }`: `solid` uses `Mats.std`,
+  `leaf` uses `Mats.stdFoliage` (wind sway), `glow` uses `Mats.glow`. Add a kind there and to
+  `DECOR_KINDS` in `src/data/validate.ts` (a test checks they match).
+- Instanced wherever an item repeats (decor, grass, flowers, lily pads).
 
-## Shading (Phase 0 values, `src/render/materials.ts` → `DEFAULT_STYLE`)
-| Setting | Value | Painted target (Phase 2 retune checklist) |
-|---|---|---|
-| Tone bands | 3, hard steps (110→255) | softer, wider blended steps |
-| Brush texture strength | 0.35 | higher |
-| Outline color | `#2E2620` | warm brown, thinner |
-| Outline width | 0.035 m (0.6× on small props) | thinner; characters and buildings only |
-| Outlines on | trees, rocks, props, caretaker | not on foliage or ground |
-| Post grade | saturation 0.92, warmth 0.06, grain 0.035, vignette 0.35 | warmer, lower saturation, paper grain, distance haze |
-| Shadows | PCF soft, from Medium up | lighter, warm-tinted |
+## Shading (Lanternfall's inked look, as copied)
+| Setting | Where | Value | Painted target (Phase 2 retune checklist) |
+|---|---|---|---|
+| Tone bands | `celPatch()` in `materials.ts` | 3 bands with hard steps at 0.62–0.68 and 1.02–1.08 | softer, wider blended steps |
+| Shadow tint | `celPatch()` | cool `(0.8, 0.82, 1.08)` | warm, lighter |
+| Brush strength | `paint()` | 0.42 × per-material amount | higher |
+| Outline | `outlineMaterial()` | near-black, 1.9/720 of screen height, on all `MB` meshes | warm brown, thinner, characters and buildings only |
+| Ground | `stage.ts` terrain shader | broad painted patches with crisp edges, inked path edge | softer edges, no ink on ground |
+| Post | `engine.ts` | bloom 0.24, grade from the place preset, vignette 0.32 | warmer grade, lower saturation, paper grain, distance haze |
+| Classic look | `style.ts` (`?style=classic`) | smooth shading + Kuwahara paint filter + tilt-shift (High/Ultra) | a candidate for the look switcher |
 
 ## Palette
-Home valley, spring day (`src/data/places.ts`): moss `#779777`, fern `#A3B591`, cedar `#846B50`,
-light wood `#D9C39D`, warm paper `#F2E4C8`, stone `#9D9C8B`, water `#9CC7B8`→`#5E968E`,
-lantern `#F4C98A`, cherry `#E9A9B8`, roof slate `#5F6B6A`. Light and fog: `src/data/presets.ts`.
+Home valley, spring day: `src/data/presets.ts` (`home_day`), Lanternfall's meadow nudged toward the plan's
+palette (plan 7.2). Path `#D9C39D`/`#A48A62`, water `#9CC7B8`→`#3F7F7A`, cherry blossom `#D98AA0`→`#F6D2DC`.
 
 ## Art decision points (plan 7.4)
 | # | Decision | Status |
 |---|---|---|
 | A1 | 2D vs 3D | **Due now (end of Phase 0).** Built as 3D; waiting for owner confirmation. |
-| A2 | Camera angle, height, zoom | Phase 1 gate. Current: two presets in `src/render/camera.ts` |
+| A2 | Camera angle, height, zoom | Phase 1 gate. Current: two presets in `src/render/camera.ts`; trees can hide the caretaker |
 | A3 | World scale and spacing | Phase 1 gate |
 | A4–A6 | Character style, building kit, shading family | Phase 2 gate |
 | A7 | Seasonal palettes | Phase 5 gate |

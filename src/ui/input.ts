@@ -2,11 +2,12 @@
 // Also tracks whether the last input was a finger, for prompt wording (plan 6).
 
 import { applyDeadZone, combineMoves, type MoveInput, type PlayerIntent } from '../sim/input';
+import { isTouch } from './touch';
 
 export type InputKind = 'keyboard' | 'gamepad' | 'touch';
 
 export class InputController {
-  lastKind: InputKind = matchMedia('(pointer: coarse)').matches ? 'touch' : 'keyboard';
+  lastKind: InputKind = isTouch() ? 'touch' : 'keyboard';
   onZoom: ((dir: 1 | -1) => void) | null = null;
   onMenu: (() => void) | null = null;
 

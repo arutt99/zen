@@ -1,23 +1,71 @@
-// Small math and random helpers shared by sim and render. No three.js here.
+// Copied from Lanternfall (games/lanternfall/src/core/util.ts @ b282628). Plus damp() and hashString() for Moss & Bell.
+// Pure math helpers shared by the simulation and the renderer.
+export const clamp = (v: number, a = 0, b = 1) => (v < a ? a : v > b ? b : v);
+export const lerp = (a: number, b: number, t: number) => a + (b - a) * t;
+export const smoothstep = (a: number, b: number, x: number) => {
+  const t = clamp((x - a) / (b - a));
+  return t * t * (3 - 2 * t);
+};
+export const dist2 = (ax: number, az: number, bx: number, bz: number) => {
+  const dx = ax - bx;
+  const dz = az - bz;
+  return dx * dx + dz * dz;
+};
 
-export const clamp = (v: number, lo: number, hi: number): number => (v < lo ? lo : v > hi ? hi : v);
-export const lerp = (a: number, b: number, t: number): number => a + (b - a) * t;
+/** A seeded random number source. Its state can be read and set, so a saved battle replays the same rolls. */
+export interface Rng {
+  (): number;
+  state: number;
+}
+
+export function makeRng(seed: number): Rng {
+  const rng = (() => {
+    const a = (rng.state = (rng.state + 0x6d2b79f5) | 0);
+    let t = Math.imul(a ^ (a >>> 15), 1 | a);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  }) as Rng;
+  rng.state = seed >>> 0;
+  return rng;
+}
+
+function hash2(x: number, y: number, seed: number) {
+  let h = Math.imul(x | 0, 374761393) + Math.imul(y | 0, 668265263) + Math.imul(seed | 0, 2147483647);
+  h = Math.imul(h ^ (h >>> 13), 1274126177);
+  return ((h ^ (h >>> 16)) >>> 0) / 4294967296;
+}
+
+export function noise2(x: number, y: number, seed = 0) {
+  const xi = Math.floor(x);
+  const yi = Math.floor(y);
+  const fx = x - xi;
+  const fy = y - yi;
+  const ux = fx * fx * (3 - 2 * fx);
+  const uy = fy * fy * (3 - 2 * fy);
+  const a = hash2(xi, yi, seed);
+  const b = hash2(xi + 1, yi, seed);
+  const c = hash2(xi, yi + 1, seed);
+  const d = hash2(xi + 1, yi + 1, seed);
+  return a + (b - a) * ux + (c - a) * uy + (a - b - c + d) * ux * uy;
+}
+
+export function fbm(x: number, y: number, seed = 0, octaves = 4) {
+  let amp = 0.5;
+  let sum = 0;
+  let norm = 0;
+  for (let i = 0; i < octaves; i++) {
+    sum += amp * noise2(x, y, seed + i * 17);
+    norm += amp;
+    amp *= 0.5;
+    x *= 2.03;
+    y *= 2.03;
+  }
+  return sum / norm;
+}
 
 /** Frame-rate independent exponential smoothing: move `current` toward `target`. */
 export const damp = (current: number, target: number, lambda: number, dt: number): number =>
   lerp(current, target, 1 - Math.exp(-lambda * dt));
-
-/** Deterministic seeded random (mulberry32). Returns a function giving [0, 1). */
-export function rng(seed: number): () => number {
-  let a = seed >>> 0;
-  return () => {
-    a = (a + 0x6d2b79f5) >>> 0;
-    let t = a;
-    t = Math.imul(t ^ (t >>> 15), t | 1);
-    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
-    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
-  };
-}
 
 /** Stable 32-bit hash of a string, for seeding per-object randomness from IDs. */
 export function hashString(s: string): number {
@@ -27,28 +75,4 @@ export function hashString(s: string): number {
     h = Math.imul(h, 16777619);
   }
   return h >>> 0;
-}
-
-/** Smooth 2D value noise in roughly [-1, 1]. Cheap, deterministic, good enough for terrain. */
-export function valueNoise2(x: number, y: number, seed = 0): number {
-  const xi = Math.floor(x), yi = Math.floor(y);
-  const xf = x - xi, yf = y - yi;
-  const h = (i: number, j: number) => {
-    let n = Math.imul(i, 374761393) + Math.imul(j, 668265263) + Math.imul(seed, 1442695041);
-    n = Math.imul(n ^ (n >>> 13), 1274126177);
-    return ((n ^ (n >>> 16)) >>> 0) / 2147483648 - 1;
-  };
-  const u = xf * xf * (3 - 2 * xf), v = yf * yf * (3 - 2 * yf);
-  return lerp(lerp(h(xi, yi), h(xi + 1, yi), u), lerp(h(xi, yi + 1), h(xi + 1, yi + 1), u), v);
-}
-
-export function fbm2(x: number, y: number, octaves = 4, seed = 0): number {
-  let sum = 0, amp = 0.5, freq = 1, norm = 0;
-  for (let o = 0; o < octaves; o++) {
-    sum += amp * valueNoise2(x * freq, y * freq, seed + o * 17);
-    norm += amp;
-    amp *= 0.5;
-    freq *= 2;
-  }
-  return sum / norm;
 }

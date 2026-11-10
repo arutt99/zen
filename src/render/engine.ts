@@ -1,137 +1,240 @@
-// Renderer setup: quality tiers, resize, WebGL context loss, and a light painterly post pass
-// (color grade, warm tint, paper grain, vignette). Retuned in Phase 2.
-
+// Copied from Lanternfall (games/lanternfall/src/render/engine.ts @ b282628).
+// Changes: the quality table moved to src/data/quality.ts; the RTS camera rig was removed (Moss & Bell
+// uses a follow camera, src/render/camera.ts); the field of view is set by the follow camera.
+// Renderer and post-processing chain.
 import * as THREE from 'three';
-import { QUALITY, type QualitySettings, type QualityTier } from '../data/quality';
-import type { LightPreset } from '../data/presets';
+import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
+import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
+import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
+import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js';
+import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
+import { QUALITY, type QualitySettings as Quality, type QualityTier as QualityId } from '../data/quality';
+import type { PlacePreset as Biome } from '../data/presets';
+import { inkShared, Mats } from './materials';
+import { INK } from './style';
 
-const POST_VERT = `varying vec2 vUv; void main(){ vUv = uv; gl_Position = vec4(position.xy, 0.0, 1.0); }`;
-const POST_FRAG = `
-uniform sampler2D tScene; uniform float uSat; uniform float uWarm; uniform float uTime; uniform vec2 uRes;
-varying vec2 vUv;
-float hash(vec2 p){ return fract(sin(dot(p, vec2(12.9898,78.233))) * 43758.5453); }
-void main(){
-  vec3 c = texture2D(tScene, vUv).rgb;
-  float l = dot(c, vec3(0.299, 0.587, 0.114));
-  c = mix(vec3(l), c, uSat);
-  c += vec3(uWarm, uWarm * 0.45, -uWarm * 0.4);
-  float grain = hash(floor(vUv * uRes / 2.0)) - 0.5;
-  c += grain * 0.035;
-  vec2 d = vUv - 0.5;
-  c *= 1.0 - dot(d, d) * 0.35;
-  gl_FragColor = vec4(c, 1.0);
-  #include <colorspace_fragment>
-}`;
+// Removes invalid and extreme HDR values, which the bloom blur would otherwise spread across the whole frame.
+const SanitizeShader = {
+  uniforms: { tDiffuse: { value: null } },
+  vertexShader: /* glsl */ `varying vec2 vUv; void main(){ vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }`,
+  fragmentShader: /* glsl */ `
+    uniform sampler2D tDiffuse; varying vec2 vUv;
+    float fix(float v) { return (v == v && v < 1e6) ? clamp(v, 0.0, 24.0) : 0.0; }
+    void main() { vec4 c = texture2D(tDiffuse, vUv); gl_FragColor = vec4(fix(c.r), fix(c.g), fix(c.b), 1.0); }
+  `,
+};
+
+const PaintShader = {
+  uniforms: {
+    tDiffuse: { value: null },
+    uTexel: { value: new THREE.Vector2() },
+    uRadius: { value: 2.2 },
+    uAmt: { value: 0.8 },
+  },
+  vertexShader: /* glsl */ `varying vec2 vUv; void main(){ vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }`,
+  fragmentShader: /* glsl */ `
+    // Anisotropy-free four-sector Kuwahara filter: flattens detail into brush-like patches.
+    uniform sampler2D tDiffuse; uniform vec2 uTexel; uniform float uRadius; uniform float uAmt;
+    varying vec2 vUv;
+    void sector(vec2 dir, inout float bestV, inout vec3 best) {
+      vec3 m = vec3(0.0); vec3 s = vec3(0.0);
+      for (int i = 0; i < 3; i++) {
+        for (int j = 0; j < 3; j++) {
+          vec2 o = vec2(float(i), float(j)) * 0.5 * uRadius * dir * uTexel;
+          vec3 c = min(texture2D(tDiffuse, vUv + o).rgb, vec3(3.0));
+          m += c; s += c * c;
+        }
+      }
+      m /= 9.0; s = s / 9.0 - m * m;
+      float v = s.r + s.g + s.b;
+      if (v < bestV) { bestV = v; best = m; }
+    }
+    void main() {
+      vec4 src = texture2D(tDiffuse, vUv);
+      float bestV = 1e9; vec3 best = src.rgb;
+      sector(vec2(-1.0, -1.0), bestV, best);
+      sector(vec2( 1.0, -1.0), bestV, best);
+      sector(vec2(-1.0,  1.0), bestV, best);
+      sector(vec2( 1.0,  1.0), bestV, best);
+      // Bright magic keeps its full HDR energy for bloom.
+      float keep = smoothstep(1.2, 2.6, max(src.r, max(src.g, src.b)));
+      gl_FragColor = vec4(mix(src.rgb, mix(src.rgb, best, uAmt), 1.0 - keep), src.a);
+    }
+  `,
+};
+
+const FinalShader = {
+  uniforms: {
+    tDiffuse: { value: null },
+    uTexel: { value: new THREE.Vector2() },
+    uTilt: { value: 1 },
+    uLift: { value: new THREE.Vector3() },
+    uGain: { value: new THREE.Vector3(1, 1, 1) },
+    uSat: { value: 1.1 },
+    uVignette: { value: 0.32 },
+    uTime: { value: 0 },
+    uFade: { value: 0 },
+    uDesat: { value: 0 },
+  },
+  vertexShader: /* glsl */ `varying vec2 vUv; void main(){ vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }`,
+  fragmentShader: /* glsl */ `
+    uniform sampler2D tDiffuse; uniform vec2 uTexel; uniform float uTilt, uSat, uVignette, uTime, uFade, uDesat;
+    uniform vec3 uLift, uGain;
+    varying vec2 vUv;
+    float rnd(vec2 p){ return fract(sin(dot(p, vec2(12.9898, 78.233))) * 43758.5453); }
+    void main() {
+      vec3 c = texture2D(tDiffuse, vUv).rgb;
+      // Tilt-shift gives the battlefield the feel of a handcrafted miniature.
+      float tilt = smoothstep(0.2, 0.62, abs(vUv.y - 0.5)) * uTilt * 5.5;
+      if (tilt > 0.05) {
+        vec3 sum = c;
+        for (int i = 0; i < 8; i++) {
+          float a = float(i) * 0.7854;
+          sum += texture2D(tDiffuse, vUv + vec2(cos(a), sin(a)) * tilt * uTexel).rgb;
+          sum += texture2D(tDiffuse, vUv + vec2(cos(a + 0.39), sin(a + 0.39)) * tilt * 0.5 * uTexel).rgb;
+        }
+        c = sum / 17.0;
+      }
+      c = c * uGain + uLift;
+      float l = dot(c, vec3(0.2126, 0.7152, 0.0722));
+      c = mix(vec3(l), c, uSat * (1.0 - uDesat));
+      vec2 q = vUv - 0.5;
+      float v = 1.0 - dot(q, q) * 2.0 * uVignette * 2.0;
+      c *= clamp(v, 0.0, 1.0);
+      c += (rnd(vUv * 913.0 + uTime) - 0.5) * 0.006 * (l + 0.1);
+      c *= 1.0 - uFade;
+      gl_FragColor = vec4(max(c, 0.0), 1.0);
+    }
+  `,
+};
 
 export class Engine {
-  readonly renderer: THREE.WebGLRenderer;
-  readonly scene = new THREE.Scene();
-  readonly camera = new THREE.PerspectiveCamera(42, 1, 0.1, 220);
-  tier: QualityTier;
-  q: QualitySettings;
-  contextLost = false;
-  private target: THREE.WebGLRenderTarget | null = null;
-  private post: { scene: THREE.Scene; cam: THREE.Camera; mat: THREE.ShaderMaterial } | null = null;
-  private listeners: ((tier: QualityTier) => void)[] = [];
+  renderer: THREE.WebGLRenderer;
+  camera: THREE.PerspectiveCamera;
+  composer!: EffectComposer;
+  scene: THREE.Scene = new THREE.Scene();
+  qualityId: QualityId = 'high';
+  quality: Quality = QUALITY.high;
+  renderScale = 1;
+  painterlyOn = true;
+  tiltOn = true;
+  private renderPass!: RenderPass;
+  private paintPass!: ShaderPass;
+  private bloomPass!: UnrealBloomPass;
+  private finalPass!: ShaderPass;
+  private fade = 0;
+  private fadeTarget = 0;
+  desat = 0;
 
-  constructor(readonly canvas: HTMLCanvasElement, tier: QualityTier) {
-    this.tier = tier;
-    this.q = QUALITY[tier];
-    this.renderer = new THREE.WebGLRenderer({ canvas, antialias: this.q.antialias, powerPreference: 'high-performance' });
+  constructor(canvas: HTMLCanvasElement) {
+    this.renderer = new THREE.WebGLRenderer({ canvas, antialias: false, powerPreference: 'high-performance', stencil: false });
+    this.renderer.shadowMap.enabled = true;
+    this.renderer.shadowMap.type = THREE.PCFShadowMap;
+    if (INK) {
+      // The outline shell has no use in the shadow map, so shadows draw each mesh once.
+      const shadows = this.renderer.shadowMap;
+      const renderShadows = shadows.render;
+      shadows.render = (...args: Parameters<typeof renderShadows>) => {
+        Mats.outline.visible = Mats.outlineFoliage.visible = false;
+        renderShadows.apply(shadows, args);
+        Mats.outline.visible = Mats.outlineFoliage.visible = true;
+      };
+    }
+    this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    this.renderer.toneMappingExposure = 0.92;
     this.renderer.outputColorSpace = THREE.SRGBColorSpace;
-    this.renderer.toneMapping = THREE.NoToneMapping;
-    canvas.addEventListener('webglcontextlost', (e) => { e.preventDefault(); this.contextLost = true; });
-    canvas.addEventListener('webglcontextrestored', () => { this.contextLost = false; this.setTier(this.tier, true); });
-    this.applyTier();
-    this.resize();
+    this.camera = new THREE.PerspectiveCamera(34, 1, 0.5, 1600);
+    this.buildComposer();
     window.addEventListener('resize', () => this.resize());
-    window.visualViewport?.addEventListener('resize', () => this.resize());
-  }
-
-  onTierChange(fn: (tier: QualityTier) => void): void {
-    this.listeners.push(fn);
-  }
-
-  setTier(tier: QualityTier, force = false): void {
-    if (tier === this.tier && !force) return;
-    this.tier = tier;
-    this.q = QUALITY[tier];
-    this.applyTier();
     this.resize();
-    for (const l of this.listeners) l(tier);
   }
 
-  applyPreset(p: LightPreset): void {
-    this.scene.fog = new THREE.Fog(p.fogColor, p.fogNear, p.fogFar);
-    this.scene.background = new THREE.Color(p.skyHorizon);
-    if (this.post) {
-      this.post.mat.uniforms.uSat!.value = p.saturation;
-      this.post.mat.uniforms.uWarm!.value = p.warmth;
-    }
-  }
-
-  private applyTier(): void {
-    const r = this.renderer;
-    r.shadowMap.enabled = this.q.shadows;
-    r.shadowMap.type = THREE.PCFSoftShadowMap;
-    r.setPixelRatio(Math.min(window.devicePixelRatio || 1, this.q.maxPixelRatio));
-    if (this.q.painterlyPass && !this.post) {
-      const mat = new THREE.ShaderMaterial({
-        vertexShader: POST_VERT,
-        fragmentShader: POST_FRAG,
-        uniforms: { tScene: { value: null }, uSat: { value: 1 }, uWarm: { value: 0 }, uTime: { value: 0 }, uRes: { value: new THREE.Vector2(1, 1) } },
-        depthTest: false,
-        depthWrite: false,
-      });
-      const scene = new THREE.Scene();
-      scene.add(new THREE.Mesh(new THREE.PlaneGeometry(2, 2), mat));
-      this.post = { scene, cam: new THREE.Camera(), mat };
-    }
-    if (!this.q.painterlyPass && this.post) {
-      this.post.mat.dispose();
-      this.post = null;
-      this.target?.dispose();
-      this.target = null;
-    }
-    // Shadow maps are allocated lazily per light; ask lights to rebuild at the new size.
-    this.scene.traverse((o) => {
-      if (o instanceof THREE.DirectionalLight) {
-        o.castShadow = this.q.shadows;
-        o.shadow.mapSize.set(this.q.shadowMapSize, this.q.shadowMapSize);
-        o.shadow.map?.dispose();
-        o.shadow.map = null;
-      }
+  private buildComposer() {
+    const size = this.renderer.getDrawingBufferSize(new THREE.Vector2());
+    const target = new THREE.WebGLRenderTarget(Math.max(1, size.x), Math.max(1, size.y), {
+      type: THREE.HalfFloatType,
+      samples: this.quality.msaa,
     });
+    this.composer?.dispose();
+    this.composer = new EffectComposer(this.renderer, target);
+    this.renderPass = new RenderPass(this.scene, this.camera);
+    this.paintPass = new ShaderPass(PaintShader);
+    this.bloomPass = new UnrealBloomPass(new THREE.Vector2(size.x, size.y), INK ? 0.24 : 0.42, INK ? 0.5 : 0.72, INK ? 1.2 : 1.02);
+    this.finalPass = new ShaderPass(FinalShader);
+    const output = new OutputPass();
+    this.composer.addPass(this.renderPass);
+    this.composer.addPass(new ShaderPass(SanitizeShader));
+    this.composer.addPass(this.paintPass);
+    this.composer.addPass(this.bloomPass);
+    this.composer.addPass(this.finalPass);
+    this.composer.addPass(output);
+    this.applyToggles();
   }
 
-  resize(): void {
-    const w = Math.max(1, window.innerWidth), h = Math.max(1, window.innerHeight);
+  private applyToggles() {
+    this.paintPass.enabled = !INK && this.quality.painterly && this.painterlyOn;
+    this.finalPass.uniforms.uTilt.value = !INK && this.quality.tilt && this.tiltOn ? 1 : 0;
+  }
+
+  setQuality(id: QualityId) {
+    this.qualityId = id;
+    this.quality = QUALITY[id];
+    this.renderScale = 1;
+    this.buildComposer();
+    this.resize();
+  }
+
+  setToggles(painterly: boolean, tilt: boolean) {
+    this.painterlyOn = painterly;
+    this.tiltOn = tilt;
+    this.applyToggles();
+  }
+
+  setScene(scene: THREE.Scene, biome: Biome) {
+    this.scene = scene;
+    this.renderPass.scene = scene;
+    const g = biome.grade;
+    this.finalPass.uniforms.uLift.value.set(...g.lift);
+    this.finalPass.uniforms.uGain.value.set(...g.gain);
+    this.finalPass.uniforms.uSat.value = g.sat;
+  }
+
+  /** Scales rendering resolution, used by automatic performance adjustment. */
+  setRenderScale(s: number) {
+    this.renderScale = s;
+    this.resize();
+  }
+
+  resize() {
+    const w = window.innerWidth;
+    const h = window.innerHeight;
+    const dpr = Math.min(window.devicePixelRatio || 1, this.quality.dpr) * this.renderScale;
+    this.renderer.setPixelRatio(dpr);
     this.renderer.setSize(w, h, false);
+    this.composer.setPixelRatio(dpr);
+    this.composer.setSize(w, h);
+    const texel = 1 / (w * dpr);
+    const texelY = 1 / (h * dpr);
+    this.paintPass.uniforms.uTexel.value.set(texel, texelY);
+    this.finalPass.uniforms.uTexel.value.set(texel, texelY);
+    this.paintPass.uniforms.uRadius.value = 2.4 * Math.max(1, dpr * 0.8);
     this.camera.aspect = w / h;
+    inkShared.uAspect.value = w / h;
+    // Narrow windows widen the view a little so the caretaker's surroundings stay readable.
+    this.camera.fov = w / h < 1.6 ? 34 * Math.min(1.35, 1.6 / (w / h)) : 34;
     this.camera.updateProjectionMatrix();
-    if (this.post) {
-      const pr = this.renderer.getPixelRatio();
-      const tw = Math.floor(w * pr), th = Math.floor(h * pr);
-      if (!this.target) {
-        this.target = new THREE.WebGLRenderTarget(tw, th, { samples: this.q.antialias ? 4 : 0, type: THREE.HalfFloatType });
-        this.target.texture.colorSpace = THREE.LinearSRGBColorSpace;
-      } else this.target.setSize(tw, th);
-      this.post.mat.uniforms.uRes!.value.set(tw, th);
-    }
   }
 
-  render(time: number): void {
-    if (this.contextLost) return;
-    const r = this.renderer;
-    if (this.post && this.target) {
-      r.setRenderTarget(this.target);
-      r.render(this.scene, this.camera);
-      r.setRenderTarget(null);
-      this.post.mat.uniforms.tScene!.value = this.target.texture;
-      this.post.mat.uniforms.uTime!.value = time;
-      r.render(this.post.scene, this.post.cam);
-    } else {
-      r.render(this.scene, this.camera);
-    }
+  fadeTo(v: number) {
+    this.fadeTarget = v;
+  }
+
+  render(dt: number, time: number) {
+    this.fade += (this.fadeTarget - this.fade) * (1 - Math.exp(-dt * 7));
+    const u = this.finalPass.uniforms;
+    u.uFade.value = this.fade;
+    u.uTime.value = time % 10;
+    u.uDesat.value = this.desat;
+    this.composer.render(dt);
   }
 }

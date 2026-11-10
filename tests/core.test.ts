@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { clamp, damp, hashString, rng } from '../src/core/util';
+import { clamp, damp, hashString, makeRng } from '../src/core/util';
 import { freshSave, loadSave, parseSave, SAVE_KEY, SAVE_VERSION, serializeSave, writeSave, type KeyValueStore } from '../src/core/save';
 import { defaultTier } from '../src/data/quality';
 
@@ -10,8 +10,9 @@ const memStore = (): KeyValueStore & { map: Map<string, string> } => {
 };
 
 test('rng is deterministic per seed and stays in [0, 1)', () => {
-  const a = rng(7), b = rng(7), c = rng(8);
-  const sa = Array.from({ length: 50 }, a), sb = Array.from({ length: 50 }, b), sc = Array.from({ length: 50 }, c);
+  const a = makeRng(7), b = makeRng(7), c = makeRng(8);
+  const take = (r: () => number) => Array.from({ length: 50 }, () => r());
+  const sa = take(a), sb = take(b), sc = take(c);
   assert.deepEqual(sa, sb);
   assert.notDeepEqual(sa, sc);
   for (const v of sa) assert.ok(v >= 0 && v < 1);
@@ -72,10 +73,11 @@ test('storage that throws never crashes the game', () => {
   assert.equal(serializeSave(freshSave()).includes(SAVE_KEY), false);
 });
 
-test('phones default to Medium or Low, strong desktops to High', () => {
-  assert.equal(defaultTier({ coarsePointer: true, deviceMemoryGb: 4, hardwareConcurrency: 8, screenMinSide: 390 }), 'medium');
-  assert.equal(defaultTier({ coarsePointer: true, deviceMemoryGb: 2, hardwareConcurrency: 4, screenMinSide: 360 }), 'low');
-  assert.equal(defaultTier({ coarsePointer: true, hardwareConcurrency: 4, screenMinSide: 390 }), 'medium');
-  assert.equal(defaultTier({ coarsePointer: false, deviceMemoryGb: 8, hardwareConcurrency: 12, screenMinSide: 1080 }), 'high');
-  assert.equal(defaultTier({ coarsePointer: false, screenMinSide: 800 }), 'medium');
+test('phones default to Medium unless clearly weak; GPU rules follow Lanternfall', () => {
+  assert.equal(defaultTier({ coarsePointer: true, deviceMemoryGb: 4, hardwareConcurrency: 8 }), 'medium');
+  assert.equal(defaultTier({ coarsePointer: true, hardwareConcurrency: 4 }), 'medium');
+  assert.equal(defaultTier({ coarsePointer: true, deviceMemoryGb: 2, hardwareConcurrency: 4 }), 'low');
+  assert.equal(defaultTier({ coarsePointer: false, gpu: 'angle (google, swiftshader device)' }), 'low');
+  assert.equal(defaultTier({ coarsePointer: false, gpu: 'intel(r) uhd graphics 620' }), 'medium');
+  assert.equal(defaultTier({ coarsePointer: false, gpu: 'nvidia geforce rtx 3060' }), 'high');
 });

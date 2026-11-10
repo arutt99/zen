@@ -44,17 +44,22 @@ file as a downloadable artifact.
 | Zoom (two presets) | Pinch | Mouse wheel, `-`/`=`, bumpers |
 | Menu | ☰ button | Esc / Start |
 
+## Engine
+
+The engine is copied from the owner's game **Lanternfall** (`arutt99/eGiAdMfElS`, `games/lanternfall`) and
+adapted; Lanternfall itself is untouched. `TASKS.md` lists which file came from where.
+
 ## Layout
 
 ```
 src/
   main.ts          boot, game loop, HUD wiring
-  core/            save (versioned, corrupt-safe), seeded random + noise
-  data/            places, light presets, quality tiers, data validation  (all tunable numbers live here)
-  sim/             headless rules: input vector, proximity rule, walker movement, place scatter  (no three.js)
-  render/          renderer + post pass, painterly materials, procedural models, stage, camera, caretaker, particles
-  audio/           synth buses, pentatonic scale, the bell
-  ui/              keyboard / gamepad / touch joystick input
+  core/            save (versioned, corrupt-safe), seeded random + noise, frame pacing
+  data/            places, place presets, quality tiers, data validation  (all tunable numbers live here)
+  sim/             headless rules: island geometry, input vector, proximity rule, walker  (no three.js)
+  render/          engine + post chain, painterly materials, model builder, decor, stage, camera, caretaker, particles
+  audio/           synth kit, audio engine (buses, sound bank), sound recipes
+  ui/              keyboard / gamepad / touch joystick input, touch detection
 public/            HTML shell, web manifest, icon (inlined into the build)
 scripts/           build, serve, test runner, browser smoke test
 tests/             unit tests

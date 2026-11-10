@@ -15,9 +15,9 @@ export const DEFAULT_WALKER: WalkerTuning = { maxSpeed: 4.2, accel: 22, decel: 2
 export interface Blocker { x: number; z: number; r: number }
 
 export interface WalkArea {
-  /** Keep the walker inside this circle (the island edge). */
-  boundsRadius: number;
-  /** Circles the walker can't enter (pond, rocks, trunks). */
+  /** False where the ground can't be stood on (water, the island rim, cliffs). */
+  walkable(x: number, z: number): boolean;
+  /** Circles the walker can't enter (trunks, rocks, props). */
   blockers: readonly Blocker[];
 }
 
@@ -49,14 +49,20 @@ export class Walker {
     if (dlen <= maxDelta) { this.vx = tx; this.vz = tz; }
     else { this.vx += (dx / dlen) * maxDelta; this.vz += (dz / dlen) * maxDelta; }
 
-    this.x += this.vx * dt;
-    this.z += this.vz * dt;
+    // Move one axis at a time so the walker slides along water edges and cliffs instead of sticking.
+    const nx = this.x + this.vx * dt;
+    if (area.walkable(nx, this.z)) this.x = nx;
+    else this.vx = 0;
+    const nz = this.z + this.vz * dt;
+    if (area.walkable(this.x, nz)) this.z = nz;
+    else this.vz = 0;
     this.resolve(area);
     if (this.speed > 0.2) this.heading = Math.atan2(this.vx, this.vz);
   }
 
   private resolve(area: WalkArea): void {
     const r = this.tuning.radius;
+    const px = this.x, pz = this.z;
     for (const b of area.blockers) {
       const dx = this.x - b.x, dz = this.z - b.z;
       const d = Math.hypot(dx, dz);
@@ -69,14 +75,7 @@ export class Walker {
         if (vn < 0) { this.vx -= vn * nx; this.vz -= vn * nz; } // slide along the edge
       }
     }
-    const max = area.boundsRadius - r;
-    const d = Math.hypot(this.x, this.z);
-    if (d > max) {
-      const nx = this.x / d, nz = this.z / d;
-      this.x = nx * max;
-      this.z = nz * max;
-      const vn = this.vx * nx + this.vz * nz;
-      if (vn > 0) { this.vx -= vn * nx; this.vz -= vn * nz; }
-    }
+    // Never let a push-out shove the walker into water or off the rim.
+    if (!area.walkable(this.x, this.z)) { this.x = px; this.z = pz; }
   }
 }

@@ -1,39 +1,29 @@
-// Placeholder caretaker (Phase 0): a capsule body, a head, and a little basket so facing reads.
-// Phase 2 replaces this with the real model (robe, bun, wicker basket that fills).
+// Placeholder caretaker (Phase 0): a capsule body, head, hair bun and a basket so facing reads.
+// Built with Lanternfall's model builder (MB) and painted material, so it gets the same brush
+// texture and ink outline as everything else. Phase 2 replaces it with the real model.
 
 import * as THREE from 'three';
-import { addOutline, paintMaterial } from './materials';
+import { inked, Mats } from './materials';
+import { MB } from './mb';
 
 export class CaretakerView {
   readonly root = new THREE.Group();
-  private body: THREE.Group;
+  private body = new THREE.Group();
   private bob = 0;
 
-  constructor(palette: { paper: string; cedar: string; lightWood: string }) {
+  constructor() {
     this.root.name = 'caretaker';
-    this.body = new THREE.Group();
-    const robe = new THREE.Mesh(new THREE.CapsuleGeometry(0.3, 0.5, 6, 12), paintMaterial({ color: palette.paper }));
-    robe.position.y = 0.55;
-    addOutline(robe);
-    const head = new THREE.Mesh(new THREE.SphereGeometry(0.28, 16, 12), paintMaterial({ color: '#F1D3B5' }));
-    head.position.y = 1.18;
-    addOutline(head);
-    const hair = new THREE.Mesh(new THREE.SphereGeometry(0.13, 12, 8), paintMaterial({ color: '#3A2E28' }));
-    hair.position.set(0, 1.44, -0.08);
-    const basket = new THREE.Mesh(new THREE.CylinderGeometry(0.22, 0.17, 0.38, 10), paintMaterial({ color: palette.lightWood }));
-    basket.position.set(0, 0.75, -0.3);
-    addOutline(basket);
-    this.body.add(robe, head, hair, basket);
-    this.body.traverse((o) => { if (o instanceof THREE.Mesh && o.name !== 'outline') o.castShadow = true; });
+    const m = new MB();
+    m.add(new THREE.CapsuleGeometry(0.3, 0.55, 6, 14), [0xe2d6bd, 0xf2e8d2], { p: [0, 0.6, 0] });
+    m.sphere(0.3, 0xf1d3b5, { p: [0, 1.28, 0] }, 16, 12);
+    m.sphere(0.32, 0x3a2e28, { p: [0, 1.36, -0.05], s: [1, 0.82, 1] }, 14, 10);
+    m.sphere(0.14, 0x3a2e28, { p: [0, 1.62, -0.12] }, 10, 8);
+    m.cyl(0.24, 0.18, 0.42, [0x9a7a55, 0xd9c39d], { p: [0, 0.82, -0.34] }, 12);
+    m.cyl(0.31, 0.31, 0.06, 0x846b50, { p: [0, 0.52, 0] }, 14);
+    const mesh = inked(new THREE.Mesh(m.build(), Mats.std));
+    mesh.castShadow = true;
+    this.body.add(mesh);
     this.root.add(this.body);
-    // Soft blob shadow so the caretaker stays grounded on Low (no shadow maps).
-    const blob = new THREE.Mesh(
-      new THREE.CircleGeometry(0.42, 20),
-      new THREE.MeshBasicMaterial({ color: '#3B3226', transparent: true, opacity: 0.22, depthWrite: false }),
-    );
-    blob.rotation.x = -Math.PI / 2;
-    blob.position.y = 0.02;
-    this.root.add(blob);
   }
 
   update(dt: number, x: number, y: number, z: number, heading: number, speed: number): void {

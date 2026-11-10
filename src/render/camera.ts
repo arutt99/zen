@@ -6,8 +6,8 @@ import { damp } from '../core/util';
 export interface ZoomPreset { distance: number; height: number; lookAhead: number }
 
 export const ZOOM_PRESETS: readonly ZoomPreset[] = [
-  { distance: 11, height: 9.5, lookAhead: 0.4 }, // near: phone default, satchel + nearby nodes readable
-  { distance: 17, height: 15, lookAhead: 0.6 }, // far: see more of the valley
+  { distance: 13, height: 11, lookAhead: 0.4 }, // near: phone default, basket + nearby nodes readable
+  { distance: 22, height: 19, lookAhead: 0.6 }, // far: see more of the valley
 ];
 
 export class FollowCamera {
