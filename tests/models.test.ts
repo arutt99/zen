@@ -53,7 +53,7 @@ test('the caretaker builds in every style, and outlines follow the look', () => 
       c.update(1 / 60, 0, 0, 0, 0, 3, { wood: 5, stone: 3 }, null);
     }
   }
-  useLook('painted');
+  useLook('lanternfall');
 });
 
 test('node views lose a visible piece with every unit and come back as they regrow', () => {
