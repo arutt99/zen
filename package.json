@@ -1,0 +1,24 @@
+{
+  "name": "moss-and-bell",
+  "version": "0.0.1",
+  "private": true,
+  "description": "Moss & Bell: a calm, restorative caretaking game. Phase 0 scaffold.",
+  "type": "module",
+  "scripts": {
+    "build": "node scripts/build.mjs",
+    "serve": "node scripts/serve.mjs",
+    "dev": "node scripts/build.mjs --watch",
+    "typecheck": "tsc --noEmit",
+    "test": "node scripts/test.mjs",
+    "smoke": "node scripts/smoke.cjs"
+  },
+  "dependencies": {
+    "three": "0.187.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.20.5",
+    "@types/three": "0.187.0",
+    "esbuild": "0.28.2",
+    "typescript": "5.9.3"
+  }
+}

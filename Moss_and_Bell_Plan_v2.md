@@ -10,7 +10,7 @@
 
 ## 1. The vision in one paragraph
 
-You arrive at an overgrown mountain valley with an empty satchel. Walk up to a fallen branch or a mossy stone and the caretaker gathers it on their own, in a calm, steady rhythm. Walk to a marked foundation and what you carry flows into it piece by piece, so you watch a hall rise beam by beam. As the home monastery grows, the valley heals: mist thins, flowers spread, animals arrive. Then you follow a trail out of the valley to new places, like a bamboo grove, a riverbank or a mountain pass. Each has its own small shrine to restore and a new material to bring home. The world follows your real clock and calendar. At any point you can sit on a bench, let the interface fade away and just watch the place live. The game has no ending; it's a place you keep going back to.
+You arrive at an overgrown mountain valley with an empty satchel. Walk up to a tree or a mossy boulder and the caretaker starts chopping or chipping on their own, in a calm, steady rhythm, and you watch the tree thin out swing by swing. Walk to a marked foundation and what you carry flows into it piece by piece, so you watch a hall rise beam by beam. As the home monastery grows, the valley heals: mist thins, flowers spread, animals arrive. Then you follow a trail out of the valley to new places, like a bamboo grove, a riverbank or a mountain pass. Each has its own small shrine to restore and a new material to bring home. The world follows your real clock and calendar. At any point you can sit on a bench, let the interface fade away and just watch the place live. The game has no ending; it's a place you keep going back to.
 
 ## 2. What the game is about
 
@@ -30,6 +30,7 @@ Everything in this plan serves these three things. If a feature serves none of t
 1. **Presence over pressure.** No fail states, deadlines, withering crops or "you were away" penalties.
 2. **Effortless hands.** The whole core loop works with one movement input and no buttons.
 3. **Growth you can see.** Progress is shown in the world, not in a menu.
+6. **Nothing jumps from 0 to 100%.** Every action moves the world a little at a time, and you see each step: a tree thins with every swing, a building gains a piece with every unit delivered. Half-done is a real, visible state that stays where you left it (owner decision, 2026-11-10).
 4. **Respect for Zen.** A fictional, Zen-inspired place. No enlightenment meter, no spiritual currency, no caricature of real practice. Everyday work is shown as care.
 5. **Light words.** The place tells its own story. Words are rare and therefore valued: poems, notes from earlier caretakers, a signpost.
 
@@ -43,12 +44,13 @@ Combat, dialogue trees, quests and quest logs, crafting trees, a shop or currenc
 **Gather → carry → deposit → watch it grow → the land responds → explore further.**
 One cycle takes 30–90 seconds. A building takes 1–4 cycles.
 
-### 3.1 Gathering (automatic)
-- Gather nodes: fallen branches, loose stones and, in later places, bamboo, clay and others. Each node holds a small number of units (default 3).
-- Walk into a node's gather radius and the caretaker turns to it and gathers **one unit per beat** (default beat 0.55 s). Walking away stops gathering, and every beat's unit has already been awarded. There is no "reward on completion" state to get wrong.
-- Each beat plays one note from a pentatonic scale, rising through the node's units. A small particle and a satchel bump confirm the gather.
-- An empty node rests, then regrows gently (default 20–40 s), shown by a visible change such as branches settling back. There are always enough nodes nearby that the player never has to wait.
-- Show the harvest as collecting fallen and loose material, never felling trees or breaking rock violently.
+### 3.1 Gathering (automatic, animated, gradual)
+- Gather nodes: trees (wood), mossy boulders (stone) and, in later places, bamboo, clay and others. A tree holds a few units (default 5), a boulder a few more (default 4–6).
+- Walk into a node's gather radius and the caretaker turns to it and starts working with a visible animation (an axe swing for trees, a chisel tap for stone), taking **one unit per beat** (default beat 0.55 s). Walking away stops at once, and every beat's unit has already been awarded. There is no "reward on completion" state to get wrong.
+- **The node visibly depletes with every unit.** A tree loses leaves and branches, its canopy shrinks and notches appear in the trunk, until only a stump is left. A boulder is chipped smaller piece by piece. Each step animates smoothly (falling leaves, wood chips, stone dust) instead of popping. A half-chopped tree stays half-chopped while you are away from it.
+- Each beat plays one note from a pentatonic scale, rising through the node's units. A small particle and a basket bump confirm the gather.
+- An empty node rests, then regrows gradually (default 20–40 s): a sapling rises from the stump and fills out, a boulder gathers moss and grows back. There are always enough nodes nearby that the player never has to wait.
+- Felling is gentle: trees thin out to a stump and grow back; no crashing trees or shattering rock (owner decision, 2026-11-10, replacing "collect only fallen material").
 
 ### 3.2 Carrying
 - The satchel holds a modest amount of each material (default 20) and visibly fills. The gentle cap is what creates the walk between gathering and building, which is part of the rhythm. Capacity never upgrades.
@@ -57,7 +59,7 @@ One cycle takes 30–90 seconds. A building takes 1–4 cycles.
 ### 3.3 Building (automatic deposit, visible growth)
 - A build site is a soft-edged ground marker with a ghost outline of the structure. Standing on it shows the cost as icons with how many are still needed.
 - While the player stands on the site, materials flow from the satchel into it **one per beat**, with an arc of the item and a soft wooden or stone note.
-- **The building grows as you deposit.** Each building has 4–6 visual stages tied to the share of materials delivered (foundation stones → posts → beams → roof → details). Partial progress is saved and stays forever.
+- **The building grows one piece per unit delivered.** Each building is an ordered list of parts (foundation stones → posts → beams → walls → roof tiles → details), one part per unit of cost, so a 24-unit hall grows in 24 visible steps. Each part animates into place. If you run out of materials partway, the building stays visibly incomplete (gaps in the walls, an open roof, scaffolding) until you bring more. Partial progress is saved and stays forever (owner decision, 2026-11-10, replacing 4–6 stages).
 - On completion: a bell, a dust and petal burst, and a short camera ease-out that shows the land responding (see 3.4). Then the next site gently reveals itself.
 - Sites are authored, fixed locations. Free placement is only for decorations (Phase 5).
 
@@ -189,11 +191,11 @@ The owner wants to see options before committing. So the look is built to be **t
 
 | # | Decision | Why it's expensive later | Decide by |
 |---|---|---|---|
-| A1 | **2D vs 3D world.** (Current: 3D.) | Every system that draws or places things depends on it | End of Phase 0 |
+| A1 | **2D vs 3D world.** | Every system that draws or places things depends on it | **Decided: 3D** (owner, 2026-11-10) |
 | A2 | **Camera angle, height and zoom range** | Sets how big every model, path and build site must be, and what's readable on a phone | Phase 1 gate |
 | A3 | **World scale and spacing:** how big the caretaker is versus trees, buildings and walking space | Every place layout and the collision setup are built around it | Phase 1 gate |
 | A4 | **Character proportions and style** (chibi vs taller, how faces are drawn) | All animation, the basket, animals and later residents follow it | Phase 2 gate |
-| A5 | **Building kit style:** the part set buildings are assembled from (posts, beams, roofs) and how stages look | Every building and its growth stages are made from it | Phase 2 gate |
+| A5 | **Building kit style:** the part set buildings are assembled from (posts, beams, roofs) and how a partly built building looks | Every building and every partial state is made from it | Phase 2 gate |
 | A6 | **Shading family:** painted-soft vs inked-cel vs another | Models are tuned against it; switching late means re-tuning every model | Phase 2 gate |
 | A7 | **Final palette per season** | Many places and props get tuned to it; cheap per item, costly in total | Phase 5 gate |
 
@@ -234,7 +236,7 @@ Not reused: the tower-defense simulation, towers, enemies, spells, tech tree and
 - **Content is data.** Places, materials, buildings, stages, decorations, animals, poems and presets live in typed TypeScript data files under `src/data/` with stable string IDs, as Lanternfall's `data/` does. Balance numbers live only there. A validation step at boot (and in tests) reports bad data clearly.
 - **Simulation apart from rendering.** As in Lanternfall, `src/sim` holds the game rules and runs headless with no three.js, so tests and bots use the real rules.
 - **Store facts, derive the rest.** The save stores facts (materials delivered per site, places discovered, items found, decorations placed, settings). Restoration level, unlocked sites, map entries and animal presence are **derived from those facts on load**. That makes "an objective replays after reload" or "duplicate build" impossible by construction.
-- **No timers in saved state.** Node regrowth is not saved; nodes start full on load. Building growth is per deposit, so there is no "mid-construction" state.
+- **No timers in saved state.** Node depletion and regrowth are not saved; nodes start full on load. Building growth is derived from the units delivered (parts shown = units delivered), so the exact partial building comes back on load with no extra state.
 - **Events over polling**; small modules; strict TypeScript.
 
 ### 9.3 Modules
@@ -246,7 +248,7 @@ Not reused: the tower-defense simulation, towers, enemies, spells, tech tree and
 | `sim/pacing-bot.ts` | A headless bot that walks the loop on each place map and reports cycle and building times, like Lanternfall's balance bot. It checks the 30–90 s cycle target automatically. |
 | `core/clock.ts` | Real or overridden time of day and season. Debug override. |
 | `core/save.ts` | Versioned JSON in `localStorage` with a migration hook per version and a safe fallback on corrupt data. Autosaves on every completed deposit batch, place change and when the page is hidden (important on phones). Asks the browser for persistent storage, and offers **export and import of the save as text** in Settings, because browsers can clear site data. |
-| `render/*` | Lanternfall's engine plus place builders, the restoration layer, the time and season lighting blend, buildings that grow in stages |
+| `render/*` | Lanternfall's engine plus place builders, the restoration layer, the time and season lighting blend, buildings that grow part by part, nodes that deplete and regrow visibly |
 | `render/places/*.ts` | One builder per place: terrain shape, water, paths, prop layout, nodes, sites, sit spots, exits |
 | `audio/*` | Buses, the beat-synced gathering and deposit notes, ambience layers, the bell |
 | `ui/*` | HUD chip, context button, joystick, travel map, collection book, settings |
@@ -263,7 +265,8 @@ export const BUILDINGS: Record<BuildingId, BuildingDef> = {
     place: 'home_valley',
     cost: { wood: 14, stone: 10 },
     requires: ['gravel_garden'],
-    stages: 5,
+    // One visible part per unit of cost, in build order: 24 parts here. The kit (plan 7.4, A5) supplies the models.
+    parts: 'hall_kit',
     restoration: 0.3,
   },
   // ...
@@ -281,14 +284,14 @@ export const BUILDINGS: Record<BuildingId, BuildingDef> = {
 ```
 
 ### 9.6 Starting balance (home valley; edit freely in data)
-Rule of thumb: about 3 units per node, about 2 s per node, about 5–10 s walking between nodes.
+Rule of thumb: about 5 units per tree and 4–6 per boulder, about 3 s per node, about 5–10 s walking between nodes.
 
 | Order | Building | Cost | Gathering it takes | Response |
 |---|---|---|---|---|
-| 1 | Caretaker's shelter | 6 wood | 2 nodes, ~30 s | Mist lifts from the clearing; a sit spot appears |
-| 2 | Gravel garden | 4 wood, 6 stone | 4 nodes, ~1 min | Raking ritual; the pond clears and the deer arrives |
-| 3 | Meditation hall | 14 wood, 10 stone | 8 nodes, ~2–3 min | Lanterns along the path; first caretaker note |
-| 4 | Bell tower | 10 wood, 8 stone | 6 nodes, ~2 min | Bell ritual; the trail gate to the bamboo grove opens |
+| 1 | Caretaker's shelter | 6 wood | 2 trees, ~30 s | Mist lifts from the clearing; a sit spot appears |
+| 2 | Gravel garden | 4 wood, 6 stone | 1 tree, 2 boulders, ~1 min | Raking ritual; the pond clears and the deer arrives |
+| 3 | Meditation hall | 14 wood, 10 stone | 3 trees, 2–3 boulders, ~2–3 min | Lanterns along the path; first caretaker note |
+| 4 | Bell tower | 10 wood, 8 stone | 2 trees, 2 boulders, ~2 min | Bell ritual; the trail gate to the bamboo grove opens |
 | 5 | Tea house | 6 wood, 8 bamboo | needs the grove | Tea ritual; home now feels lived in |
 
 The home valley alone takes about 10–15 minutes including walking and sitting, and the first journey adds 10–15. Pacing is meant to feel unhurried, not long.
@@ -311,15 +314,15 @@ There is **one** sequence. Each phase ends at a gate the owner checks by playing
 
 ### Phase 1: The feel
 - 8-way movement with good acceleration and stopping, collisions, camera follow with damping.
-- Automatic gathering on the beat with pentatonic notes, node rest and regrowth, the basket filling, the HUD chip.
-- One build site (the shelter) with automatic deposit and staged growth from simple procedural parts, a completion bell, and a first restoration response (mist lifts).
+- Automatic chopping and chipping on the beat with a visible caretaker animation and pentatonic notes; trees and boulders that visibly deplete with every unit and regrow gradually; the basket filling item by item; the HUD chip.
+- One build site (the shelter) with automatic deposit and part-by-part growth (one simple procedural part per unit, animating into place, visibly incomplete when short of materials), a completion bell, and a first restoration response (mist lifts).
 - Saving and loading of deposits, satchel and position; autosave when the page is hidden.
 - The headless loop in `sim/` with unit tests: gather awards, satchel cap, deposit never exceeds cost, derived progress, save round trip, corrupt save fallback. A first pacing-bot run reports the cycle time.
 - **Art decision points A2 (camera) and A3 (world scale) are due at this gate.** Offer two or three camera and scale options to try on the phone.
 - **Gate:** on a phone, someone new to the game gathers and builds the shelter without being told how, and keeps gathering afterwards. Closing the tab mid-deposit and reopening keeps exactly what was delivered.
 
 ### Phase 2: Warm the look
-- The Zen kit as procedural models: cherry, maple and bamboo; mossy stones; stone lanterns; rope and post fences; raked gravel; stepping stones; lotus. Building parts (posts, beams, walls, tiled roof) that buildings assemble from in stages.
+- The Zen kit as procedural models: cherry, maple and bamboo; mossy stones; stone lanterns; rope and post fences; raked gravel; stepping stones; lotus. Building parts (posts, beams, walls, tiled roof, scaffolding) that buildings assemble from one piece per unit. Tree and boulder depletion and regrowth states for every gatherable kind.
 - The real caretaker model (robe, bun, wicker basket that fills) and the deer.
 - Presets for time of day (dawn, day, golden hour, dusk, night) blended from the clock, with a debug slider.
 - Build the look presets and the look switcher from 7.4, with at least the Painted, Lanternfall-like and wildcard presets, applying the retuning checklist from 7.1 for Painted.
@@ -398,7 +401,7 @@ Riverbank, mountain pass and further journeys · quiet residents · more rituals
 
 ## Appendix B: What changed from v1
 - The three hooks (growth, rhythm, stillness) now drive every decision. Visitors and dialogue are no longer the climax.
-- Gathering and depositing are automatic and on a beat. Buildings grow per deposit instead of in a 3-step animation.
+- Gathering and depositing are automatic and on a beat. Buildings grow one part per unit delivered instead of in a 3-step animation, and gathering visibly depletes trees and boulders (nothing jumps from 0 to 100%).
 - The world grows through journeys (walk first, map after), with a home hub and shrines, instead of one map with one bridge.
 - Phone and PC are equals from Phase 0, not phone "later".
 - The world runs on the real-world clock and calendar, with settings.

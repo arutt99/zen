@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<meta name="theme-color" content="#779777">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<title>Moss &amp; Bell</title>
+<!--MANIFEST-->
+<!--ICON-->
+<style>
+  :root { color-scheme: light; --paper: #F2E4C8; --ink: #4A3B2C; --moss: #779777; }
+  html, body { margin: 0; height: 100%; overflow: hidden; background: var(--paper); color: var(--ink);
+    font-family: ui-rounded, "Nunito", system-ui, sans-serif; touch-action: none;
+    -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
+  #game { position: fixed; inset: 0; width: 100%; height: 100%; display: block; }
+  #hud { position: fixed; inset: 0; pointer-events: none; }
+  .chip { position: absolute; top: calc(env(safe-area-inset-top) + 12px); left: calc(env(safe-area-inset-left) + 12px);
+    background: rgba(242,228,200,.85); border-radius: 999px; padding: 8px 14px; font-size: 14px; }
+  .corner { position: absolute; top: calc(env(safe-area-inset-top) + 12px); right: calc(env(safe-area-inset-right) + 12px);
+    pointer-events: auto; min-width: 48px; min-height: 48px; border: 0; border-radius: 16px;
+    background: rgba(242,228,200,.85); color: var(--ink); font-size: 20px; }
+  .context { position: absolute; right: calc(env(safe-area-inset-right) + 28px); bottom: calc(env(safe-area-inset-bottom) + 28px);
+    pointer-events: auto; min-width: 88px; min-height: 88px; border-radius: 50%; border: 0;
+    background: rgba(119,151,119,.9); color: #fff; font-size: 16px; font-weight: 700; display: none; }
+  .context.show { display: block; }
+  .stick { position: absolute; width: 120px; height: 120px; margin: -60px 0 0 -60px; border-radius: 50%;
+    background: rgba(242,228,200,.35); border: 2px solid rgba(132,107,80,.4); display: none; }
+  .stick.show { display: block; }
+  .knob { position: absolute; left: 50%; top: 50%; width: 52px; height: 52px; margin: -26px 0 0 -26px; border-radius: 50%;
+    background: rgba(132,107,80,.55); }
+  #debug { position: absolute; bottom: calc(env(safe-area-inset-bottom) + 8px); left: calc(env(safe-area-inset-left) + 12px);
+    font: 11px ui-monospace, monospace; opacity: .6; }
+  #menu { position: fixed; inset: 0; display: none; align-items: center; justify-content: center; background: rgba(74,59,44,.35); }
+  #menu.show { display: flex; }
+  #menu .panel { background: var(--paper); border-radius: 20px; padding: 20px 24px; min-width: 260px; }
+  #menu label { display: flex; justify-content: space-between; gap: 12px; margin: 10px 0; }
+  #menu select, #menu button { min-height: 44px; font: inherit; }
+  #rotate { position: fixed; inset: 0; display: none; align-items: center; justify-content: center; text-align: center;
+    background: var(--paper); font-size: 20px; padding: 24px; }
+  @media (orientation: portrait) and (pointer: coarse) { #rotate { display: flex; } }
+  #boot-error { position: fixed; inset: 0; display: none; padding: 24px; background: var(--paper); white-space: pre-wrap; }
+</style>
+</head>
+<body>
+<canvas id="game"></canvas>
+<div id="hud">
+  <div class="chip" id="chip">Moss &amp; Bell</div>
+  <button class="corner" id="menu-btn" aria-label="Menu">☰</button>
+  <button class="context" id="context-btn">Sit</button>
+  <div class="stick" id="stick"><div class="knob" id="knob"></div></div>
+  <div id="debug"></div>
+</div>
+<div id="menu" role="dialog" aria-label="Settings">
+  <div class="panel">
+    <h2 style="margin:0 0 8px">Settings</h2>
+    <label>Quality <select id="quality"><option value="low">Low</option><option value="medium">Medium</option><option value="high">High</option><option value="ultra">Ultra</option></select></label>
+    <label>Sound <select id="sound"><option value="on">On</option><option value="off">Off</option></select></label>
+    <button id="menu-close">Close</button>
+  </div>
+</div>
+<div id="rotate">Turn your phone sideways to play.</div>
+<div id="boot-error"></div>
+<script>/*BUNDLE*/</script>
+</body>
+</html>
