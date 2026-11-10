@@ -1,8 +1,10 @@
 // Copied from Lanternfall (games/lanternfall/src/render/mb.ts @ b282628). Outline data is added when the look draws outlines.
+// Painted+ (2026-11-10): build() bakes ambient occlusion into the vertex colors when the look asks for it.
 // Model builder: composes primitives with vertex colors into one merged geometry.
 import * as THREE from 'three';
-import { anyOutline } from './look';
-import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
+import { anyOutline, look } from './look';
+import { bakeAO, type AOOptions } from './ao';
+import { mergeGeometries, mergeVertices } from 'three/addons/utils/BufferGeometryUtils.js';
 import { fbm } from '../core/util';
 
 export type Col = number | [number, number];
@@ -20,6 +22,8 @@ export interface PartOpts {
   gain?: number;
   /** Blends normals toward spherical, which makes foliage read as soft puffs. */
   puff?: number;
+  /** Welds shared corners first, so the shape shades smoothly (rounded stones, Painted+). */
+  smooth?: boolean;
 }
 
 const tmpColor = new THREE.Color();
@@ -60,6 +64,13 @@ export class MB {
 
   add(geo: THREE.BufferGeometry, col: Col, o: PartOpts = {}) {
     let g = geo;
+    if (o.smooth) {
+      g.deleteAttribute('normal');
+      g.deleteAttribute('uv');
+      g = mergeVertices(g, 1e-4);
+      geo.dispose();
+      g.computeVertexNormals();
+    }
     const wobble = o.wobble ?? 0;
     if (wobble > 0) {
       const pos = g.getAttribute('position') as THREE.BufferAttribute;
@@ -158,11 +169,14 @@ export class MB {
     return this.parts.length === 0;
   }
 
-  build(): THREE.BufferGeometry {
+  /** Merges the parts. `ao` says how to bake occlusion (ground plane, occluders) when the look uses it. */
+  build(ao: AOOptions = {}): THREE.BufferGeometry {
     const merged = mergeGeometries(this.parts, false);
     for (const p of this.parts) p.dispose();
     this.parts = [];
     merged.computeBoundingSphere();
+    const strength = look().light.ao;
+    if (strength > 0) bakeAO(merged, strength, ao);
     if (anyOutline()) addInkData(merged);
     return merged;
   }

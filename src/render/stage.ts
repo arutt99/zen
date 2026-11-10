@@ -7,13 +7,17 @@
 // Phase 2: the look preset (src/data/looks.ts) sets the ground's patch and path edges, grass density,
 // haze and a global color remap; `applyLight` changes sun, sky, fog, water and ambient particles live
 // for the time of day (src/core/daylight.ts); fireflies fade in at night.
+// Painted+ (2026-11-10): soft contact shadows on the ground under props, nodes and build sites
+// (src/render/contact.ts), softer sun shadow edges, and stones along the pond's edge.
 import * as THREE from 'three';
-import { f, look } from './look';
+import { BUILDINGS } from '../data/buildings';
+import { contactField, footprintOf, type Footprint } from './contact';
+import { f, fine, look } from './look';
 import { clamp, DataUtilsHalf, fbm, makeRng, smoothstep } from '../core/util-render';
 import type { IslandWorld } from '../sim/island';
 import type { PlacePreset as Biome } from '../data/presets';
 import type { QualitySettings as Quality } from '../data/quality';
-import { decorGeo } from './decor-models';
+import { decorGeo, stone as stoneShape } from './decor-models';
 import type { OutlineClass } from '../data/looks';
 import { inkRef, lightLevel } from '../core/daylight';
 
@@ -34,6 +38,8 @@ const TERRAIN_FRAG_HEAD = /* glsl */ `
   uniform vec4 uRing; uniform vec3 uRingColor;
   uniform vec4 uRing2; uniform vec3 uRing2Color;
   uniform vec3 uRim;
+  uniform sampler2D uContact;
+  uniform float uSiteShade;
 
   vec2 hash22(vec2 p) {
     vec3 a = fract(p.xyx * vec3(123.34, 234.34, 345.65));
@@ -246,19 +252,21 @@ export class Stage {
     this.sun.shadow.mapSize.set(q.shadow, q.shadow);
     this.sun.shadow.bias = -0.0004;
     this.sun.shadow.normalBias = 0.05;
-    this.sun.shadow.radius = 3;
+    this.sun.shadow.radius = look().light.shadowSoftness;
     this.scene.add(this.sun);
     this.hemi = new THREE.HemisphereLight(b.hemiSky, b.hemiGround, b.hemiI);
     this.scene.add(this.hemi);
     this.sunDir.copy(sunDir);
 
     this.buildField();
+    this.buildContact();
     this.buildTerrain();
     if (world.hasWater) this.buildWater();
     this.buildSky();
     this.buildDecor();
     this.buildGrass();
     this.buildRoadside();
+    if (fine() && world.hasWater) this.buildPondEdge();
     this.buildIslets();
     // Lanternfall's light shafts belonged to its classic style; no look uses them yet (kept for a later preset).
     if (LIGHT_SHAFTS && q.rays && b.rays > 0) this.buildRays(sunDir);
@@ -388,6 +396,46 @@ export class Stage {
 
   }
 
+  private contactTex: THREE.DataTexture | null = null;
+  /** How much of the build sites' contact shadow shows (0 = nothing built, 1 = the deck stands). */
+  private siteShade = { value: 0 };
+
+  /** Paints the soft contact shadows of decor, gather nodes and build sites into a ground texture (Painted+). */
+  private buildContact() {
+    if (look().light.contact <= 0) return;
+    const w = this.world;
+    const prints: Footprint[] = [];
+    for (const b of w.blockers) {
+      const geo = decorGeo(b.kind);
+      if (geo.floats || geo.flat) continue;
+      prints.push(footprintOf(geo.solid, b.x, b.z, b.rot, b.scale, geo.ink === 'building' ? 0.7 : 0.9));
+      // A broad, faint shade under a crown: the sky is partly hidden there.
+      if (geo.leaf) {
+        const fp = footprintOf(geo.leaf, b.x, b.z, b.rot, b.scale * 0.85, 0.3);
+        if (fp.hx > 0.6) prints.push(fp);
+      }
+    }
+    for (const n of w.place.nodes) {
+      const r = n.kind === 'tree' ? 0.5 : 1.0;
+      prints.push({ x: n.x, z: n.z, hx: r, hz: r, rot: 0, k: 0.85 });
+    }
+    for (const st of w.place.sites) {
+      const r = (BUILDINGS[st.building]?.solidRadius ?? 1.5) * 0.92;
+      prints.push({ x: st.x, z: st.z, hx: r, hz: r * 0.88, rot: st.rot ?? 0, k: 0.8, site: true });
+    }
+    const field = contactField(w.extW, w.extH, prints);
+    const tex = new THREE.DataTexture(field.data, field.w, field.h, THREE.RGBAFormat, THREE.UnsignedByteType);
+    tex.minFilter = tex.magFilter = THREE.LinearFilter;
+    tex.wrapS = tex.wrapT = THREE.ClampToEdgeWrapping;
+    tex.needsUpdate = true;
+    this.contactTex = this.track(tex);
+  }
+
+  /** Shows the build sites' contact shadow as their buildings go up (0..1). */
+  setSiteShade(v: number) {
+    this.siteShade.value = v;
+  }
+
   private buildTerrain() {
     const w = this.world;
     const b = this.biome;
@@ -395,6 +443,7 @@ export class Stage {
     const inkGround = true;
     const G = look().ground;
     const ps = G.patchSoftness;
+    const contactK = this.contactTex ? look().light.contact : 0;
     const inkTint = `vec3(${b.ink.tint.map((v) => v.toFixed(3)).join(', ')})`;
     const nx = Math.ceil((w.extW * 2) / step) + 1;
     const nz = Math.ceil((w.extH * 2) / step) + 1;
@@ -454,6 +503,8 @@ export class Stage {
       uRingColor: { value: new THREE.Color(0xffe2a0) },
       uRing2: { value: new THREE.Vector4(0, 0, 0, 0) },
       uRing2Color: { value: new THREE.Color(0xffffff) },
+      uContact: { value: this.contactTex },
+      uSiteShade: this.siteShade,
     };
     this.uniforms = u;
     const mat = new THREE.MeshStandardMaterial({ roughness: 0.93, metalness: 0 });
@@ -518,6 +569,13 @@ export class Stage {
           float inkEdge = smoothstep(edge - 0.2, edge - 0.08, roadD) * (1.0 - smoothstep(edge + 0.02, edge + 0.14, roadD));
           col = mix(col, vec3(0.12, 0.06, 0.035), inkEdge * ${f(G.pathInk)});
           ` : ''}
+          ${contactK > 0 ? /* glsl */ `
+          {
+            // Soft, warm contact shadows under props, trees and buildings (Painted+).
+            vec4 cf = texture2D(uContact, fuv);
+            float occ = pow(clamp(cf.r + cf.g * uSiteShade, 0.0, 1.0), 0.75) * ${f(contactK)};
+            col *= mix(vec3(1.0), vec3(0.42, 0.35, 0.29), occ);
+          }` : ''}
           ${albedoGlsl('col')}
           diffuseColor.rgb = col;
         `)
@@ -821,8 +879,9 @@ export class Stage {
     const b = this.biome;
     const rng = makeRng(world.seed + 91);
     const stone = new MB();
-    stone.ico(0.3, [colorOf(b.rockA).getHex(), colorOf(b.rockB).getHex()], { s: [1, 0.7, 1], wobble: 0.04 }, 0);
-    const stoneGeo = this.track(stone.build());
+    if (fine()) stoneShape(stone, 0.3, [colorOf(b.rockA).getHex(), colorOf(b.rockB).getHex()], { s: [1, 0.62, 1], wobble: 0.04 });
+    else stone.ico(0.3, [colorOf(b.rockA).getHex(), colorOf(b.rockB).getHex()], { s: [1, 0.7, 1], wobble: 0.04 }, 0);
+    const stoneGeo = this.track(stone.build({ ground: true, groundY: -0.12 }));
     const list: THREE.Matrix4[] = [];
     const M = new THREE.Matrix4();
     const tmp = { x: 0, z: 0, dx: 0, dz: 0 };
@@ -842,6 +901,64 @@ export class Stage {
       }
     }
     if (list.length) this.instanced(stoneGeo, Mats.std, list);
+  }
+
+  /**
+   * Painted+: rounded stones laid around the pond's shoreline (the reference's stone-edged pond), some
+   * with moss. They sit at the water line, just past where the caretaker can walk, so they never block.
+   */
+  private buildPondEdge() {
+    const world = this.world;
+    const b = this.biome;
+    const pond = world.place.pond;
+    const rng = makeRng(world.seed + 131);
+    const rockA = colorOf(b.rockA).lerp(colorOf(0xa8a598), 0.4).getHex();
+    const rockB = colorOf(b.rockB).lerp(colorOf(0xd2cebf), 0.3).getHex();
+    const sm = new MB();
+    stoneShape(sm, 0.5, [rockA, rockB], { s: [1.25, 0.5, 0.85], wobble: 0.06, wobbleFreq: 1.4 });
+    const stoneGeo = this.track(sm.build({ ground: true, groundY: -0.16 }));
+    const mm = new MB();
+    mm.ico(0.42, [0x5f7f3f, 0x9bb866], { p: [-0.08, 0.17, 0.03], s: [1.15, 0.28, 0.85], flat: false, smooth: true, puff: 0.35 }, 2);
+    const mossGeo = this.track(mm.build());
+    const stones: THREE.Matrix4[] = [];
+    const cols: THREE.Color[] = [];
+    const mossy: THREE.Matrix4[] = [];
+    const M = new THREE.Matrix4(), Q = new THREE.Quaternion(), P = new THREE.Vector3(), S = new THREE.Vector3(), Y = new THREE.Vector3(0, 1, 0);
+    const shoreAt = (a: number): number | null => {
+      // Walk outward from the pond's middle to where the ground first rises just past the water line.
+      for (let r = pond.r * 0.3; r < pond.r * 1.8; r += 0.05) {
+        if (world.height(pond.x + Math.cos(a) * r, pond.z + Math.sin(a) * r) > world.waterLevel + 0.06) return r;
+      }
+      return null;
+    };
+    const solids = world.solids;
+    let a = 0;
+    while (a < Math.PI * 2) {
+      const r = shoreAt(a);
+      const size = 0.55 + rng() * 0.4;
+      if (r !== null) {
+        const x = pond.x + Math.cos(a) * (r + 0.05), z = pond.z + Math.sin(a) * (r + 0.05);
+        const clearOfPath = world.roadDistance(x, z) > world.pathWidth * 0.5 + 0.35;
+        const clearOfProps = solids.every((o) => Math.hypot(o.x - x, o.z - z) > o.r + 0.4);
+        if (clearOfPath && clearOfProps) {
+          // Long side along the shore.
+          Q.setFromAxisAngle(Y, -a + Math.PI / 2 + (rng() - 0.5) * 0.35);
+          P.set(x, world.waterLevel + 0.02, z);
+          S.set(size, size * (0.8 + rng() * 0.5), size);
+          M.compose(P, Q, S);
+          stones.push(M.clone());
+          const t = 0.88 + rng() * 0.22;
+          cols.push(new THREE.Color(t, t * 0.99, t * (0.95 + rng() * 0.06)));
+          if (rng() < 0.35) mossy.push(M.clone());
+        }
+      }
+      // Next stone: step along the shore by about this stone's length.
+      a += (size * 0.95) / Math.max(1, r ?? pond.r);
+    }
+    if (stones.length) {
+      this.instanced(stoneGeo, Mats.std, stones, cols, true, 'nature');
+      if (mossy.length) this.instanced(mossGeo, Mats.std, mossy, undefined, false);
+    }
   }
 
   private buildIslets() {

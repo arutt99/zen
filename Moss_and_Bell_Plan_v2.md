@@ -183,6 +183,7 @@ The owner wants to see options before committing. So the look is built to be **t
 
 - **Look presets.** Everything that defines the style lives in one data file of named presets (`src/data/looks.ts`): palette, outline color and width, which objects get outlines, tone ramp softness, brush strength, paper grain, haze, shadow tint, color grade, bloom, and character proportions. Lanternfall already switches between two looks this way (`render/style.ts`); extend that idea.
 - **A look switcher** in the settings or debug menu changes presets live (or with a quick reload) on the phone, so the owner can compare in the real game. Keep at least three presets until the owner picks one: **Painted** (the reference), **Lanternfall-like**, and one wildcard the agent proposes.
+- **Painted+** (added 2026-11-10 at the owner's request) is a fourth preset: Painted nudged a little toward a soft-lit diorama (baked occlusion, contact shadows, finer models). It is an option for A6, not a decision.
 - **Screenshot sets.** At each art checkpoint, the agent captures the same views in every preset (phone size, day and dusk) and shows them side by side.
 
 **Cheap to change at any time** (data and shader values, no rework): colors and palettes, outlines, shading softness, brush and paper texture, haze, color grade, lighting presets, particles.

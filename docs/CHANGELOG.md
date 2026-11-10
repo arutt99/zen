@@ -1,5 +1,14 @@
 # Changelog
 
+## Phase 2 follow-up: Painted+ (2026-11-10)
+- New trial look **Painted+** (owner request: "move in that direction a bit", toward a soft-lit diorama):
+  Painted's warm palette and brushwork with baked ambient occlusion in every model, soft contact shadows on
+  the ground and under the caretaker and deer, softer sun-shadow edges, lines on figures only, and a detail
+  pass: rounded stones, lumpy leaf-mass crowns with branches, a stone-edged pond, rounder path stones, a finer
+  stone lantern and a more detailed temple shelter (tile courses, rafter ends, fascia, footings). Settings →
+  Look, or `?look=paintedplus`. The other three looks are unchanged.
+- 4 new unit tests (`tests/paintedplus.test.ts`); screenshots in `docs/phase2/README.md`.
+
 ## Phase 2: Warm the look (2026-11-10)
 - **Look presets** (`src/data/looks.ts`, plan 7.4) and a look switcher in Settings: **Painted** (the reference,
   with the plan 7.1 retuning checklist applied), **Lanternfall-like** (the Phase 0 look) and **Woodblock print**

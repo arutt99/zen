@@ -10,6 +10,7 @@ import { SATCHEL_CAP } from '../data/gathering';
 import type { WorkKind } from '../sim/loop';
 import { inked, Mats } from './materials';
 import { MB } from './mb';
+import { contactBlob } from './contact';
 
 const SKIN = 0xf3d6bc;
 const CREAM: [number, number] = [0xe6dcc6, 0xf6eedc];
@@ -205,6 +206,8 @@ export class CaretakerView {
     this.arm.add(this.axe, this.mallet);
     this.body.add(this.arm);
     this.root.add(this.body);
+    const blob = contactBlob(0.72);
+    if (blob) this.root.add(blob);
   }
 
   /** The basket bumps when something lands in it. */

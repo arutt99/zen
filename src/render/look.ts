@@ -21,6 +21,11 @@ export function outlined(cls: OutlineClass): boolean {
   return current.outline.on.includes(cls);
 }
 
+/** True when the look builds the detail-pass models (Painted+). */
+export function fine(): boolean {
+  return current.detail === 'fine';
+}
+
 /** True when anything gets outlines (geometry then carries the outline normals). */
 export function anyOutline(): boolean {
   return current.outline.on.length > 0;

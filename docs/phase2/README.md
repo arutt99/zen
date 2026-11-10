@@ -2,7 +2,8 @@
 
 > **Not decided yet.** Everything below can be switched live in the game: ☰ → *Art trial (Phase 2)*.
 > Look reloads the page (a second or two); caretaker, kit and time switch at once. Your progress is kept.
-> On a computer you can also add `?look=painted`, `?look=lanternfall` or `?look=woodblock` to the address.
+> On a computer you can also add `?look=painted`, `?look=paintedplus`, `?look=lanternfall` or `?look=woodblock`
+> to the address.
 
 Screenshots: phone landscape (844 × 390, 2× pixels), rendered with **software graphics in a container**
 (Low quality tier, no anti-aliasing), not on a phone. Colors and shapes are right; edges are rougher and grass
@@ -13,6 +14,7 @@ sparser than on your phone. Recreate them with `npm run build && node scripts/sh
 | | Day | Dusk | Pond |
 |---|---|---|---|
 | **Painted** (the reference) | ![](look-painted-day.jpg) | ![](look-painted-dusk.jpg) | ![](look-painted-pond.jpg) |
+| **Painted+** (new, see below) | ![](look-paintedplus-day.jpg) | ![](look-paintedplus-dusk.jpg) | ![](look-paintedplus-pond.jpg) |
 | **Lanternfall-like** | ![](look-lanternfall-day.jpg) | ![](look-lanternfall-dusk.jpg) | ![](look-lanternfall-pond.jpg) |
 | **Woodblock print** (wildcard) | ![](look-woodblock-day.jpg) | ![](look-woodblock-dusk.jpg) | ![](look-woodblock-pond.jpg) |
 
@@ -22,6 +24,34 @@ sparser than on your phone. Recreate them with `npm run build && node scripts/sh
 - **Lanternfall-like** is the Phase 0/1 look, unchanged: hard three-tone cel bands and near-black lines on everything.
 - **Woodblock print** is the wildcard: two flat tones, fine dark-brown lines on everything, a limited palette
   (posterized) on textured paper.
+
+### Painted+: Painted, a step toward a soft-lit diorama (added 2026-11-10)
+
+You asked to move "a bit" in the direction of a soft-lit diorama (games like Tiny Glade), not all the way.
+Painted+ keeps Painted's warm palette, paper and brushwork and changes three things:
+
+1. **Light that grounds things:** soft, warm shading where parts meet each other and the ground (baked into
+   every model when it's built, so it costs nothing per frame), soft contact shadows on the ground under
+   props, trees, the shelter and the caretaker and deer, and softer sun-shadow edges.
+2. **Lighter linework:** thin lines on the caretaker and deer only; buildings and nature read as solid objects.
+3. **Detail where you look:** rounded stones, tree crowns as a few soft leaf masses with branches reaching in,
+   stones around the pond's edge, a finer stone lantern, and a temple shelter with tile courses, rafter ends,
+   capped footings and varied planks. (The rustic timber kit gets the light but not the new detail yet.)
+
+| | Painted | Painted+ |
+|---|---|---|
+| Valley | ![](plus-painted-wide.jpg) | ![](plus-paintedplus-wide.jpg) |
+| Close | ![](plus-painted-close.jpg) | ![](plus-paintedplus-close.jpg) |
+| Shelter (temple) | ![](plus-painted-kit.jpg) | ![](plus-paintedplus-kit.jpg) |
+| Half built | ![](plus-painted-kit-partial.jpg) | ![](plus-paintedplus-kit-partial.jpg) |
+| Golden hour | ![](plus-painted-golden.jpg) | ![](plus-paintedplus-golden.jpg) |
+
+**To check on your phone:** frame rate on Medium (bottom-left), and how long the first load takes. The detail
+pass roughly doubles the vertices in trees and the shelter, and building the models takes a little longer
+(about 0.25 s more on a desktop; not yet measured on a phone).
+
+**What it decides:** picking Painted+ for A6 also sets the detail level that every later model is built to,
+so Phase 3's buildings would get the same treatment (more model work per building, but done by the agent).
 
 Time of day comes with every look: dawn, day, golden hour, dusk and night, blended from your clock
 (☰ → Time → *Follow my clock*, or *Choose* and drag the slider):
