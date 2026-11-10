@@ -30,6 +30,11 @@ export function pentatonicHz(step: number, rootHz = 293.66): number {
   return rootHz * Math.pow(2, oct + deg / 12);
 }
 
+/** Playback rate that moves a sound rendered at step 0 to `step` on the scale. */
+export function pentatonicRate(step: number): number {
+  return pentatonicHz(step) / pentatonicHz(0);
+}
+
 export const SFX = {
   /** The signature sound: sitting, building completion, the ritual bell (plan 8). */
   bell: { level: 0.3, gap: 0.4, variants: 2, jitter: 0.01, bus: 'effects', render: (k) => {
@@ -41,14 +46,23 @@ export const SFX = {
     k.strike(k.r(820, 960), WOOD, 0.035, 0.6);
     k.noise(0.012, 0.3, { type: 'bandpass', freq: 3000, q: 1 });
   } },
-  /** Gathering wood: a soft marimba note. Phase 1 picks the step from the beat. */
+  /**
+   * Gathering wood: a soft marimba note, rendered at the scale's root. The game plays it at
+   * `pentatonicRate(step)` so a run of swings climbs the scale (plan 3.1).
+   */
   wood: { level: 0.14, gap: 0.05, variants: 3, jitter: 0, bus: 'effects', render: (k) => {
-    k.strike(pentatonicHz(Math.floor(k.r(0, 5))), WOOD, 0.7, 0.6, { rev: 0.35 });
+    k.strike(pentatonicHz(0), WOOD, 0.7, 0.6, { rev: 0.35 });
+    k.noise(0.015, 0.12, { type: 'bandpass', freq: 1800, q: 1.5 });
   } },
-  /** Gathering stone: a ceramic tap. */
+  /** Gathering stone: a ceramic tap, also at the root and pitched by the game. */
   stone: { level: 0.12, gap: 0.05, variants: 3, jitter: 0, bus: 'effects', render: (k) => {
-    k.strike(pentatonicHz(5 + Math.floor(k.r(0, 5))), STONE, 0.35, 0.5, { rev: 0.3 });
+    k.strike(pentatonicHz(0), STONE, 0.35, 0.5, { rev: 0.3 });
     k.noise(0.02, 0.2, { type: 'bandpass', freq: 4200, q: 2 });
+  } },
+  /** A part settling into a building: a low, soft wooden knock under the melody. */
+  place: { level: 0.12, gap: 0.08, variants: 3, jitter: 0.02, bus: 'effects', render: (k) => {
+    k.strike(pentatonicHz(-5), WOOD, 0.45, 0.7, { rev: 0.5 });
+    k.noise(0.04, 0.25, { type: 'lowpass', freq: 900, q: 0.7 });
   } },
 } satisfies Record<string, SfxDef>;
 

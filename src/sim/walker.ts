@@ -1,16 +1,11 @@
-// Headless caretaker movement: position, velocity and simple circular collisions.
-// Phase 1 tunes acceleration/stopping and adds real collision shapes; this is the Phase 0 baseline.
+// Headless caretaker movement: position, velocity and circular collisions that slide.
+// Tuning lives in src/data/feel.ts. 8-way on keys, analog on sticks and touch.
 
+import { WALKER, type WalkerTuning } from '../data/feel';
 import type { MoveInput } from './input';
 
-export interface WalkerTuning {
-  maxSpeed: number;
-  accel: number;
-  decel: number;
-  radius: number;
-}
-
-export const DEFAULT_WALKER: WalkerTuning = { maxSpeed: 4.2, accel: 22, decel: 28, radius: 0.35 };
+export type { WalkerTuning };
+export const DEFAULT_WALKER: WalkerTuning = WALKER;
 
 export interface Blocker { x: number; z: number; r: number }
 
@@ -45,7 +40,9 @@ export class Walker {
     const dx = tx - this.vx, dz = tz - this.vz;
     const dlen = Math.hypot(dx, dz);
     const pushing = Math.hypot(move.x, move.z) > 0.01;
-    const maxDelta = (pushing ? t.accel : t.decel) * dt;
+    // Reversing brakes harder than it accelerates, so turning around feels crisp, not floaty.
+    const reversing = pushing && this.vx * tx + this.vz * tz < 0;
+    const maxDelta = (pushing ? t.accel * (reversing ? t.turnBoost : 1) : t.decel) * dt;
     if (dlen <= maxDelta) { this.vx = tx; this.vz = tz; }
     else { this.vx += (dx / dlen) * maxDelta; this.vz += (dz / dlen) * maxDelta; }
 

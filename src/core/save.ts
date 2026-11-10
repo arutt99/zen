@@ -3,17 +3,27 @@
 
 import type { QualityTier } from '../data/quality';
 
-export const SAVE_VERSION = 1;
+export const SAVE_VERSION = 2;
 export const SAVE_KEY = 'moss-and-bell/save';
 
 export interface SaveSettings {
   quality: QualityTier | 'auto';
   sound: boolean;
+  /** Trial options for art decision points A2 and A3 (src/data/feel.ts); not locked yet. */
+  camera: string;
+  scale: string;
 }
+
+/** Counts of each material, by material id. */
+export type Counts = Record<string, number>;
 
 export interface SaveData {
   v: typeof SAVE_VERSION;
   at: { place: string; x: number; z: number };
+  /** What the caretaker carries. */
+  satchel: Counts;
+  /** Units delivered per build site id. Growth is derived from this (parts shown = units delivered). */
+  deposits: Record<string, Counts>;
   settings: SaveSettings;
 }
 
@@ -25,13 +35,32 @@ export interface KeyValueStore {
 
 export function freshSave(): SaveData {
   // An empty place means "no position saved yet": the game starts at the place's spawn point.
-  return { v: SAVE_VERSION, at: { place: '', x: 0, z: 0 }, settings: { quality: 'auto', sound: true } };
+  return {
+    v: SAVE_VERSION,
+    at: { place: '', x: 0, z: 0 },
+    satchel: {},
+    deposits: {},
+    settings: { quality: 'auto', sound: true, camera: 'a', scale: 'm' },
+  };
 }
 
 /** One entry per old version: migrations[n] upgrades a version-n object to version n+1. */
-const migrations: Record<number, (old: Record<string, unknown>) => Record<string, unknown>> = {};
+const migrations: Record<number, (old: Record<string, unknown>) => Record<string, unknown>> = {
+  // v1 (Phase 0) had only position and settings: start with an empty satchel and no deposits.
+  1: (old) => ({ ...old, v: 2, satchel: {}, deposits: {} }),
+};
 
 const isNum = (n: unknown): n is number => typeof n === 'number' && Number.isFinite(n);
+const isObj = (o: unknown): o is Record<string, unknown> => typeof o === 'object' && o !== null && !Array.isArray(o);
+const ID = /^[a-z0-9_]{1,40}$/;
+
+/** Keeps only id → non-negative whole number entries. Ranges against the data are checked by sim/state. */
+function counts(o: unknown): Counts {
+  const out: Counts = {};
+  if (!isObj(o)) return out;
+  for (const [k, v] of Object.entries(o)) if (ID.test(k) && isNum(v) && v > 0) out[k] = Math.floor(v);
+  return out;
+}
 
 /** Parse and validate raw text. Returns a fresh save (and a reason) for anything unusable. */
 export function parseSave(raw: string | null): { data: SaveData; recovered: string | null } {
@@ -65,9 +94,18 @@ export function parseSave(raw: string | null): { data: SaveData; recovered: stri
         x: isNum(at?.x) ? at.x : base.at.x,
         z: isNum(at?.z) ? at.z : base.at.z,
       },
+      satchel: counts(obj.satchel),
+      deposits: Object.fromEntries(
+        Object.entries(isObj(obj.deposits) ? obj.deposits : {})
+          .filter(([k]) => ID.test(k))
+          .map(([k, v]) => [k, counts(v)] as const)
+          .filter(([, c]) => Object.keys(c).length > 0),
+      ),
       settings: {
         quality: quality === 'low' || quality === 'medium' || quality === 'high' || quality === 'ultra' ? quality : 'auto',
         sound: typeof settings?.sound === 'boolean' ? settings.sound : base.settings.sound,
+        camera: typeof settings?.camera === 'string' && ID.test(settings.camera) ? settings.camera : base.settings.camera,
+        scale: typeof settings?.scale === 'string' && ID.test(settings.scale) ? settings.scale : base.settings.scale,
       },
     },
     recovered: null,

@@ -2,7 +2,7 @@
   "name": "moss-and-bell",
   "version": "0.0.1",
   "private": true,
-  "description": "Moss & Bell: a calm, restorative caretaking game. Phase 0 scaffold.",
+  "description": "Moss & Bell: a calm, restorative caretaking game. Phase 1: the core loop.",
   "type": "module",
   "scripts": {
     "build": "node scripts/build.mjs",

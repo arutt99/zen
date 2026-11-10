@@ -32,7 +32,9 @@ test('save round trip keeps every fact', () => {
   const store = memStore();
   const s = freshSave();
   s.at = { place: 'home_valley', x: 3.25, z: -1.5 };
-  s.settings = { quality: 'high', sound: false };
+  s.settings = { quality: 'high', sound: false, camera: 'b', scale: 's' };
+  s.satchel = { wood: 3, stone: 1 };
+  s.deposits = { shelter: { wood: 4 } };
   assert.ok(writeSave(store, s));
   const { data, recovered } = loadSave(store);
   assert.equal(recovered, null);
@@ -59,11 +61,27 @@ test('future or bad versions fall back instead of crashing', () => {
 });
 
 test('partially bad fields are repaired field by field', () => {
-  const { data, recovered } = parseSave(JSON.stringify({ v: 1, at: { place: 'home_valley', x: 'east', z: 2 }, settings: { quality: 'insane', sound: true } }));
+  const { data, recovered } = parseSave(JSON.stringify({
+    v: 2, at: { place: 'home_valley', x: 'east', z: 2 }, settings: { quality: 'insane', sound: true, camera: 7 },
+    satchel: { wood: 'lots', stone: 2.7, 'bad key!': 3, moss: -1 }, deposits: { shelter: { wood: 4 }, ghost: 'x', empty: {} },
+  }));
   assert.equal(recovered, null);
   assert.equal(data.at.x, freshSave().at.x);
   assert.equal(data.at.z, 2);
   assert.equal(data.settings.quality, 'auto');
+  assert.equal(data.settings.camera, 'a');
+  assert.deepEqual(data.satchel, { stone: 2 });
+  assert.deepEqual(data.deposits, { shelter: { wood: 4 } });
+});
+
+test('a Phase 0 (v1) save migrates: position and settings kept, empty satchel and deposits', () => {
+  const v1 = { v: 1, at: { place: 'home_valley', x: 4, z: -2 }, settings: { quality: 'low', sound: false } };
+  const { data, recovered } = parseSave(JSON.stringify(v1));
+  assert.equal(recovered, null);
+  assert.equal(data.v, SAVE_VERSION);
+  assert.deepEqual(data.at, v1.at);
+  assert.deepEqual([data.settings.quality, data.settings.sound, data.settings.camera], ['low', false, 'a']);
+  assert.deepEqual([data.satchel, data.deposits], [{}, {}]);
 });
 
 test('storage that throws never crashes the game', () => {
