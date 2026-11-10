@@ -1,5 +1,27 @@
 # Changelog
 
+## Phase 3: Home grows (2026-11-10)
+- **Start of phase:** the unpicked looks (Painted, Painted+, Woodblock) and storybook proportions are gone from
+  the code; plain Lanternfall stays as the light look for the smoke test. **Timber detail pass, roofs first:**
+  thatch bundle courses with a ragged eave, a bound ridge with crossed, lashed poles and moss, rafters and
+  purlins, rope lashings and a firmer log floor.
+- **The home valley:** the gravel garden, meditation hall and bell tower join the shelter (plan 9.6 costs), each
+  growing one part per unit. Sites reveal themselves in turn. Each part rests only on the ground or on its own
+  material, so any mix of wood and stone deliveries looks whole (the Phase 1 mixed-material gap, settled).
+- **Restoration across the valley:** overgrowth recedes, flowers and iris spread, path lanterns come with the
+  hall, a young cherry and an open trail gate with the bell tower; the pond clears and tired ground greens.
+  The deer now arrives with the gravel garden.
+- **Stillness, rituals and words:** four sit spots (the deer drifts closer while you sit); ring the bell, rake
+  the gravel, light the path lanterns at dusk; four poem stones and three caretaker notes (draft text for the
+  owner), read once into a saved collection. Chapter 1 begins at an old gate with a three-line opening (draft).
+- **Time:** Settings → Time adds "Always day".
+- **Audio pass 1:** ambience by time of day (birds and stream by day, crickets and wind at night, quieter in a
+  neglected valley, lifted while sitting); a deep temple bell, rake, lantern, page and reveal sounds. Every sound
+  has a visual counterpart.
+- Save v4 (v3 migrates): collection and the opening flag. Pacing bot covers the whole valley, with a relaxed style.
+- Unit tests 58 → 71; the smoke test checks hidden sites and a poem read across a reload. Screenshots in
+  `docs/phase3/`.
+
 ## Phase 2 gate decisions (2026-11-10)
 - **A4 decided: chibi** (locked). **A5 decided: rustic timber is the default building style**; temple stays as a
   future per-building style choice (Phase 5). A timber detail pass, roofs first, is queued for a future session.

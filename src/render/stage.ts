@@ -660,7 +660,8 @@ export class Stage {
             if (uRing2.w > 0.001) {
               float d = length(vPWorld.xz - uRing2.xy);
               float line = 1.0 - smoothstep(0.03, 0.13, abs(d - uRing2.z));
-              float fill = (1.0 - step(uRing2.z, d)) * 0.14;
+              // A soft wave just behind the line (the bell's sound spreading), not a filled disc.
+              float fill = smoothstep(uRing2.z - 1.6, uRing2.z, d) * (1.0 - step(uRing2.z, d)) * 0.16;
               totalEmissiveRadiance += uRing2Color * (line * 1.25 + fill) * uRing2.w;
             }
             float rimF = pow(1.0 - saturate(dot(normalize(vViewPosition), normal)), 4.0);

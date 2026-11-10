@@ -1,6 +1,6 @@
 # Tasks
 
-**Current phase: 2, Warm the look. Waiting at the gate: A4, A5 and A6 decided; the owner's PC frame-rate check is the last item.** (plan section 10)
+**Current phase: 3, Home grows. Built; waiting at the gate (owner checks below).** Phase 2's last gate item (the owner's PC frame-rate check in Lanternfall+) is still open and carries over. (plan section 10)
 
 The owner reported the Phase 0 and Phase 1 gate checks passed on their phone and PC (2026-11-10).
 
@@ -123,16 +123,15 @@ caretaker styles (**chibi** + **storybook**); two kits on the shelter (**temple*
 - [x] ~~If Painted: a phone screenshot next to the reference~~ (not applicable: Lanternfall+ chosen)
 - [ ] Holds frame rate on the owner's PC in Lanternfall+, by day and at night (fps bottom-left). Phone check deferred by the owner
 - [x] `docs/ART_PIPELINE.md` records the decisions; the unpicked options are out of the menu
-- [ ] Unpicked options removed from the code (Painted, Painted+, Woodblock looks; storybook proportions).
-  Deferred to the start of Phase 3: they're hidden, and plain Lanternfall stays as the light look the smoke
-  test drives (software GL can't run Lanternfall+ fast enough). Temple stays: it's a future style choice
+- [x] Unpicked options removed from the code (Painted, Painted+, Woodblock looks; storybook proportions), at
+  the start of Phase 3. Plain Lanternfall stays as the light look the smoke test drives (software GL can't run
+  Lanternfall+ fast enough). Temple stays: it's a future style choice
 
-### Next, at the start of Phase 3
-- **Timber detail pass, roofs first** (owner: "as long as we can make roofs more detailed"; a future pass):
-  layered thatch bundles with a ragged eave, a bound ridge cap with crossed, lashed ridge poles and a little
-  moss, rafter poles and purlins under the eaves, bark grain and rope lashings at the joints, a firmer log
-  floor. Every Phase 3 building is built in timber first, so this comes before them.
-- Remove the unpicked looks and storybook proportions from the code (see the gate list).
+### Done at the start of Phase 3
+- [x] **Timber detail pass, roofs first**: layered thatch bundles with a ragged eave, a bound ridge with crossed,
+  lashed poles and a little moss, rafter poles and purlins under the eaves, bark grain and rope lashings, a firmer
+  log floor (`thatchSide`, `thatchRidge`, `timberFloor` in `src/render/kits.ts`; Lanternfall+ only)
+- [x] The unpicked looks and storybook proportions removed from the code
 
 ### Known Phase 2 gaps
 - The time-of-day presets only change light, sky, fog, water and particles; ground and foliage colors stay the day's (seasons, Phase 5, will add palettes).
@@ -153,3 +152,67 @@ caretaker styles (**chibi** + **storybook**); two kits on the shelter (**temple*
   are not in the collision setup (they sit at the water line, past where the caretaker can walk).
 - Painted+: the build site's ground shadow is one channel for all sites (fine with one site; Phase 3 adds more).
 - All screenshots and frame rates here come from software rendering in a container (a few fps), not from a phone.
+
+## Phase 3: Home grows
+See plan section 10. Builds on decided art only (A1–A6); A7 (seasonal palettes) is untouched until Phase 5.
+
+- [x] Start-of-phase work: the unpicked looks and storybook removed; the timber detail pass, roofs first
+- [x] **All home-valley buildings except the tea house** (plan 9.6): the shelter (6 wood), **gravel garden**
+  (4 wood, 6 stone), **meditation hall** (14 wood, 10 stone) and **bell tower** (10 wood, 8 stone), each one part
+  per unit, built in timber (the kit helpers draw temple too, for Phase 5's per-building styles)
+- [x] **Sites reveal themselves in turn** (`requires` in `src/data/buildings.ts`, `siteOpen` in
+  `src/sim/progress.ts`): a hidden site has no marker, ghost or deposits; when the building before it completes,
+  its marker and ghost fade in with a chime
+- [x] **Mixed materials settled**: each part rests only on the ground or on an earlier part of its own material
+  (`on`), checked by the data validator and a test over every wood/stone mix, so no part ever floats
+- [x] The valley laid out for the whole chapter: four sites, 10 trees and 7 boulders spread out, the path from the
+  old gate to the hall's steps, sit spots, poem stones and notes (`src/data/places.ts`)
+- [x] **Restoration across the valley** (plan 3.4, `growth` in place data, `src/render/growth.ts`): brambles and
+  tall weeds recede, flower beds and iris spread, path lanterns arrive with the hall, a young cherry and the open
+  trail gate with the bell tower; each grows in or withers over a few seconds. The pond clears (murk) by the gravel
+  garden; tired, browner ground greens up as restoration rises; mist lifts with the shelter. Animals: the deer now
+  arrives with the gravel garden (plan 4.2)
+- [x] **Real-clock time of day with settings**: Settings → Time: follow my clock / always day / choose (slider)
+- [x] **Sit and watch** at four spots (the bench; the shelter's deck, the garden's bench and the hall's step once
+  built): HUD fades, camera eases out, ambience lifts, the deer drifts closer and rests nearby
+- [x] **Rituals** (unrewarded, nothing saved): **Ring** the bell tower (bell and striker swing, deep bell, a ring
+  spreads over the ground), **Rake** the gravel (the other pattern is raked in), **Light** the path lanterns at
+  dusk and night (one by one; they go out at dawn)
+- [x] **Poem stones (4) and caretaker notes (3)**: walk up and Read; the first read joins the collection (a saved
+  fact for Phase 5's book). All text is original and a **draft** (shown with a small PLACEHOLDER tag) for the owner
+- [x] **Chapter 1 opening** (plan 4.5): the game begins just inside an old timber gate at the valley's south end;
+  three lines fade in one after another on the first visit only (`OPENING` in `src/data/words.ts`, draft)
+- [x] **Audio pass 1**: ambience loops (birds and the stream by day, crickets and wind at night; fewer birds in a
+  neglected valley; sitting lifts it), a deep temple bell for the ritual, rake, lantern, page and site-reveal
+  sounds. Wood (marimba) and stone (ceramic tap) gathering timbres kept from Phase 1
+- [x] **Reads with sound muted**: every sound has a visual (bell → swing + ground ring; reveal → marker fade-in and
+  dust; words → card; gathering and building as before)
+- [x] Save v4 (v3 migrates): `collection` and `opened`. Facts only; everything else is derived on load
+- [x] Pacing bot plays the whole valley; a "relaxed" style stands in for a calm player (see gaps)
+- [x] Unit tests 58 → 71 (new: `tests/phase3.test.ts`); the browser smoke test also checks that later sites stay
+  hidden and that a read poem survives a reload
+- [x] Screenshots: [`docs/phase3/README.md`](docs/phase3/README.md)
+- [ ] **Owner:** approve or rewrite the opening, poems and notes (all drafts), and confirm the start at the gate
+  (plan 4.5 open decision: walk in vs start at the gate)
+- [ ] **Owner:** gate check (below)
+
+### Gate checklist (owner)
+- [ ] From a fresh save the home valley is completable in about 10–15 minutes (see the pacing gap below)
+- [ ] Before and after look clearly different
+- [ ] The game reads with sound muted
+- [ ] (carried over from Phase 2) Holds frame rate on the owner's PC in Lanternfall+, by day and at night
+
+### Known Phase 3 gaps
+- **Pacing may come in under 10–15 minutes.** The pacing bot builds the valley in ~2 min playing perfectly and
+  ~2.8 min as a "relaxed" player who knows where everything is. A first-time player also finds the sites, reads
+  seven pieces of writing, sits and tries rituals, so my estimate is 6–10 minutes, but **nobody has played it
+  yet**. If it's short, the levers are data only: costs in `src/data/buildings.ts` (plan 9.6 numbers today),
+  units per node and regrowth in `src/data/gathering.ts`, and node spacing in `src/data/places.ts`.
+- Collision is one circle per building: the hall's corners and its two stone lanterns, and the poem stones and
+  note posts, can be walked into a little. Fences still block only at their middle.
+- Path lanterns stay lit only until dawn and only in this session's memory (rituals save nothing, by design).
+- The trail gate opens but leads nowhere yet (Phase 4 walks it to the bamboo grove).
+- Restoration props are placed by hand; overgrowth isn't solid (nothing ever appears in the caretaker's way).
+- Lanternfall+ light slots: 8 lanterns light the ground at once, the 8 nearest the caretaker.
+- All screenshots and the smoke test come from software rendering in a container (about 1 fps); nothing in this
+  phase has been checked on a phone or on the owner's PC.

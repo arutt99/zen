@@ -44,7 +44,9 @@ export class Wanderer {
     const n = this.near;
     if (n && Math.hypot(n.x - h.x, n.z - h.z) < h.r + 8 && this.rng() < 0.75) {
       for (let i = 0; i < 20; i++) {
-        const a = this.rng() * Math.PI * 2, r = this.def.shyRadius + 0.6 + this.rng() * 1.6;
+        // On the animal's own side of the sitter, so its walk there never passes through them.
+        const a = Math.atan2((this.z ?? h.z) - n.z, (this.x ?? h.x) - n.x) + (this.rng() - 0.5) * 1.8;
+        const r = this.def.shyRadius + 0.6 + this.rng() * 1.6;
         const x = n.x + Math.cos(a) * r, z = n.z + Math.sin(a) * r;
         if (this.walkable(x, z)) return { x, z };
       }

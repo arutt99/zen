@@ -362,13 +362,17 @@ const builders: Record<string, () => DecorGeo> = {
     return { ...finish(m, l), ink: 'building' };
   },
   bramble() {
-    // A tangled thorny thicket: dark arching canes over a low, dull mound (the valley before it heals).
+    // A low, tangled thicket (the valley before it heals): a few dull, ragged lumps with thorny canes
+    // arching out of them in every direction.
     const m = new MB(); const l = new MB();
-    l.ico(0.8, [0x3a4a26, 0x6a7a3a], { p: [0, 0.4, 0], s: [1.3, 0.6, 1.1], wobble: 0.16, wobbleFreq: 2.4, flat: false, puff: 0.5 }, 2);
-    for (let i = 0; i < 9; i++) {
-      const a = i * 2.39, r = 0.4 + (i % 3) * 0.25;
-      m.cyl(0.025, 0.035, 1.5, [0x3a2a24, 0x5e4436], { p: [Math.cos(a) * r * 0.6, 0.65, Math.sin(a) * r * 0.6], r: [Math.sin(a) * 0.9, 0, -Math.cos(a) * 0.9] }, 4);
-      m.sphere(0.04, 0x7a2a3a, { p: [Math.cos(a) * r * 1.2, 0.95 - (i % 2) * 0.2, Math.sin(a) * r * 1.2] }, 4, 3);
+    for (let i = 0; i < 4; i++) {
+      const a = i * 1.9 + 0.3, r = i === 0 ? 0 : 0.5;
+      l.ico(i === 0 ? 0.62 : 0.4, [0x3e4d28, 0x6c7a3c], { p: [Math.cos(a) * r, i === 0 ? 0.32 : 0.22, Math.sin(a) * r], s: [1.3, 0.55, 1.1], wobble: 0.14, wobbleFreq: 3, flat: false, puff: 0.4 }, 1);
+    }
+    for (let i = 0; i < 14; i++) {
+      const a = i * 2.39, r = 0.25 + (i % 4) * 0.18;
+      const len = 0.9 + (i % 3) * 0.3;
+      m.cyl(0.018, 0.03, len, [0x4a3424, 0x7a5a3e], { p: [Math.cos(a) * r, 0.42 + (i % 2) * 0.12, Math.sin(a) * r], r: [Math.sin(a) * 1.15, 0, -Math.cos(a) * 1.15] }, 4);
     }
     return finish(m, l);
   },

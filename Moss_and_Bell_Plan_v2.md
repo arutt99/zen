@@ -115,7 +115,9 @@ caretakers and what you restore, not through quests or dialogue (pillar 5 and th
 - "Chapter 1" names the home valley and its monastery. Later journeys (4.2) can be later chapters of the
   same journey. Chapters are a frame, not a quest log: no objectives list, no completion percentage.
 - Open: whether the caretaker's journey has a visible start (a short walk in along the trail before the
-  valley) or begins at the gate. Decide when Phase 3 lays out the valley.
+  valley) or begins at the gate. Decide when Phase 3 lays out the valley. *(Phase 3 default, for the owner to
+  confirm: it begins just inside an old timber gate at the valley's south end, with three draft lines on the
+  first visit; a walk-in would add a short trail outside the gate.)*
 
 ---
 
@@ -385,7 +387,7 @@ Riverbank, mountain pass and further journeys · quiet residents · more rituals
 |---|---|---|
 | Art style | **Decided: Lanternfall+** (A6), **chibi** (A4), **timber by default** with per-building styles later (A5), all owner 2026-11-10. A7 (seasonal palettes) still open | Art decision points A1–A7 in 7.4 |
 | Phone budget for Lanternfall+ | Set aside: PC first (owner, 2026-11-10). Phones need a trimmed detail level and a frame-rate check | Before release to phones (Phase 6 at the latest) |
-| Chapter 1 opening (walk in vs start at the gate) | Not decided | Phase 3 layout |
+| Chapter 1 opening (walk in vs start at the gate) | Starts at the gate (Phase 3 default; draft text) | Owner, at the Phase 3 gate |
 | A mindfulness edition (section 13) | Noted, not planned | After the game's first complete version |
 | Where the code lives | The `zen` repo, with the engine copied from Lanternfall | Phase 0 (alternative: a `games/moss-and-bell` folder next to Lanternfall) |
 | Shared engine with Lanternfall | Copy now, adapt freely | Revisit only if both games keep changing the same engine code |

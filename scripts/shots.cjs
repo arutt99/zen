@@ -1,5 +1,7 @@
-// Screenshot sets for art checkpoints (plan 7.4): the same views in every look preset, at phone size,
-// by day and at dusk, plus the caretaker styles (A4) and building kit styles (A5).
+// Screenshot sets for the phase checkpoints (plan 7.4, 11). Phase 3: the home valley before and after,
+// each building, a half-built hall, rituals, words, night lanterns and the opening, in Lanternfall+ at
+// phone size. Earlier phases' sets stay in docs/phase1 and docs/phase2 (made with older versions of this
+// script).
 // Usage: node scripts/shots.cjs [outDir] [filter]   (needs Playwright; software GL is slow, be patient)
 const path = require('node:path');
 const fs = require('node:fs');
@@ -10,36 +12,40 @@ const outDir = path.resolve(process.argv[2] || path.join(__dirname, '../test-res
 const filter = process.argv[3] || '';
 fs.mkdirSync(outDir, { recursive: true });
 
-/** One view: where the caretaker stands, zoom, time, character, kit, how much of the shelter is built. */
-const VIEWS = {
-  shelter: { at: [8.4, 0.2], zoom: 0, built: 4 },
-  pond: { at: [-6.5, 5.2], zoom: 0, built: 6 },
-  wide: { at: [2, 3], zoom: 1, built: 6 },
-  close: { at: [-5.6, 6.6], zoom: 0, built: 6, closeup: [0.5, 4.6, 2.9] },
-  site: { at: [8.6, -0.4], zoom: 0, built: 6, closeup: [2.6, 5.6, 2.3, 1.5] },
-  sitePartial: { at: [8.6, -0.4], zoom: 0, built: 4, closeup: [2.6, 5.6, 2.3, 1.5] },
+/** Each shot: what to do with the debug handle `mb` before the picture (runs in the page). */
+const SHOTS = {
+  // Before and after (the Phase 3 gate: "before and after look clearly different").
+  'valley-before': `mb.setTime('day'); mb.teleport(1, 0); mb.zoom(1); mb.settle();`,
+  'valley-after': `mb.restoreAll(true); mb.setTime('day'); mb.teleport(1, 0); mb.zoom(1); mb.settle();`,
+  'valley-before-golden': `mb.setTime('golden'); mb.teleport(-6, 4); mb.zoom(1); mb.settle();`,
+  'valley-after-golden': `mb.restoreAll(true); mb.setTime('golden'); mb.teleport(-6, 4); mb.zoom(1); mb.settle();`,
+  // The buildings.
+  'shelter-timber': `mb.deliver('shelter', 6); mb.setTime('golden'); mb.teleport(9.8, 1.2); mb.closeup(3.0, 7.5, 5.0, 2.2); mb.settle();`,
+  'garden': `mb.restoreAll(true); mb.setTime('day'); mb.teleport(-12.4, 13.6); mb.closeup(2.9, 6.6, 5.2, 0.8); mb.settle();`,
+  'hall': `mb.restoreAll(true); mb.setTime('day'); mb.teleport(-1.2, -6.6); mb.closeup(3.0, 9.5, 5.5, 2.0); mb.settle();`,
+  'hall-half-built': `mb.deliver('shelter', 6); mb.deliver('gravel_garden', 4, 6); mb.deliver('meditation_hall', 9, 5); mb.setTime('day'); mb.teleport(-1.2, -6.6); mb.closeup(3.0, 9.5, 5.5, 2.0); mb.settle();`,
+  'tower': `mb.restoreAll(true); mb.setTime('day'); mb.teleport(13.6, -8.2); mb.closeup(2.7, 7.0, 3.6, 2.6); mb.settle();`,
+  // Rituals, stillness and words.
+  'ring-bell': `mb.restoreAll(true); mb.setTime('day'); mb.teleport(11.9, -10.7); mb.closeup(2.7, 6.5, 3.4, 2.6); mb.settle(); mb.ritual('ring_bell');`,
+  'night-lanterns': `mb.restoreAll(true); mb.setTime('night'); mb.teleport(-4.5, -8.3); mb.zoom(1); mb.settle(); mb.ritual('light_lanterns'); setTimeout(() => mb.settle(), 4500);`,
+  'sit-hall': `mb.restoreAll(true); mb.setTime('golden'); mb.settle(); mb.sitAt('sit_hall');`,
+  'poem': `mb.setTime('day'); mb.teleport(5.2, 14.0); mb.read('poem_gate');`,
+  // The opening at the old gate (a fresh save shows it once).
+  'opening': `mb.setTime('dawn');`,
 };
 
-async function shot(browser, name, { look, time, character = 'chibi', kit = 'temple', view = 'shelter', heading }) {
+async function shot(browser, name, js) {
   if (filter && !name.includes(filter)) return;
-  const v = VIEWS[view];
   const ctx = await browser.newContext({ viewport: { width: 844, height: 390 }, deviceScaleFactor: 2, hasTouch: true, isMobile: true });
   const page = await ctx.newPage();
   const errors = [];
   page.on('pageerror', (e) => errors.push(String(e)));
   page.on('console', (m) => { if (m.type() === 'error') errors.push(m.text()); });
-  await page.goto(`${file}?look=${look}`);
-  await page.waitForFunction(() => window.__mb && window.__mb.fps > 0, null, { timeout: 180000 });
-  await page.evaluate(({ v, time, character, kit }) => {
-    const mb = window.__mb;
-    mb.setCharacter(character);
-    mb.setKit(kit);
-    mb.deliver('shelter', v.built);
-    mb.setTime(time);
-    mb.teleport(v.at[0], v.at[1]);
-    if (v.zoom) mb.zoom(1);
-    if (v.closeup) mb.closeup(...v.closeup);
-  }, { v, time, character, kit });
+  // Every shot but the opening starts from a save that has already seen the opening.
+  if (name !== 'opening') await page.addInitScript(() => { try { localStorage.setItem('moss-and-bell/save', JSON.stringify({ v: 4, opened: true, at: { place: '', x: 0, z: 0 } })); } catch { /* fine */ } });
+  await page.goto(`${file}?look=lanternfallplus`);
+  await page.waitForFunction(() => window.__mb && window.__mb.fps > 0, null, { timeout: 240000 });
+  await page.evaluate((js) => { const mb = window.__mb; eval(js); }, js);
   // Let the camera, mist and particles settle (software GL runs at a few fps).
   await page.waitForTimeout(9000);
   const out = path.join(outDir, `${name}.jpg`);
@@ -51,28 +57,6 @@ async function shot(browser, name, { look, time, character = 'chibi', kit = 'tem
 
 (async () => {
   const browser = await chromium.launch({ args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader'] });
-  for (const look of ['painted', 'paintedplus', 'lanternfall', 'lanternfallplus', 'woodblock']) {
-    for (const time of ['day', 'dusk']) await shot(browser, `look-${look}-${time}`, { look, time });
-    await shot(browser, `look-${look}-pond`, { look, time: 'day', view: 'pond' });
-  }
-  for (const time of ['dawn', 'golden', 'night']) await shot(browser, `time-painted-${time}`, { look: 'painted', time, view: 'wide' });
-  // Painted+ (owner request 2026-11-10): the same close views as Painted, side by side.
-  for (const look of ['painted', 'paintedplus', 'lanternfall', 'lanternfallplus']) {
-    await shot(browser, `plus-${look}-wide`, { look, time: 'day', view: 'wide' });
-    await shot(browser, `plus-${look}-close`, { look, time: 'day', view: 'close' });
-    await shot(browser, `plus-${look}-kit`, { look, time: 'day', kit: 'temple', view: 'site' });
-    await shot(browser, `plus-${look}-kit-partial`, { look, time: 'day', kit: 'temple', view: 'sitePartial' });
-    await shot(browser, `plus-${look}-golden`, { look, time: 'golden', view: 'shelter' });
-    await shot(browser, `plus-${look}-night`, { look, time: 'night', kit: 'temple', view: 'site' });
-  }
-  for (const character of ['chibi', 'storybook']) {
-    await shot(browser, `caretaker-${character}`, { look: 'painted', time: 'day', character, view: 'close' });
-    await shot(browser, `caretaker-${character}-lanternfall`, { look: 'lanternfall', time: 'day', character, view: 'close' });
-  }
-  for (const kit of ['temple', 'timber']) {
-    await shot(browser, `kit-${kit}-partial`, { look: 'painted', time: 'day', kit, view: 'sitePartial' });
-    await shot(browser, `kit-${kit}-done`, { look: 'painted', time: 'day', kit, view: 'site' });
-    await shot(browser, `kit-${kit}-night`, { look: 'painted', time: 'night', kit, view: 'site' });
-  }
+  for (const [name, js] of Object.entries(SHOTS)) await shot(browser, name, js);
   await browser.close();
 })().catch((e) => { console.error(e); process.exit(1); });
