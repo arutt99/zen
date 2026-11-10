@@ -1,5 +1,10 @@
 # Changelog
 
+## Phase 1 follow-up (2026-11-10)
+- Art decision points decided by the owner: **A2 camera A (Classic)**, **A3 Medium caretaker (1.8 m)**. The
+  camera and caretaker-size trial settings were removed; older saves that picked another option fall back.
+- Sharper image: the Medium and High quality tiers draw at up to 2× device pixels instead of 1.25×.
+
 ## Phase 1: The feel (2026-11-10)
 - The core loop runs headless in `src/sim`: `state.ts` (facts + events), `progress.ts` (derived), `nodes.ts`,
   `loop.ts` (beat clock, gather, deposit, regrowth via the proximity rule) and `pacing-bot.ts`.

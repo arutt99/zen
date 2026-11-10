@@ -7,7 +7,12 @@ Phase 0 uses a Lanternfall-like look on purpose: banded cel shading and dark out
 ## Scale
 - **1 unit = 1 metre.** The caretaker is ~1.8 m tall including the hair bun (placeholder), walk speed 4.2 m/s.
 - Home valley floor: 48 × 36 m, plus 16 m of hills and rim (`src/data/places.ts`). Lanternfall's trees are
-  4–6 m tall; they were kept at that size for now. Scale is art decision point A3 (Phase 1 gate).
+  4–6 m tall (about 2.5× the caretaker). **A3 decided (owner, 2026-11-10): Medium caretaker, 1.8 m.** Size every
+  layout, gather and site radius, collision circle, path and building part against it.
+- **Camera (A2 decided, owner, 2026-11-10): A, Classic (~40°)**, near zoom 13 m back / 11 m up, far 22 / 19, fov 34°
+  (`src/data/feel.ts`). Check new models for readability at phone size from this view.
+- **Resolution:** Medium, High and Ultra draw at up to 2× device pixels (`src/data/quality.ts`). Judge sharpness and
+  outline width at that resolution, not at Low.
 
 ## Models
 - Every model is built in code with Lanternfall's model builder `MB` (`src/render/mb.ts`): primitives with
@@ -46,8 +51,8 @@ palette (plan 7.2). Path `#D9C39D`/`#A48A62`, water `#9CC7B8`→`#3F7F7A`, cherr
 | # | Decision | Status |
 |---|---|---|
 | A1 | 2D vs 3D | **Decided: 3D** (owner, 2026-11-10) |
-| A2 | Camera angle, height, zoom | **Due now (Phase 1 gate).** Three trial options in `src/data/feel.ts` (`CAMERA_OPTIONS`), switchable in Settings; see `docs/phase1/README.md`. Trees can hide the caretaker |
-| A3 | World scale and spacing | **Due now (Phase 1 gate).** Three trial caretaker sizes (`SCALE_OPTIONS`); trees and spacing unchanged so far |
+| A2 | Camera angle, height, zoom | **Decided: camera A, Classic ~40°** (owner, 2026-11-10). Options B and C are recorded in `docs/phase1/README.md`. Trees can still hide the caretaker (Phase 2: fade canopies in between) |
+| A3 | World scale and spacing | **Decided: Medium caretaker, 1.8 m** (owner, 2026-11-10). Trees and spacing unchanged |
 | A4–A6 | Character style, building kit, shading family | Phase 2 gate |
 | A7 | Seasonal palettes | Phase 5 gate |
 

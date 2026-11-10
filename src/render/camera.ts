@@ -1,5 +1,5 @@
 // Follow camera with damping and two zoom presets (plan 7.2). No free rotation in the first version.
-// The angle and heights come from the camera option being trialled (art decision point A2,
+// The angle and heights come from the chosen camera (art decision point A2, decided: camera A,
 // src/data/feel.ts). A completion moment eases the camera out for a few seconds (plan 3.3).
 import * as THREE from 'three';
 import { damp } from '../core/util';

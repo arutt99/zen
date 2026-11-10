@@ -192,8 +192,8 @@ The owner wants to see options before committing. So the look is built to be **t
 | # | Decision | Why it's expensive later | Decide by |
 |---|---|---|---|
 | A1 | **2D vs 3D world.** | Every system that draws or places things depends on it | **Decided: 3D** (owner, 2026-11-10) |
-| A2 | **Camera angle, height and zoom range** | Sets how big every model, path and build site must be, and what's readable on a phone | Phase 1 gate |
-| A3 | **World scale and spacing:** how big the caretaker is versus trees, buildings and walking space | Every place layout and the collision setup are built around it | Phase 1 gate |
+| A2 | **Camera angle, height and zoom range** | Sets how big every model, path and build site must be, and what's readable on a phone | **Decided: camera A, Classic ~40°** (owner, 2026-11-10) |
+| A3 | **World scale and spacing:** how big the caretaker is versus trees, buildings and walking space | Every place layout and the collision setup are built around it | **Decided: Medium caretaker, 1.8 m** (owner, 2026-11-10) |
 | A4 | **Character proportions and style** (chibi vs taller, how faces are drawn) | All animation, the basket, animals and later residents follow it | Phase 2 gate |
 | A5 | **Building kit style:** the part set buildings are assembled from (posts, beams, roofs) and how a partly built building looks | Every building and every partial state is made from it | Phase 2 gate |
 | A6 | **Shading family:** painted-soft vs inked-cel vs another | Models are tuned against it; switching late means re-tuning every model | Phase 2 gate |
