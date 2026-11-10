@@ -11,4 +11,5 @@
 - Placeholder caretaker (built with Lanternfall's model builder) and a damped follow camera with two zoom presets.
 - Input: keyboard, gamepad and floating touch joystick → one move vector; one context action (sit on the bench) through the proximity rule.
 - Versioned save with corrupt-save fallback and autosave on hide; settings menu (quality, sound).
+- Art decision point A1 decided by the owner: the world is 3D.
 - Headless sim (`src/sim`) with 25 unit tests; Playwright smoke test at phone and laptop sizes; GitHub Actions CI.

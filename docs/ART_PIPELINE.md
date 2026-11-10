@@ -36,7 +36,7 @@ palette (plan 7.2). Path `#D9C39D`/`#A48A62`, water `#9CC7B8`→`#3F7F7A`, cherr
 ## Art decision points (plan 7.4)
 | # | Decision | Status |
 |---|---|---|
-| A1 | 2D vs 3D | **Due now (end of Phase 0).** Built as 3D; waiting for owner confirmation. |
+| A1 | 2D vs 3D | **Decided: 3D** (owner, 2026-11-10) |
 | A2 | Camera angle, height, zoom | Phase 1 gate. Current: two presets in `src/render/camera.ts`; trees can hide the caretaker |
 | A3 | World scale and spacing | Phase 1 gate |
 | A4–A6 | Character style, building kit, shading family | Phase 2 gate |

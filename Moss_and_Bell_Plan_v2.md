@@ -189,7 +189,7 @@ The owner wants to see options before committing. So the look is built to be **t
 
 | # | Decision | Why it's expensive later | Decide by |
 |---|---|---|---|
-| A1 | **2D vs 3D world.** (Current: 3D.) | Every system that draws or places things depends on it | End of Phase 0 |
+| A1 | **2D vs 3D world.** | Every system that draws or places things depends on it | **Decided: 3D** (owner, 2026-11-10) |
 | A2 | **Camera angle, height and zoom range** | Sets how big every model, path and build site must be, and what's readable on a phone | Phase 1 gate |
 | A3 | **World scale and spacing:** how big the caretaker is versus trees, buildings and walking space | Every place layout and the collision setup are built around it | Phase 1 gate |
 | A4 | **Character proportions and style** (chibi vs taller, how faces are drawn) | All animation, the basket, animals and later residents follow it | Phase 2 gate |

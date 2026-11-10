@@ -15,7 +15,7 @@
 - [x] GitHub Actions: typecheck, test, build on every push
 - [x] `AGENTS.md`, `README.md`, `TASKS.md`, `docs/ART_PIPELINE.md`, `docs/CHANGELOG.md`
 - [x] Unit tests (25) and a Playwright smoke test at phone and laptop sizes
-- [ ] **Owner:** confirm art decision point **A1: 2D vs 3D** (current: 3D). Required before Phase 1.
+- [x] **Owner:** art decision point **A1: 2D vs 3D** decided: **3D** (2026-11-10).
 - [ ] **Owner:** gate check on a real phone browser and on PC (see below)
 
 ### Gate checklist (owner)
@@ -45,5 +45,5 @@ Copied from Lanternfall (`games/lanternfall/src` at commit `b282628`); each file
 
 Known Phase 0 gaps: trees between the camera and the caretaker can hide them (Phase 1 camera work, A2); performance has only been measured with software rendering, not on a real phone.
 
-## Phase 1: The feel (next, after A1 is confirmed)
+## Phase 1: The feel (next, once the owner has done the gate check)
 See plan section 10. Art decision points A2 (camera) and A3 (world scale) are due at its gate.
