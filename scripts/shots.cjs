@@ -51,13 +51,13 @@ async function shot(browser, name, { look, time, character = 'chibi', kit = 'tem
 
 (async () => {
   const browser = await chromium.launch({ args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader'] });
-  for (const look of ['painted', 'paintedplus', 'lanternfall', 'woodblock']) {
+  for (const look of ['painted', 'paintedplus', 'lanternfall', 'lanternfallplus', 'woodblock']) {
     for (const time of ['day', 'dusk']) await shot(browser, `look-${look}-${time}`, { look, time });
     await shot(browser, `look-${look}-pond`, { look, time: 'day', view: 'pond' });
   }
   for (const time of ['dawn', 'golden', 'night']) await shot(browser, `time-painted-${time}`, { look: 'painted', time, view: 'wide' });
   // Painted+ (owner request 2026-11-10): the same close views as Painted, side by side.
-  for (const look of ['painted', 'paintedplus']) {
+  for (const look of ['painted', 'paintedplus', 'lanternfall', 'lanternfallplus']) {
     await shot(browser, `plus-${look}-wide`, { look, time: 'day', view: 'wide' });
     await shot(browser, `plus-${look}-close`, { look, time: 'day', view: 'close' });
     await shot(browser, `plus-${look}-kit`, { look, time: 'day', kit: 'temple', view: 'site' });

@@ -2,7 +2,7 @@
 
 > **Not decided yet.** Everything below can be switched live in the game: ☰ → *Art trial (Phase 2)*.
 > Look reloads the page (a second or two); caretaker, kit and time switch at once. Your progress is kept.
-> On a computer you can also add `?look=painted`, `?look=paintedplus`, `?look=lanternfall` or `?look=woodblock`
+> On a computer you can also add `?look=painted`, `?look=paintedplus`, `?look=lanternfall`, `?look=lanternfallplus` or `?look=woodblock`
 > to the address.
 
 Screenshots: phone landscape (844 × 390, 2× pixels), rendered with **software graphics in a container**
@@ -16,6 +16,7 @@ sparser than on your phone. Recreate them with `npm run build && node scripts/sh
 | **Painted** (the reference) | ![](look-painted-day.jpg) | ![](look-painted-dusk.jpg) | ![](look-painted-pond.jpg) |
 | **Painted+** (new, see below) | ![](look-paintedplus-day.jpg) | ![](look-paintedplus-dusk.jpg) | ![](look-paintedplus-pond.jpg) |
 | **Lanternfall-like** | ![](look-lanternfall-day.jpg) | ![](look-lanternfall-dusk.jpg) | ![](look-lanternfall-pond.jpg) |
+| **Lanternfall+** (new, see below) | ![](look-lanternfallplus-day.jpg) | ![](look-lanternfallplus-dusk.jpg) | ![](look-lanternfallplus-pond.jpg) |
 | **Woodblock print** (wildcard) | ![](look-woodblock-day.jpg) | ![](look-woodblock-dusk.jpg) | ![](look-woodblock-pond.jpg) |
 
 - **Painted** applies the plan 7.1 checklist: wide, blended tone steps; warm, light shadows; stronger brush
@@ -52,6 +53,23 @@ pass roughly doubles the vertices in trees and the shelter, and building the mod
 
 **What it decides:** picking Painted+ for A6 also sets the detail level that every later model is built to,
 so Phase 3's buildings would get the same treatment (more model work per building, but done by the agent).
+
+### Lanternfall+: Lanternfall's look, grounded and more detailed (added 2026-11-10)
+
+You like Lanternfall-like best for four reasons: crisp light and shadow bands, dark ink lines on everything,
+richer color and contrast, and no grain or haze. Lanternfall+ keeps all four exactly and adds Painted+'s
+soft shading where things meet, ground shadows and the detail pass.
+
+| | Lanternfall-like | Lanternfall+ |
+|---|---|---|
+| Valley | ![](plus-lanternfall-wide.jpg) | ![](plus-lanternfallplus-wide.jpg) |
+| Close | ![](plus-lanternfall-close.jpg) | ![](plus-lanternfallplus-close.jpg) |
+| Shelter (temple) | ![](plus-lanternfall-kit.jpg) | ![](plus-lanternfallplus-kit.jpg) |
+| Half built | ![](plus-lanternfall-kit-partial.jpg) | ![](plus-lanternfallplus-kit-partial.jpg) |
+| Golden hour | ![](plus-lanternfall-golden.jpg) | ![](plus-lanternfallplus-golden.jpg) |
+
+**If you pick either Lanternfall look for A6:** the plan's art target (7.1, "related at most, never the same")
+gets rewritten, and Moss & Bell will read as Lanternfall's sibling. That's fine if it's deliberate.
 
 Time of day comes with every look: dawn, day, golden hour, dusk and night, blended from your clock
 (☰ → Time → *Follow my clock*, or *Choose* and drag the slider):

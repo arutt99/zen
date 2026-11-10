@@ -1,5 +1,10 @@
 # Changelog
 
+## Phase 2 follow-up: Lanternfall+ (2026-11-10)
+- New trial look **Lanternfall+**: Lanternfall-like's crisp bands, ink lines on everything, rich color and no
+  grain or haze (what the owner likes about it), with Painted+'s baked occlusion, contact shadows and detail
+  pass. Settings → Look, or `?look=lanternfallplus`. Screenshots in `docs/phase2/README.md`.
+
 ## Phase 2 follow-up: Painted+ (2026-11-10)
 - New trial look **Painted+** (owner request: "move in that direction a bit", toward a soft-lit diorama):
   Painted's warm palette and brushwork with baked ambient occlusion in every model, soft contact shadows on
