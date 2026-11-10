@@ -60,7 +60,7 @@ function post(m: MB, s: KitStyleId, x: number, z: number, y0: number, h: number)
       m.box(0.185, 0.04, 0.185, P.woodDark, { p: [x, y0 + 0.3, z] });
     }
   } else {
-    m.cyl(0.085, 0.105, h, P.wood, { p: [x, y0 + h / 2, z], wobble: 0.01, r: [0.015, 0, -0.01] }, 8, 2);
+    m.cyl(0.085, 0.105, h, P.wood, { p: [x, y0 + h / 2, z], wobble: 0.01, r: [0.015, 0, -0.01], mark: 'bark' }, 8, 2);
     m.torus(0.1, 0.022, P.rope, { p: [x, y0 + h - 0.22, z], r: [Math.PI / 2, 0, 0] }, 5, 10);
     m.torus(0.1, 0.022, P.rope, { p: [x, y0 + h - 0.32, z], r: [Math.PI / 2, 0, 0] }, 5, 10);
   }
@@ -107,6 +107,8 @@ function floor(m: MB, s: KitStyleId, w: number, d: number, y: number) {
     // Two stone steps up to the front.
     m.box(1.0, 0.16, 0.36, P.stone, { p: [0, 0.08, d / 2 + 0.24], wobble: 0.012 });
     m.box(0.9, 0.16, 0.3, P.stone, { p: [0, 0.24, d / 2 + 0.06], wobble: 0.012 });
+  } else if (fine()) {
+    timberFloor(m, w, d, y);
   } else {
     const n = 9;
     for (let i = 0; i < n; i++) m.cyl(0.13, 0.13, w + 0.1, P.plank, { p: [0, y + 0.06, -d / 2 + (i + 0.5) * (d / n)], r: [0, 0, Math.PI / 2], wobble: 0.01 }, 7);
@@ -132,6 +134,124 @@ function screen(m: MB, s: KitStyleId, x0: number, x1: number, z: number, y0: num
     }
     for (const yy of [0.25, 0.6, 0.9]) m.box(w, 0.04, 0.08, P.rope, { p: [cx, y0 + h * yy, z] });
   }
+}
+
+// --- Timber detail pass (Phase 3, owner: "as long as we can make roofs more detailed"): layered thatch
+// bundles with a ragged eave, a bound ridge with crossed, lashed poles and a little moss, rafter poles
+// and purlins under the eaves, rope lashings at the joints and a firmer log floor. Built in Lanternfall+.
+
+const THATCH: [number, number][] = [[0x9a7a44, 0xd2b67a], [0x8e7040, 0xc8aa6c], [0xa48650, 0xdcc488]];
+const THATCH_DARK: [number, number] = [0x6e5530, 0x9a7a48];
+const POLE: [number, number] = [0x5a4430, 0x846246];
+const MOSS: [number, number] = [0x4f6f34, 0x7d9a4c];
+
+/** A cheap, repeatable "random" in [0, 1) from two integers (models must not change between loads). */
+const hash = (a: number, b: number) => { const x = Math.sin(a * 127.1 + b * 311.7) * 43758.5453; return x - Math.floor(x); };
+
+/** One side of a thatched gable: rafters and purlins underneath, then courses of straw bundles, then a ragged eave. */
+function thatchSide(m: MB, side: number, w: number, half: number, eave: number, rise: number) {
+  const P = PAL.timber;
+  const ang = Math.atan2(rise, half);
+  const slope = Math.hypot(half, rise);
+  const ridge = eave + rise;
+  const ny = Math.cos(ang), nz = side * Math.sin(ang); // outward normal of this slope
+  const at = (u: number, lift: number): [number, number] => [ridge - rise * u + ny * lift, side * half * u + nz * lift];
+  const down: [number, number, number] = [Math.PI / 2 + side * ang, 0, 0];
+  // Rafter poles down the slope, poking out past the eave; purlins across them.
+  const nr = Math.max(4, Math.round((w + 0.4) / 0.55));
+  for (let i = 0; i < nr; i++) {
+    const x = -(w + 0.3) / 2 + (i + 0.5) * ((w + 0.3) / nr);
+    const [y, z] = at(0.55, -0.16);
+    m.cyl(0.04, 0.045, slope * 1.12, POLE, { p: [x, y, z], r: down, wobble: 0.004, mark: 'bark' }, 6);
+  }
+  for (const u of [0.25, 0.62, 0.92]) {
+    const [y, z] = at(u, -0.08);
+    m.cyl(0.045, 0.045, w + 0.55, POLE, { p: [0, y, z], r: [0, 0, Math.PI / 2], wobble: 0.004, mark: 'bark' }, 6);
+  }
+  // Barge poles along both gable edges.
+  for (const sx of [-1, 1]) {
+    const [y, z] = at(0.5, 0.02);
+    m.cyl(0.05, 0.05, slope + 0.2, POLE, { p: [sx * (w / 2 + 0.33), y, z], r: down, mark: 'bark' }, 6);
+  }
+  // Courses of bundles from the ridge down: each bundle a squashed roll of straw laid down the slope,
+  // every course staggered and sitting a little prouder than the one above, so the eave reads thick.
+  const courses = 5;
+  const seg = slope / courses;
+  const bw = 0.24;
+  const nb = Math.ceil((w + 0.62) / bw);
+  for (let j = 0; j < courses; j++) {
+    const u = (j + 0.55) / courses;
+    const lift = 0.06 + j * 0.022;
+    const off = (j % 2) * 0.5;
+    for (let i = 0; i < nb + (j % 2 ? 0 : 1); i++) {
+      const x = -(w + 0.62) / 2 + (i + off) * bw;
+      if (Math.abs(x) > (w + 0.62) / 2 + 0.02) continue;
+      const jitter = hash(i, j * 7 + (side > 0 ? 1 : 3));
+      const [y, z] = at(u, lift + jitter * 0.025);
+      const len = seg * (1.45 + jitter * 0.12);
+      m.cyl(bw * 0.58, bw * 0.5, len, THATCH[(i + j) % 3]!, { p: [x, y, z], r: [down[0] + (jitter - 0.5) * 0.06, 0, (jitter - 0.5) * 0.05], s: [1, 1, 0.5], wobble: 0.025, wobbleFreq: 6 }, 6);
+    }
+    // A thin binding rod (a pole lashed over each course) on the upper courses.
+    if (j < courses - 1) {
+      const [y, z] = at(u - 0.3 / courses, lift + 0.07);
+      m.cyl(0.022, 0.022, w + 0.55, P.rope, { p: [0, y, z], r: [0, 0, Math.PI / 2] }, 5);
+    }
+  }
+  // The ragged eave: straw ends of uneven length, a darker cut underneath.
+  const [ey, ez] = at(1.03, 0.08 + (courses - 1) * 0.022);
+  m.box(w + 0.66, 0.1, 0.16, THATCH_DARK, { p: [0, ey - 0.06, ez], r: [side * ang, 0, 0], wobble: 0.03, wobbleFreq: 5 });
+  const nf = Math.round((w + 0.6) / 0.075);
+  for (let i = 0; i < nf; i++) {
+    const x = -(w + 0.6) / 2 + (i + 0.5) * ((w + 0.6) / nf);
+    const h = hash(i, side > 0 ? 11 : 17);
+    const len = 0.12 + h * 0.16;
+    m.cone(0.045, len, [0xb89a5e, 0x8a6c3e], { p: [x, ey - len * 0.35, ez + side * 0.04], r: [Math.PI + side * (0.35 + h * 0.2), 0, (h - 0.5) * 0.3] }, 4);
+  }
+}
+
+/** The ridge: a thick bound roll of straw, crossed poles lashed in pairs along it, and a little moss. */
+function thatchRidge(m: MB, w: number, ridge: number) {
+  const P = PAL.timber;
+  m.cyl(0.21, 0.21, w + 0.85, [0x8a6c3c, 0xc4a468], { p: [0, ridge + 0.15, 0], r: [0, 0, Math.PI / 2], s: [1, 1, 0.85], wobble: 0.03, wobbleFreq: 4 }, 10);
+  const nb = Math.max(4, Math.round(w / 0.42));
+  for (let i = 0; i <= nb; i++) {
+    const x = -(w + 0.6) / 2 + i * ((w + 0.6) / nb);
+    m.torus(0.215, 0.026, P.rope, { p: [x, ridge + 0.15, 0], r: [0, Math.PI / 2, 0], s: [1, 0.86, 1] }, 5, 12);
+  }
+  const pairs = Math.max(3, Math.round(w / 0.9));
+  for (let i = 0; i < pairs; i++) {
+    const x = -(w + 0.3) / 2 + (i + 0.5) * ((w + 0.3) / pairs);
+    for (const tilt of [-0.62, 0.62]) m.cyl(0.035, 0.04, 0.95, POLE, { p: [x, ridge + 0.36, 0], r: [tilt, 0, 0], mark: 'bark' }, 5);
+    m.torus(0.06, 0.02, P.rope, { p: [x, ridge + 0.36, 0], r: [0, Math.PI / 2, 0] }, 4, 8);
+  }
+  // A rider pole along the top, through the crossings.
+  m.cyl(0.04, 0.04, w + 0.4, POLE, { p: [0, ridge + 0.45, 0], r: [0, 0, Math.PI / 2], mark: 'bark' }, 6);
+  for (let i = 0; i < 5; i++) {
+    const h = hash(i, 29);
+    m.ico(0.12 + h * 0.08, MOSS, { p: [(h - 0.5) * w * 0.9, ridge + 0.28, (hash(i, 31) - 0.5) * 0.25], s: [1.6, 0.4, 1], wobble: 0.03 }, 1);
+  }
+}
+
+/** A firmer log floor: sleepers on the stones, close-laid logs with cut ends, and lashed edge poles. */
+function timberFloor(m: MB, w: number, d: number, y: number) {
+  const P = PAL.timber;
+  for (const sx of [-1, 0, 1]) m.cyl(0.11, 0.12, d + 0.2, POLE, { p: [sx * (w / 2 - 0.2), y - 0.09, 0], r: [Math.PI / 2, 0, 0], wobble: 0.008, mark: 'bark' }, 7);
+  const n = Math.max(6, Math.round(d / 0.24));
+  for (let i = 0; i < n; i++) {
+    const z = -d / 2 + (i + 0.5) * (d / n);
+    const h = hash(i, 41);
+    const r = d / n / 2 + 0.008;
+    const len = w + 0.08 + (h - 0.5) * 0.16;
+    m.cyl(r, r, len, h > 0.5 ? P.plank : [0x8e6f4c, 0xbc9c6e], { p: [(h - 0.5) * 0.06, y + 0.06, z], r: [0, 0, Math.PI / 2], wobble: 0.006, mark: 'wood' }, 8);
+    // Pale cut ends with a dark ring.
+    for (const sx of [-1, 1]) m.cyl(r * 0.86, r * 0.86, 0.02, [0xd8c08c, 0xe6d2a0], { p: [sx * (len / 2 + 0.005) + (h - 0.5) * 0.06, y + 0.06, z], r: [0, 0, Math.PI / 2] }, 8);
+  }
+  for (const sz of [-1, 1]) {
+    m.cyl(0.06, 0.06, w + 0.3, POLE, { p: [0, y + 0.17, sz * (d / 2 - 0.02)], r: [0, 0, Math.PI / 2], mark: 'bark' }, 6);
+    for (const sx of [-1, 1]) m.torus(0.08, 0.02, P.rope, { p: [sx * (w / 2 - 0.2), y + 0.15, sz * (d / 2 - 0.02)], r: [0, Math.PI / 2, 0] }, 4, 9);
+  }
+  // A flat step stone at the front.
+  m.ico(0.22, P.stone, { p: [0.1, 0.1, d / 2 + 0.32], s: [1.7, 0.55, 1.15], wobble: 0.03, mark: 'stone' }, 2);
 }
 
 /** A gabled roof over a w x d footprint: grey tiles in rows with a ridge (temple) or layered thatch (timber). */
@@ -178,6 +298,8 @@ function roof(m: MB, s: KitStyleId, w: number, d: number, eave: number, rise: nu
       }
       // A gentle upturn at the eave: an end row of tiles.
       m.box(w + 0.8, 0.1, 0.18, P.roof, { p: [0, eave - 0.02, side * (half + 0.02)], r: [-side * 0.25, 0, 0] });
+    } else if (fine()) {
+      thatchSide(m, side, w, half, eave, rise);
     } else {
       // Thatch: three overlapping thick layers, the lowest overhanging most.
       for (let k = 0; k < 3; k++) {
@@ -203,6 +325,8 @@ function roof(m: MB, s: KitStyleId, w: number, d: number, eave: number, rise: nu
       m.cyl(0.13, 0.13, w + 0.9, P.roof, { p: [0, ridge + 0.2, 0], r: [0, 0, Math.PI / 2], s: [1, 1, 0.8] }, 10);
       for (const sx of [-1, 1]) m.box(0.22, 0.4, 0.34, [0x4a5453, 0x6c7876], { p: [sx * (w / 2 + 0.44), ridge + 0.22, 0], r: [0, 0, sx * -0.35] });
     } else for (const sx of [-1, 1]) m.box(0.2, 0.28, 0.3, P.roof, { p: [sx * (w / 2 + 0.42), ridge + 0.16, 0], r: [0, 0, sx * -0.3] });
+  } else if (fine()) {
+    thatchRidge(m, w, ridge);
   } else {
     m.cyl(0.16, 0.16, w + 0.8, [P.roof[0], 0xc8a868], { p: [0, ridge + 0.14, 0], r: [0, 0, Math.PI / 2], wobble: 0.02 }, 8);
     for (const sx of [-1, 1]) for (const tilt of [-0.55, 0.55]) {
