@@ -97,6 +97,9 @@ caretaker styles (**chibi** + **storybook**); two kits on the shelter (**temple*
 - [x] Canopy fade between the camera and the caretaker (the A2 occlusion gap)
 - [x] Save v3 (v2 migrates); unit tests; browser smoke test
 - [x] Screenshot sets of every preset at phone size, day and dusk, plus caretaker and kit styles: [`docs/phase2/README.md`](docs/phase2/README.md)
+- [x] **Painted+** look (owner request, 2026-11-10: move a bit toward a soft-lit diorama): baked occlusion,
+  contact shadows, softer sun shadows, lines on figures only, and a detail pass on stones, crowns, the pond
+  edge, the stone lantern and the temple shelter. Side-by-side screenshots in `docs/phase2/README.md`
 - [ ] **Owner:** try the looks, caretakers and kits on the phone and decide **A4, A5, A6** (see `docs/phase2/README.md`)
 - [ ] **Owner:** gate check (below)
 
@@ -113,4 +116,10 @@ caretaker styles (**chibi** + **storybook**); two kits on the shelter (**temple*
 - Fences block only at their middle (one collision circle per prop); they're placed off the walking routes. A segment collider comes with Phase 3's layout work.
 - The Zen-kit pieces are placed for review, not as the final valley layout (Phase 3).
 - Switching the look reloads the page; caretaker, kit and time switch live.
+- Painted+: the occlusion bake adds load time (about 0.25 s more on a desktop; a phone is untested, estimate
+  ~1 s). Frame cost should be close to Painted (same draw calls plus one small ground texture, but about twice
+  the vertices in trees and the shelter); not measured on a phone yet.
+- Painted+: the timber kit has no detail pass yet (it gets the occlusion and shadows). The pond edge stones
+  are not in the collision setup (they sit at the water line, past where the caretaker can walk).
+- Painted+: the build site's ground shadow is one channel for all sites (fine with one site; Phase 3 adds more).
 - All screenshots and frame rates here come from software rendering in a container (a few fps), not from a phone.

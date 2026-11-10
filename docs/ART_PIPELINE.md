@@ -2,7 +2,7 @@
 
 The rules for building and tuning art. The **target look** is the painted storybook reference,
 `docs/art-reference.jpg` (plan 7.1). It is not final: the owner picks from the look presets at the Phase 2
-gate (A6). Until then every model must read well in all three presets.
+gate (A6). Until then every model must read well in all four presets.
 
 ## Scale
 - **1 unit = 1 metre.** The caretaker is ~1.8 m tall including the hair bun (placeholder), walk speed 4.2 m/s.
@@ -25,26 +25,53 @@ gate (A6). Until then every model must read well in all three presets.
 
 ## Look presets (Phase 2, plan 7.4)
 All style values live in `src/data/looks.ts`; the active look is chosen per page load (`src/render/look.ts`,
-Settings → Look, or `?look=painted|lanternfall|woodblock` in the address). Shaders are generated for one
+Settings → Look, or `?look=painted|paintedplus|lanternfall|woodblock` in the address). Shaders are generated for one
 look, so switching reloads the page.
 
-| Setting | Painted (target) | Lanternfall-like | Woodblock (wildcard) |
-|---|---|---|---|
-| Tone levels (shadow, mid, lit) | 0.74, 0.93, 1.08 | 0.6, 0.9, 1.22 | 0.8, 1.0, 1.0 (two tones) |
-| Step softness (half-width) | 0.17 (blended) | 0.03 (hard) | 0.012 (hard) |
-| Shadow tint | warm (1.0, 0.92, 0.88) | cool (0.8, 0.82, 1.08) | grey-blue (0.86, 0.88, 0.98) |
-| Brush strength | 0.95 | 0.42 | 0.25 |
-| Color remap (sat, lift to paper) | 0.78, 0.14 | none | 0.7, 0.1 |
-| Outlines | warm brown, 1.25/720, figures + buildings | near-black, 1.9/720, everything | dark brown, 1.35/720, everything |
-| Ground | soft patch edges, no path ink | crisp patches, inked path edge | crisp patches, inked path edge |
-| Haze (fog ×, toward paper) | 1.35, 0.5 | 1, 0 | 1.2, 0.8 |
-| Post: saturation, grain, posterize | 0.86, 0.05, off | 1, 0, off | 0.88, 0.11, 7 levels at 55% |
-| Bloom (strength, radius, threshold) | 0.2, 0.6, 1.15 | 0.24, 0.5, 1.2 | 0.05, 0.4, 1.5 |
+| Setting | Painted (target) | Painted+ | Lanternfall-like | Woodblock (wildcard) |
+|---|---|---|---|---|
+| Tone levels (shadow, mid, lit) | 0.74, 0.93, 1.08 | 0.72, 0.94, 1.1 | 0.6, 0.9, 1.22 | 0.8, 1.0, 1.0 (two tones) |
+| Step softness (half-width) | 0.17 (blended) | 0.24 (very soft) | 0.03 (hard) | 0.012 (hard) |
+| Shadow tint | warm (1.0, 0.92, 0.88) | warm (1.0, 0.91, 0.86) | cool (0.8, 0.82, 1.08) | grey-blue (0.86, 0.88, 0.98) |
+| Brush strength | 0.95 | 0.62 (cleaner surfaces) | 0.42 | 0.25 |
+| Color remap (sat, lift to paper) | 0.78, 0.14 | 0.84, 0.1 | none | 0.7, 0.1 |
+| Outlines | warm brown, 1.25/720, figures + buildings | warm brown, 1.0/720, figures only | near-black, 1.9/720, everything | dark brown, 1.35/720, everything |
+| Ground | soft patch edges, no path ink | softer patch edges, no path ink | crisp patches, inked path edge | crisp patches, inked path edge |
+| Haze (fog ×, toward paper) | 1.35, 0.5 | 1.2, 0.45 | 1, 0 | 1.2, 0.8 |
+| Post: saturation, grain, posterize | 0.86, 0.05, off | 0.9, 0.03, off | 1, 0, off | 0.88, 0.11, 7 levels at 55% |
+| Bloom (strength, radius, threshold) | 0.2, 0.6, 1.15 | 0.26, 0.6, 1.05 | 0.24, 0.5, 1.2 | 0.05, 0.4, 1.5 |
+| Baked occlusion / contact shadows | off / off | 0.85 / 0.8 | off / off | off / off |
+| Sun shadow edge (radius) | 3 | 6 (softer) | 3 | 3 |
+| Models | base | fine (detail pass) | base | base |
 
 Outline classes: every mesh that should get a line calls `inked(mesh, cls)` with `'figure'` (caretaker,
 animals), `'building'` (kit parts, scaffolding, lanterns, fences, bench) or `'nature'` (trees, rocks,
 grass-level props; the default). Decor kinds declare theirs as `ink` in `decor-models.ts`. Flat ground
 pieces (`flat: true`: raked gravel, stepping stones) never get lines or shadows.
+
+## Painted+ (owner request, 2026-11-10)
+The owner asked to move "a bit" toward a soft-lit diorama (in the direction of games like Tiny Glade, not a
+copy of one): Painted's warmth and brushwork stay; light, grounding and detail improve. All of it is switched
+on by the look (`light` and `detail` in `src/data/looks.ts`) and costs nothing in the other looks.
+- **Baked occlusion** (`src/render/ao.ts`, called from `MB.build(ao)`): when a model is built, its surfaces
+  are marked in a coarse voxel grid (~44 cells along its longest side) and every corner sends 12 short rays
+  over its hemisphere; hits on the model, on `occluders` or below the ground plane (`ground: true`,
+  `groundY`) darken its vertex color, warm (blue falls off faster than red). No per-frame cost. Pass
+  `{ ground: true }` for models whose origin sits on the terrain, `occluders` for neighbours (a kit part is
+  shaded by the parts built before it; a trunk by its crown), `{ off: true }` for glowing pieces.
+  Cost: about 0.25 s more model building on a desktop at load (estimate ~1 s on a mid phone, not measured).
+- **Contact shadows** (`src/render/contact.ts`): soft footprints of decor, gather nodes and build sites are
+  painted once into a 4 px/m ground texture that the terrain shader reads (red = props and nodes; green =
+  sites, scaled live by how far the deck has settled). The caretaker and the deer carry a soft blob.
+- **Detail pass** (`look().detail === 'fine'`, `fine()` in `src/render/look.ts`): rounded stones
+  (`stone()` in `decor-models.ts`: smooth-welded, ico detail 3), leaf crowns as one lumpy mass with a couple of
+  softer clumps on top (`leafCluster()`), branches reaching into oak and cherry crowns, a finer stone lantern
+  (stepped hexagonal base, turned post, firebox posts, curved cap with upturned corners, jewel finial, moss),
+  stones around the pond's shoreline (`Stage.buildPondEdge`), rounder path stones, and the temple shelter with
+  capped footings, a deck fascia, varied planks, post bearing blocks, a roof of tile courses, rafter ends,
+  barge boards and a rounded ridge. The timber kit gets the occlusion and shadows but no new parts yet.
+- `MB` parts accept `smooth: true` (weld corners, smooth normals) for rounded shapes.
+- Geometry caches (`decorGeo`, `partGeo`, node geometry) are keyed by look.
 
 ## Time of day (Phase 2)
 Presets per place and time in `src/data/presets.ts` (`home_dawn`, `home_day`, `home_golden`, `home_dusk`,
@@ -113,7 +140,7 @@ palette (plan 7.2). Path `#D9C39D`/`#A48A62`, water `#9CC7B8`→`#3F7F7A`, cherr
 | A3 | World scale and spacing | **Decided: Medium caretaker, 1.8 m** (owner, 2026-11-10). Trees and spacing unchanged |
 | A4 | Character proportions | Phase 2 gate: **chibi** or **storybook** to try in Settings (`docs/phase2/README.md`) |
 | A5 | Building kit style | Phase 2 gate: **temple** or **timber** to try in Settings |
-| A6 | Shading family | Phase 2 gate: **Painted**, **Lanternfall-like** or **Woodblock** to try in Settings |
+| A6 | Shading family | Phase 2 gate: **Painted**, **Painted+**, **Lanternfall-like** or **Woodblock** to try in Settings |
 | A7 | Seasonal palettes | Phase 5 gate |
 
 ## External assets

@@ -3,7 +3,12 @@
 // shelter assembled from them one part per unit delivered. Each part settles into place; a ghost
 // outline shows what is still missing; scaffolding stands around an unfinished building.
 // Later buildings (gravel garden, hall, bell tower) are assembled from the same library.
+// Painted+ (2026-11-10, look detail 'fine'): the temple kit gets a deck fascia and varied planks,
+// capped footings, post brackets, a roof of shingled tile courses with rafter ends and barge boards;
+// every part is shaded by the parts built before it (baked occlusion).
 import * as THREE from 'three';
+import type { AOOptions } from './ao';
+import { fine, look } from './look';
 import { damp } from '../core/util';
 import type { BuildingDef, KitStyleId } from '../data/buildings';
 import { inked, Mats } from './materials';
@@ -42,6 +47,12 @@ function post(m: MB, s: KitStyleId, x: number, z: number, y0: number, h: number)
   if (s === 'temple') {
     m.box(0.17, h, 0.17, P.wood, { p: [x, y0 + h / 2, z], wobble: 0.004 });
     m.box(0.22, 0.06, 0.22, P.woodDark, { p: [x, y0 + 0.03, z] });
+    if (fine()) {
+      // A bearing block at the top and a dark band near the foot.
+      m.box(0.26, 0.09, 0.26, P.woodDark, { p: [x, y0 + h - 0.02, z] });
+      m.box(0.2, 0.05, 0.2, P.wood, { p: [x, y0 + h - 0.1, z] });
+      m.box(0.185, 0.04, 0.185, P.woodDark, { p: [x, y0 + 0.3, z] });
+    }
   } else {
     m.cyl(0.085, 0.105, h, P.wood, { p: [x, y0 + h / 2, z], wobble: 0.01, r: [0.015, 0, -0.01] }, 8, 2);
     m.torus(0.1, 0.022, P.rope, { p: [x, y0 + h - 0.22, z], r: [Math.PI / 2, 0, 0] }, 5, 10);
@@ -65,7 +76,23 @@ function floor(m: MB, s: KitStyleId, w: number, d: number, y: number) {
     if (s === 'temple') m.box(0.32, y, 0.32, P.stone, { p: [fx * (w / 2 - 0.2), y / 2, fz * (d / 2 - 0.2)], wobble: 0.02 });
     else m.ico(0.24, P.stone, { p: [fx * (w / 2 - 0.2), y * 0.45, fz * (d / 2 - 0.2)], s: [1.1, y * 3, 1], wobble: 0.03 }, 1);
   }
-  if (s === 'temple') {
+  if (s === 'temple' && fine()) {
+    // Capped footings, a fascia board around the deck, and planks that each take a slightly different tone.
+    for (const fx of [-1, 0, 1]) for (const fz of [-1, 1]) {
+      m.box(0.38, 0.05, 0.38, P.stone, { p: [fx * (w / 2 - 0.2), 0.02, fz * (d / 2 - 0.2)], wobble: 0.01 });
+      m.box(0.26, 0.04, 0.26, P.stone, { p: [fx * (w / 2 - 0.2), y + 0.01, fz * (d / 2 - 0.2)] });
+    }
+    m.box(w, 0.08, d, P.woodDark, { p: [0, y + 0.04, 0] });
+    for (const side of [-1, 1]) {
+      m.box(w + 0.06, 0.12, 0.04, P.woodDark, { p: [0, y + 0.06, side * (d / 2 + 0.02)] });
+      m.box(0.04, 0.12, d + 0.06, P.woodDark, { p: [side * (w / 2 + 0.02), y + 0.06, 0] });
+    }
+    const n = 12;
+    const tones: [number, number][] = [P.plank, [0xb0926a, 0xd2bb94], [0xbfa173, 0xdfc9a3]];
+    for (let i = 0; i < n; i++) m.box(w / n - 0.02, 0.05, d - 0.02, tones[(i * 7) % 3]!, { p: [-w / 2 + (i + 0.5) * (w / n), y + 0.105 + ((i * 5) % 3) * 0.004, 0], wobble: 0.002 });
+    m.box(1.0, 0.16, 0.36, P.stone, { p: [0, 0.08, d / 2 + 0.24], wobble: 0.012 });
+    m.box(0.9, 0.16, 0.3, P.stone, { p: [0, 0.24, d / 2 + 0.06], wobble: 0.012 });
+  } else if (s === 'temple') {
     m.box(w, 0.08, d, P.woodDark, { p: [0, y + 0.04, 0] });
     const n = 8;
     for (let i = 0; i < n; i++) m.box(w / n - 0.025, 0.06, d, P.plank, { p: [-w / 2 + (i + 0.5) * (w / n), y + 0.11, 0], wobble: 0.003 });
@@ -107,7 +134,32 @@ function roof(m: MB, s: KitStyleId, w: number, d: number, eave: number, rise: nu
   const ridge = eave + rise;
   for (const side of [-1, 1]) {
     const cz = side * half / 2, cy = eave + rise / 2;
-    if (s === 'temple') {
+    if (s === 'temple' && fine()) {
+      // A board under the tiles, then rounded tiles laid in courses: each tile is a little wider at its
+      // lower end, so every course casts a soft step onto the next.
+      m.box(w + 0.7, 0.06, slope, P.woodDark, { p: [0, cy - 0.06, cz], r: [side * ang, 0, 0] });
+      const cols = 12, courses = 6;
+      const seg = slope / courses;
+      for (let i = 0; i < cols; i++) {
+        const x = -(w + 0.6) / 2 + (i + 0.5) * ((w + 0.6) / cols);
+        for (let j = 0; j < courses; j++) {
+          const u = (j + 0.5) / courses;
+          const big = 0.118, small = 0.094;
+          // +y of the cylinder points down the slope on the front side and up it on the back.
+          const [rt, rb] = side > 0 ? [big, small] : [small, big];
+          const tone: [number, number] = (i + j) % 4 === 0 ? [0x5b6665, 0x84908e] : P.roof;
+          m.cyl(rt, rb, seg * 1.04, tone, { p: [x, ridge - rise * u + 0.05, side * half * u], r: [Math.PI / 2 + side * ang, 0, 0], s: [1, 1, 0.55] }, 8);
+        }
+      }
+      // Rafter ends under the eave, and barge boards along the gable ends.
+      const nr = 10;
+      for (let i = 0; i < nr; i++) {
+        const x = -(w + 0.4) / 2 + (i + 0.5) * ((w + 0.4) / nr);
+        m.box(0.07, 0.08, 0.3, P.wood, { p: [x, eave - 0.1, side * (half - 0.12)], r: [side * ang, 0, 0] });
+      }
+      for (const sx of [-1, 1]) m.box(0.05, 0.2, slope + 0.1, P.woodDark, { p: [sx * (w / 2 + 0.38), cy - 0.02, cz], r: [side * ang, 0, 0] });
+      m.box(w + 0.8, 0.1, 0.18, P.roof, { p: [0, eave - 0.02, side * (half + 0.02)], r: [-side * 0.25, 0, 0] });
+    } else if (s === 'temple') {
       // A board under the tiles, then rows of rounded tiles running down the slope.
       m.box(w + 0.7, 0.06, slope, P.woodDark, { p: [0, cy - 0.06, cz], r: [side * ang, 0, 0] });
       const rows = 11;
@@ -137,7 +189,11 @@ function roof(m: MB, s: KitStyleId, w: number, d: number, eave: number, rise: nu
   }
   if (s === 'temple') {
     m.box(w + 0.9, 0.16, 0.22, P.roof, { p: [0, ridge + 0.1, 0] });
-    for (const sx of [-1, 1]) m.box(0.2, 0.28, 0.3, P.roof, { p: [sx * (w / 2 + 0.42), ridge + 0.16, 0], r: [0, 0, sx * -0.3] });
+    if (fine()) {
+      // A rounded cap along the ridge and taller end tiles that flare outward.
+      m.cyl(0.13, 0.13, w + 0.9, P.roof, { p: [0, ridge + 0.2, 0], r: [0, 0, Math.PI / 2], s: [1, 1, 0.8] }, 10);
+      for (const sx of [-1, 1]) m.box(0.22, 0.4, 0.34, [0x4a5453, 0x6c7876], { p: [sx * (w / 2 + 0.44), ridge + 0.22, 0], r: [0, 0, sx * -0.35] });
+    } else for (const sx of [-1, 1]) m.box(0.2, 0.28, 0.3, P.roof, { p: [sx * (w / 2 + 0.42), ridge + 0.16, 0], r: [0, 0, sx * -0.3] });
   } else {
     m.cyl(0.16, 0.16, w + 0.8, [P.roof[0], 0xc8a868], { p: [0, ridge + 0.14, 0], r: [0, 0, Math.PI / 2], wobble: 0.02 }, 8);
     for (const sx of [-1, 1]) for (const tilt of [-0.55, 0.55]) {
@@ -168,33 +224,33 @@ function noren(m: MB, x: number, y: number, z: number, w: number) {
 // ---------------------------------------------------------------------------------------------
 // The shelter: 2.8 x 2.4 m, four posts, back screen, a front lintel, a gabled roof. Faces +z.
 
-type KitBuilder = Record<string, (s: KitStyleId) => PartGeo>;
+type KitBuilder = Record<string, (s: KitStyleId, ao: AOOptions) => PartGeo>;
 const W = 2.8, D = 2.4, FLOOR = 0.42;
 const PX = 1.2, PZ = 1.0;
 
 const shelterKit: KitBuilder = {
-  deck: (s) => { const m = new MB(); floor(m, s, W, D, FLOOR); return { solid: m.build() }; },
-  post_back_left: (s) => {
+  deck: (s, ao) => { const m = new MB(); floor(m, s, W, D, FLOOR); return { solid: m.build(ao) }; },
+  post_back_left: (s, ao) => {
     const m = new MB();
     post(m, s, -PX, -PZ, FLOOR + 0.14, 2.0);
     screen(m, s, -PX + 0.08, 0, -PZ, FLOOR + 0.14, 1.55);
-    return { solid: m.build() };
+    return { solid: m.build(ao) };
   },
-  post_back_right: (s) => {
+  post_back_right: (s, ao) => {
     const m = new MB();
     post(m, s, PX, -PZ, FLOOR + 0.14, 2.0);
     screen(m, s, 0, PX - 0.08, -PZ, FLOOR + 0.14, 1.55);
     beam(m, s, -PX - 0.2, -PZ, PX + 0.2, -PZ, FLOOR + 2.12);
-    return { solid: m.build() };
+    return { solid: m.build(ao) };
   },
-  post_front_left: (s) => {
+  post_front_left: (s, ao) => {
     const m = new MB();
     post(m, s, -PX, PZ, FLOOR + 0.14, 1.85);
     beam(m, s, -PX, -PZ - 0.15, -PX, PZ + 0.15, FLOOR + 1.95, 0.9);
     if (s === 'timber') m.cyl(0.04, 0.04, 1.3, PAL.timber.wood, { p: [-PX, FLOOR + 1.4, PZ - 0.45], r: [0.85, 0, 0] }, 5);
-    return { solid: m.build() };
+    return { solid: m.build(ao) };
   },
-  post_front_right: (s) => {
+  post_front_right: (s, ao) => {
     const m = new MB();
     const g = new MB();
     post(m, s, PX, PZ, FLOOR + 0.14, 1.85);
@@ -202,14 +258,14 @@ const shelterKit: KitBuilder = {
     beam(m, s, -PX - 0.2, PZ, PX + 0.2, PZ, FLOOR + 1.98);
     if (s === 'temple') noren(m, 0, FLOOR + 1.9, PZ + 0.08, 1.3);
     else m.cyl(0.04, 0.04, 1.3, PAL.timber.wood, { p: [PX, FLOOR + 1.4, PZ - 0.45], r: [0.85, 0, 0] }, 5);
-    return g.empty ? { solid: m.build() } : { solid: m.build(), glow: g.build() };
+    return g.empty ? { solid: m.build(ao) } : { solid: m.build(ao), glow: g.build({ off: true }) };
   },
-  roof: (s) => {
+  roof: (s, ao) => {
     const m = new MB();
     const g = new MB();
     roof(m, s, W, D, FLOOR + 2.1, s === 'temple' ? 0.95 : 1.15);
     if (s === 'temple') lantern(m, g, PX + 0.3, FLOOR + 1.6, PZ + 0.35);
-    return g.empty ? { solid: m.build() } : { solid: m.build(), glow: g.build() };
+    return g.empty ? { solid: m.build(ao) } : { solid: m.build(ao), glow: g.build({ off: true }) };
   },
 };
 
@@ -220,12 +276,19 @@ export const KIT_PARTS: Record<string, string[]> = Object.fromEntries(Object.ent
 
 const geoCache = new Map<string, PartGeo>();
 export function partGeo(kit: string, part: string, style: KitStyleId = 'temple'): PartGeo {
-  const key = `${style}/${kit}/${part}`;
-  let g = geoCache.get(key);
+  const key = (p: string) => `${look().id}/${style}/${kit}/${p}`;
+  let g = geoCache.get(key(part));
   if (!g) {
-    g = KITS[kit]![part]!(style);
-    g.solid.computeBoundingBox();
-    geoCache.set(key, g);
+    // Build the whole kit in order, so each part is shaded by the parts that stand before it
+    // (posts by the deck, the roof by the posts) when the look bakes occlusion.
+    const occluders: THREE.BufferGeometry[] = [];
+    for (const [id, build] of Object.entries(KITS[kit]!)) {
+      const pg = geoCache.get(key(id)) ?? build(style, { ground: true, occluders: [...occluders] });
+      pg.solid.computeBoundingBox();
+      geoCache.set(key(id), pg);
+      occluders.push(pg.solid);
+    }
+    g = geoCache.get(key(part))!;
   }
   return g;
 }
@@ -259,7 +322,7 @@ function scaffoldGeo(s: KitStyleId): THREE.BufferGeometry {
     // Diagonal braces.
     m.cyl(0.03, 0.03, 3.6, [0x8a9a5a, 0xc8c08a], { p: [0, 1.9, -ez], r: [0, 0, 0.62] }, 5);
   }
-  return m.build();
+  return m.build({ ground: true });
 }
 
 const MARKER_FRAG = /* glsl */ `
@@ -360,6 +423,12 @@ export class BuildingView {
     if (!p) return this.root.getWorldPosition(out);
     p.meshes[0]!.geometry.boundingBox!.getCenter(out);
     return this.root.localToWorld(out);
+  }
+
+  /** How far the first part (the deck) has settled in, 0..1: the site's contact shadow follows it (Painted+). */
+  get groundShade(): number {
+    const p = this.parts[0];
+    return p && p.built && p.delay <= 0 ? p.t : 0;
   }
 
   get complete(): boolean {

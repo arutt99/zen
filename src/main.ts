@@ -488,6 +488,7 @@ function boot(): void {
       v.update(dt, time);
     }
     for (const b of buildings.values()) b.update(dt, time);
+    stage.setSiteShade(Math.max(0, ...[...buildings.values()].map((b) => b.groundShade)));
     const pixelScale = engine.renderer.domElement.height / (2 * Math.tan(THREE.MathUtils.degToRad(engine.camera.fov) / 2));
     mist.update(dt, mistTarget, pixelScale);
     stage.setFogDensity(stage.baseFog * (1 + (place.mist.fogBoost - 1) * mist.amount));

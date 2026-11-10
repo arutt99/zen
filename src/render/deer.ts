@@ -7,6 +7,7 @@ import { DEER, type CharacterStyleId } from '../data/characters';
 import type { Wanderer } from '../sim/animals';
 import { inked, Mats } from './materials';
 import { MB } from './mb';
+import { contactBlob } from './contact';
 
 const COAT: [number, number] = [0x8a5a36, 0xb07a4a];
 const PALE = 0xf0e2c8;
@@ -71,6 +72,8 @@ export class DeerView {
       this.legs.push(g);
     }
     this.root.add(this.body);
+    const blob = contactBlob(0.95);
+    if (blob) this.root.add(blob);
     this.root.scale.setScalar(0.001);
     this.root.position.set(sim.x, heightAt(sim.x, sim.z), sim.z);
   }

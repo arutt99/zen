@@ -7,6 +7,8 @@ import { damp } from '../core/util';
 import type { GatherNode } from '../sim/nodes';
 import { inked, Mats } from './materials';
 import { MB } from './mb';
+import { leafCluster, stone } from './decor-models';
+import { fine, look } from './look';
 
 const BARK: [number, number] = [0x4a3426, 0x7a5a40];
 const LEAF: [number, number] = [0x4f8a3c, 0xa8c866];
@@ -29,27 +31,32 @@ function mesh(geo: THREE.BufferGeometry, mat: THREE.Material): THREE.Mesh {
   return m;
 }
 
-/** Shared geometry, built once (trees and boulders repeat). */
+/** Shared geometry, built once per look (trees and boulders repeat; Painted+ builds finer ones). */
 let geos: ReturnType<typeof buildGeos> | null = null;
+let geosLook = '';
 function buildGeos() {
   const stump = new MB()
     .cyl(0.3, 0.38, 0.5, BARK, { p: [0, 0.25, 0], wobble: 0.03 }, 9)
     .cyl(0.27, 0.27, 0.03, CUT, { p: [0, 0.505, 0] }, 9)
     .cone(0.2, 0.4, BARK[0], { p: [0.32, 0.12, 0.05], r: [0, 0, -0.9] }, 5)
     .cone(0.18, 0.36, BARK[0], { p: [-0.25, 0.1, 0.22], r: [0.7, 0, 0.6] }, 5)
-    .build();
+    .build({ ground: true });
   // The trunk above the stump, with its base at y = 0 so it shrinks down into the stump.
   const upper = new MB()
     .cyl(0.17, 0.27, 2.1, BARK, { p: [0, 1.05, 0], r: [0.04, 0, 0.03], wobble: 0.03 }, 8, 3)
     .cyl(0.06, 0.1, 0.9, BARK, { p: [0.38, 1.75, 0.05], r: [0, 0, -0.85] }, 5)
     .cyl(0.05, 0.09, 0.8, BARK, { p: [-0.34, 1.9, -0.1], r: [0.15, 0, 0.8] }, 5)
-    .build();
-  const puff = new MB().ico(1, LEAF, { wobble: 0.12, wobbleFreq: 1.6, flat: false, puff: 0.75 }, 2).build();
+    .build({ ground: true });
+  const puffMB = new MB();
+  if (fine()) leafCluster(puffMB, 0, 0, 0, 1, LEAF, 3);
+  else puffMB.ico(1, LEAF, { wobble: 0.12, wobbleFreq: 1.6, flat: false, puff: 0.75 }, 2);
+  const puff = puffMB.build();
   const notch = new MB().box(0.16, 0.12, 0.1, [0xb89a6e, 0xe6d3ad], { r: [0, 0, 0.5] }).build();
-  const rock = new MB().ico(1, STONE, { s: [1.1, 0.78, 1], wobble: 0.12 }, 1).build();
-  const chunk = new MB().ico(0.5, STONE, { s: [1, 0.75, 1], wobble: 0.06 }, 1).build();
+  // The core rock sits 0.42 m up at 0.95 scale: its local ground is ~0.44 below its centre.
+  const rock = stone(new MB(), 1, STONE, { s: [1.1, 0.78, 1], wobble: 0.12 }).build({ ground: true, groundY: -0.44 });
+  const chunk = stone(new MB(), 0.5, STONE, { s: [1, 0.75, 1], wobble: 0.06 }).build();
   // Gatherable boulders are mossy (plan 3.1), so they read apart from the bare decor rocks.
-  const moss = new MB().ico(1, [0x5f7f3f, 0x93b25e], { s: [0.95, 0.32, 0.9], wobble: 0.08, flat: false, puff: 0.5 }, 1).build();
+  const moss = new MB().ico(1, [0x5f7f3f, 0x93b25e], { s: [0.95, 0.32, 0.9], wobble: 0.08, flat: false, puff: 0.5, smooth: fine() }, fine() ? 2 : 1).build();
   return { stump, upper, puff, notch, rock, chunk, moss };
 }
 
@@ -76,7 +83,7 @@ export abstract class NodeView {
   constructor(readonly node: GatherNode, y: number, rot: number) {
     this.root.position.set(node.x, y, node.z);
     this.root.rotation.y = rot;
-    geos ??= buildGeos();
+    if (!geos || geosLook !== look().id) { geos = buildGeos(); geosLook = look().id; }
     const g = new THREE.CircleGeometry(node.def.radius * 0.9, 40);
     g.rotateX(-Math.PI / 2);
     this.ringMat = new THREE.ShaderMaterial({

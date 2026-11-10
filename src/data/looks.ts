@@ -4,14 +4,18 @@
 // - painted:     the target, the painted storybook reference (docs/art-reference.jpg), built with the
 //                plan 7.1 retuning checklist applied.
 // - lanternfall: Lanternfall's inked look exactly as copied in Phase 0 (for comparison).
+// - paintedplus: Painted nudged a little toward a soft-lit diorama (owner request, 2026-11-10: "move in
+//                that direction a bit"): baked soft shadows where things meet each other and the ground,
+//                softer sun shadows, lines on figures only, and a detail pass on focal models
+//                (smoother stones, clustered tree crowns, a stone-edged pond, a finer lantern and shelter).
 // - woodblock:   the wildcard (owner pick, 2026-11-10): a Japanese woodblock print, flat colour,
 //                fine dark-brown lines, a limited palette on textured paper.
 //
 // Changing look reloads the page (shaders are compiled for one look). Colors are linear-ish RGB
 // triples (0..1) unless the field says 0xRRGGBB.
 
-export type LookId = 'painted' | 'lanternfall' | 'woodblock';
-export const LOOK_IDS: readonly LookId[] = ['painted', 'lanternfall', 'woodblock'];
+export type LookId = 'painted' | 'paintedplus' | 'lanternfall' | 'woodblock';
+export const LOOK_IDS: readonly LookId[] = ['painted', 'paintedplus', 'lanternfall', 'woodblock'];
 export type RGB = [number, number, number];
 
 /** Which kinds of object get an ink outline. */
@@ -76,7 +80,22 @@ export interface LookDef {
   };
   /** Ambient particle multiplier (pollen, petals, fireflies). */
   ambient: number;
+  /**
+   * Which model set to build: 'base' is the Phase 2 models; 'fine' adds the detail pass (smoother rocks,
+   * clustered tree crowns, pond edge stones, a finer stone lantern and temple shelter).
+   */
+  detail: 'base' | 'fine';
+  light: {
+    /** Ambient occlusion baked into model colors where parts meet each other and the ground (0 = off, 1 = full). */
+    ao: number;
+    /** Soft contact shadows painted onto the ground under props, trees, buildings and figures (0 = off). */
+    contact: number;
+    /** Blur of the sun's shadow edges (shadow map radius, in texels). */
+    shadowSoftness: number;
+  };
 }
+
+const NO_EXTRA_LIGHT: LookDef['light'] = { ao: 0, contact: 0, shadowSoftness: 3 };
 
 export const LOOKS: Record<LookId, LookDef> = {
   painted: {
@@ -101,6 +120,33 @@ export const LOOKS: Record<LookId, LookDef> = {
       posterizeMix: 0,
     },
     ambient: 1,
+    detail: 'base',
+    light: NO_EXTRA_LIGHT,
+  },
+  paintedplus: {
+    id: 'paintedplus',
+    name: 'Painted+ (toward a soft-lit diorama)',
+    note: 'Painted with soft shadows where things meet, softer sun shadows, lines on figures only, and more detail on stones, trees, the pond edge, the lantern and the shelter.',
+    shading: { levels: [0.72, 0.94, 1.1], steps: [0.6, 1.04], softness: 0.24, shadowTint: [1.0, 0.91, 0.86], lightHue: 0.5 },
+    brush: 0.62,
+    rim: 0.45,
+    albedo: { sat: 0.84, lift: 0.1, toward: [0.95, 0.88, 0.74] },
+    outline: { on: ['figure'], color: [0.32, 0.22, 0.15], albedoMix: 0.4, width: 1.0 / 720 },
+    ground: { patchSoftness: 0.09, pathInk: 0, pathSoftness: 0.4, grass: 0.45, grassLight: 1.4 },
+    haze: { density: 1.2, paper: 0.45 },
+    post: {
+      bloom: { strength: 0.26, radius: 0.6, threshold: 1.05 },
+      sat: 0.9,
+      lift: [0.02, 0.015, 0.006],
+      gain: [1.02, 1.0, 0.96],
+      vignette: 0.18,
+      grain: 0.03,
+      posterize: 0,
+      posterizeMix: 0,
+    },
+    ambient: 1,
+    detail: 'fine',
+    light: { ao: 0.85, contact: 0.8, shadowSoftness: 6 },
   },
   lanternfall: {
     id: 'lanternfall',
@@ -124,6 +170,8 @@ export const LOOKS: Record<LookId, LookDef> = {
       posterizeMix: 0,
     },
     ambient: 1,
+    detail: 'base',
+    light: NO_EXTRA_LIGHT,
   },
   woodblock: {
     id: 'woodblock',
@@ -147,6 +195,8 @@ export const LOOKS: Record<LookId, LookDef> = {
       posterizeMix: 0.55,
     },
     ambient: 0.6,
+    detail: 'base',
+    light: NO_EXTRA_LIGHT,
   },
 };
 
