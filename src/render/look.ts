@@ -21,9 +21,14 @@ export function outlined(cls: OutlineClass): boolean {
   return current.outline.on.includes(cls);
 }
 
-/** True when the look builds the detail-pass models (Painted+). */
+/** True when the look builds the detail-pass models (Painted+, and Lanternfall+ on top of them). */
 export function fine(): boolean {
-  return current.detail === 'fine';
+  return current.detail !== 'base';
+}
+
+/** True when the look builds the richest set (Lanternfall+): inked marks, dressing, life, lantern light. */
+export function rich(): boolean {
+  return current.detail === 'rich';
 }
 
 /** True when anything gets outlines (geometry then carries the outline normals). */

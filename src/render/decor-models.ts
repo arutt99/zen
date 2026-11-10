@@ -8,7 +8,8 @@
 // ground and from each other (MB.build) when the look asks for it.
 import * as THREE from 'three';
 import type { OutlineClass } from '../data/looks';
-import { fine, look } from './look';
+import { fine, look, rich } from './look';
+import { makeRng } from '../core/util';
 import { MB, type Col, type PartOpts } from './mb';
 
 export interface DecorGeo {
@@ -32,7 +33,7 @@ const CEDAR: [number, number] = [0x6e5640, 0x9a7a58];
 /** A stone: faceted (Phase 2) or rounded with soft, smooth shading (Painted+). */
 export function stone(m: MB, r: number, col: Col, o: PartOpts = {}): MB {
   if (!fine()) return m.ico(r, col, o, 1);
-  return m.ico(r, col, { ...o, flat: false, smooth: true, wobble: (o.wobble ?? 0) * 0.8, wobbleFreq: o.wobbleFreq ?? 1.1 }, 3);
+  return m.ico(r, col, { mark: 'stone', ...o, flat: false, smooth: true, wobble: (o.wobble ?? 0) * 0.8, wobbleFreq: o.wobbleFreq ?? 1.1 }, 3);
 }
 
 function mossyStone(m: MB, l: MB, x: number, z: number, r: number) {
@@ -72,9 +73,34 @@ export function leafCluster(l: MB, x: number, y: number, z: number, r: number, c
   }
 }
 
+/**
+ * Lanternfall+: a crown with a clean, round overall shape (Lanternfall's puff) and a leafy edge — small
+ * leaf clumps sitting in its surface, mostly over the top and sides, so the inked outline breaks into
+ * leaves where it meets the sky.
+ */
+export function leafyCrown(l: MB, x: number, y: number, z: number, r: number, col: [number, number], seed: number, flatten = 1): void {
+  l.ico(r * 0.94, col, { p: [x, y, z], s: [1, flatten, 1], wobble: r * 0.1, wobbleFreq: 1.6, flat: false, puff: 0.75 }, 2);
+  const rng = makeRng(9001 + seed * 97);
+  const n = Math.round(12 + r * r * 9);
+  for (let i = 0; i < n; i++) {
+    // A direction on the sphere, mostly the upper part.
+    const up = -0.45 + 1.4 * Math.sqrt(rng());
+    const cy = Math.min(1, up);
+    const ring = Math.sqrt(Math.max(0, 1 - cy * cy));
+    const a = rng() * Math.PI * 2;
+    const rr = r * (0.15 + rng() * 0.09);
+    const d = r * (0.86 + rng() * 0.08);
+    l.ico(rr, col, {
+      p: [x + Math.cos(a) * ring * d, y + cy * d * flatten, z + Math.sin(a) * ring * d],
+      s: [1.15, 0.75, 1.15], r: [rng() * 0.6, rng() * 6.28, rng() * 0.6], wobble: rr * 0.1, flat: false, puff: 0.55,
+    }, 1);
+  }
+}
+
 function canopy(l: MB, blobs: [number, number, number, number][], col: [number, number]) {
   blobs.forEach(([x, y, z, r], i) => {
-    if (fine()) leafCluster(l, x, y, z, r, col, i);
+    if (rich()) leafyCrown(l, x, y, z, r, col, i);
+    else if (fine()) leafCluster(l, x, y, z, r, col, i);
     else l.ico(r, col, { p: [x, y, z], wobble: r * 0.12, wobbleFreq: 1.6, flat: false, puff: 0.75 }, 2);
   });
 }
@@ -82,6 +108,7 @@ function canopy(l: MB, blobs: [number, number, number, number][], col: [number, 
 /** Branches from the trunk top out into the crown (Painted+): the tree reads as grown, not stacked. */
 function branches(m: MB, y: number, spread: number, col: [number, number], count = 3) {
   if (!fine()) return;
+  m.setMark('bark');
   for (let i = 0; i < count; i++) {
     const a = (i / count) * Math.PI * 2 + 0.5;
     const len = spread * (0.9 + (i % 2) * 0.25);
@@ -90,7 +117,16 @@ function branches(m: MB, y: number, spread: number, col: [number, number], count
       p: [Math.cos(a) * Math.sin(tilt) * len / 2, y + Math.cos(tilt) * len / 2, Math.sin(a) * Math.sin(tilt) * len / 2],
       r: [Math.sin(a) * tilt, 0, -Math.cos(a) * tilt], wobble: 0.01,
     }, 6);
+    if (rich()) {
+      // A twig forking off each branch.
+      const t = 0.6;
+      m.cyl(0.015, 0.035, len * 0.45, col, {
+        p: [Math.cos(a) * Math.sin(tilt) * len * t, y + Math.cos(tilt) * len * t + len * 0.15, Math.sin(a) * Math.sin(tilt) * len * t],
+        r: [Math.sin(a + 0.9) * 0.5, 0, -Math.cos(a + 0.9) * 0.5],
+      }, 5);
+    }
   }
+  m.setMark('none');
 }
 
 /** Builds a model with baked occlusion: crowns shade the trunk under them; both sit on the ground. */
@@ -101,10 +137,24 @@ function finish(m: MB, l?: MB): { solid: THREE.BufferGeometry; leaf?: THREE.Buff
 }
 
 function trunk(m: MB, h: number, r: number, col: [number, number], lean = 0.05) {
-  m.cyl(r * 0.6, r, h, col, { p: [0, h / 2, 0], r: [lean, 0, lean * 0.6], wobble: r * 0.12 }, 8, 3);
+  m.cyl(r * 0.6, r, h, col, { p: [0, h / 2, 0], r: [lean, 0, lean * 0.6], wobble: r * 0.12, mark: 'bark' }, rich() ? 12 : 8, rich() ? 6 : 3);
   for (let i = 0; i < 3; i++) {
     const a = (i / 3) * Math.PI * 2 + 0.7;
-    m.cone(r * 0.55, r * 1.2, col[0], { p: [Math.cos(a) * r * 0.82, r * 0.4, Math.sin(a) * r * 0.82], r: [Math.sin(a) * 0.65, 0, -Math.cos(a) * 0.65] }, 5);
+    m.cone(r * 0.55, r * 1.2, col[0], { p: [Math.cos(a) * r * 0.82, r * 0.4, Math.sin(a) * r * 0.82], r: [Math.sin(a) * 0.65, 0, -Math.cos(a) * 0.65], mark: 'bark' }, 5);
+  }
+  if (rich()) roots(m, r, col);
+}
+
+/** Lanternfall+: roots that flare out from the foot of a trunk and dip into the ground. */
+export function roots(m: MB, r: number, col: [number, number], n = 5) {
+  for (let i = 0; i < n; i++) {
+    const a = (i / n) * Math.PI * 2 + 0.3 + (i % 2) * 0.25;
+    const len = r * (2.0 + (i % 3) * 0.45);
+    // A tapered root lying almost flat, pointing outward, its far end sunk a little into the ground.
+    m.cyl(r * 0.07, r * 0.26, len, col, {
+      p: [Math.cos(a) * len * 0.42, r * 0.12, Math.sin(a) * len * 0.42],
+      r: [Math.sin(a) * 1.38, 0, -Math.cos(a) * 1.38], wobble: r * 0.05, mark: 'bark',
+    }, 6, 3);
   }
 }
 
@@ -190,9 +240,9 @@ const builders: Record<string, () => DecorGeo> = {
   },
   bench() {
     const m = new MB();
-    m.box(1.7, 0.12, 0.5, [0x9a7a55, 0xd9c39d], { p: [0, 0.46, 0], wobble: 0.01 });
-    m.box(0.26, 0.42, 0.42, [0x7d7b6e, 0x9d9c8b], { p: [-0.62, 0.21, 0], wobble: 0.02 });
-    m.box(0.26, 0.42, 0.42, [0x7d7b6e, 0x9d9c8b], { p: [0.62, 0.21, 0], wobble: 0.02 });
+    m.box(1.7, 0.12, 0.5, [0x9a7a55, 0xd9c39d], { p: [0, 0.46, 0], wobble: 0.01, mark: 'wood' });
+    m.box(0.26, 0.42, 0.42, [0x7d7b6e, 0x9d9c8b], { p: [-0.62, 0.21, 0], wobble: 0.02, mark: 'stone' });
+    m.box(0.26, 0.42, 0.42, [0x7d7b6e, 0x9d9c8b], { p: [0.62, 0.21, 0], wobble: 0.02, mark: 'stone' });
     return { ...finish(m), ink: 'building' };
   },
   maple() {
@@ -203,7 +253,8 @@ const builders: Record<string, () => DecorGeo> = {
     m.cyl(0.05, 0.1, 1.2, [0x3b2a24, 0x6b4a3a], { p: [-0.45, 2.0, -0.2], r: [0.2, 0, 0.8] }, 6);
     const tiers: [number, number, number, number][] = [[0, 2.4, 0, 1.2], [1.1, 2.15, 0.25, 0.85], [-1.0, 2.25, -0.25, 0.9], [0.2, 2.2, -0.95, 0.75], [-0.25, 2.3, 0.9, 0.75], [0.1, 3.0, 0.05, 0.75]];
     tiers.forEach(([x, y, z, r], i) => {
-      if (fine()) leafCluster(l, x, y, z, r, [0xb4523c, 0xeaa064], i, 0.62);
+      if (rich()) leafyCrown(l, x, y, z, r, [0xb4523c, 0xeaa064], i, 0.62);
+      else if (fine()) leafCluster(l, x, y, z, r, [0xb4523c, 0xeaa064], i, 0.62);
       else l.ico(r, [0xb4523c, 0xeaa064], { p: [x, y, z], s: [1, 0.62, 1], wobble: r * 0.12, wobbleFreq: 1.8, flat: false, puff: 0.7 }, 2);
     });
     return finish(m, l);
@@ -247,7 +298,7 @@ const builders: Record<string, () => DecorGeo> = {
   },
   fence_wood() {
     // A low post-and-rail fence, 2 m along x.
-    const m = new MB();
+    const m = new MB().setMark('wood');
     for (const x of [-1, 0, 1]) m.box(0.12, 0.85, 0.12, CEDAR, { p: [x, 0.42, 0], wobble: 0.005 });
     for (const y of [0.35, 0.68]) m.box(2.1, 0.08, 0.07, CEDAR, { p: [0, y, 0.04], wobble: 0.004 });
     if (fine()) for (const x of [-1, 0, 1]) m.box(0.15, 0.04, 0.15, CEDAR[0], { p: [x, 0.86, 0] });
@@ -256,7 +307,7 @@ const builders: Record<string, () => DecorGeo> = {
   fence_rope() {
     // Short stakes with a sagging rope, 2 m along x: a gentle "keep to the path" edge.
     const m = new MB();
-    for (const x of [-1, 1]) m.cyl(0.05, 0.06, 0.6, CEDAR, { p: [x, 0.3, 0] }, 6);
+    for (const x of [-1, 1]) m.cyl(0.05, 0.06, 0.6, CEDAR, { p: [x, 0.3, 0], mark: 'wood' }, 6);
     for (let i = 0; i < 8; i++) {
       const t = (i + 0.5) / 8, x = -1 + t * 2, sag = 0.12 * Math.sin(t * Math.PI);
       m.cyl(0.018, 0.018, 0.27, 0xc8b07a, { p: [x, 0.52 - sag, 0], r: [0, 0, Math.PI / 2 + (t - 0.5) * 0.45] }, 4);
@@ -297,7 +348,7 @@ const builders: Record<string, () => DecorGeo> = {
  * jewel finial; moss settles on the cap and the base.
  */
 function fineLantern(): DecorGeo {
-  const m = new MB(); const g = new MB(); const l = new MB();
+  const m = new MB().setMark('stone'); const g = new MB(); const l = new MB();
   const S = (o: PartOpts) => ({ wobble: 0.006, ...o });
   // Base: two stepped hexagonal slabs.
   m.cyl(0.46, 0.5, 0.12, GREY, S({ p: [0, 0.06, 0] }), 6);

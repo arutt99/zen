@@ -17,7 +17,7 @@ import { LOOKS, LOOK_IDS } from './data/looks';
 import { MOMENTS } from './data/presets';
 import { clockLabel, presetAt, timeOfDay } from './core/daylight';
 import { DeerView } from './render/deer';
-import { look, reloadIntoLook, useLook } from './render/look';
+import { look, reloadIntoLook, rich, useLook } from './render/look';
 import { Wanderer } from './sim/animals';
 import { defaultTier, type QualityTier } from './data/quality';
 import { validateData } from './data/validate';
@@ -26,7 +26,7 @@ import { CaretakerView } from './render/caretaker';
 import { Engine } from './render/engine';
 import { Fx } from './render/fx';
 import { BuildingView } from './render/kits';
-import { initMaterials, shared } from './render/materials';
+import { initMaterials, LAMPS, shared } from './render/materials';
 import { Mist } from './render/mist';
 import { nodeView } from './render/nodes';
 import { Stage } from './render/stage';
@@ -489,6 +489,12 @@ function boot(): void {
     }
     for (const b of buildings.values()) b.update(dt, time);
     stage.setSiteShade(Math.max(0, ...[...buildings.values()].map((b) => b.groundShade)));
+    if (rich()) {
+      // Lanternfall+: the stone lanterns hold the first light slots; hanging lanterns on buildings take the rest.
+      let k = stage.lampCount;
+      for (const b of buildings.values()) k += b.lamps(shared.uLamps.value, k);
+      for (; k < LAMPS; k++) shared.uLamps.value[k]!.w = 0;
+    }
     const pixelScale = engine.renderer.domElement.height / (2 * Math.tan(THREE.MathUtils.degToRad(engine.camera.fov) / 2));
     mist.update(dt, mistTarget, pixelScale);
     stage.setFogDensity(stage.baseFog * (1 + (place.mist.fogBoost - 1) * mist.amount));

@@ -7,8 +7,8 @@ import { damp } from '../core/util';
 import type { GatherNode } from '../sim/nodes';
 import { inked, Mats } from './materials';
 import { MB } from './mb';
-import { leafCluster, stone } from './decor-models';
-import { fine, look } from './look';
+import { leafCluster, leafyCrown, roots, stone } from './decor-models';
+import { fine, look, rich } from './look';
 
 const BARK: [number, number] = [0x4a3426, 0x7a5a40];
 const LEAF: [number, number] = [0x4f8a3c, 0xa8c866];
@@ -35,20 +35,22 @@ function mesh(geo: THREE.BufferGeometry, mat: THREE.Material): THREE.Mesh {
 let geos: ReturnType<typeof buildGeos> | null = null;
 let geosLook = '';
 function buildGeos() {
-  const stump = new MB()
+  const stumpMB = new MB().setMark('bark')
     .cyl(0.3, 0.38, 0.5, BARK, { p: [0, 0.25, 0], wobble: 0.03 }, 9)
-    .cyl(0.27, 0.27, 0.03, CUT, { p: [0, 0.505, 0] }, 9)
+    .cyl(0.27, 0.27, 0.03, CUT, { p: [0, 0.505, 0], mark: 'none' }, 9)
     .cone(0.2, 0.4, BARK[0], { p: [0.32, 0.12, 0.05], r: [0, 0, -0.9] }, 5)
-    .cone(0.18, 0.36, BARK[0], { p: [-0.25, 0.1, 0.22], r: [0.7, 0, 0.6] }, 5)
-    .build({ ground: true });
+    .cone(0.18, 0.36, BARK[0], { p: [-0.25, 0.1, 0.22], r: [0.7, 0, 0.6] }, 5);
+  if (rich()) roots(stumpMB, 0.38, BARK);
+  const stump = stumpMB.build({ ground: true });
   // The trunk above the stump, with its base at y = 0 so it shrinks down into the stump.
-  const upper = new MB()
+  const upper = new MB().setMark('bark')
     .cyl(0.17, 0.27, 2.1, BARK, { p: [0, 1.05, 0], r: [0.04, 0, 0.03], wobble: 0.03 }, 8, 3)
     .cyl(0.06, 0.1, 0.9, BARK, { p: [0.38, 1.75, 0.05], r: [0, 0, -0.85] }, 5)
     .cyl(0.05, 0.09, 0.8, BARK, { p: [-0.34, 1.9, -0.1], r: [0.15, 0, 0.8] }, 5)
     .build({ ground: true });
   const puffMB = new MB();
-  if (fine()) leafCluster(puffMB, 0, 0, 0, 1, LEAF, 3);
+  if (rich()) leafyCrown(puffMB, 0, 0, 0, 1, LEAF, 3);
+  else if (fine()) leafCluster(puffMB, 0, 0, 0, 1, LEAF, 3);
   else puffMB.ico(1, LEAF, { wobble: 0.12, wobbleFreq: 1.6, flat: false, puff: 0.75 }, 2);
   const puff = puffMB.build();
   const notch = new MB().box(0.16, 0.12, 0.1, [0xb89a6e, 0xe6d3ad], { r: [0, 0, 0.5] }).build();

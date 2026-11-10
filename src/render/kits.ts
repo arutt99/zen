@@ -8,14 +8,19 @@
 // every part is shaded by the parts built before it (baked occlusion).
 import * as THREE from 'three';
 import type { AOOptions } from './ao';
-import { fine, look } from './look';
+import { fine, look, rich } from './look';
 import { damp } from '../core/util';
 import type { BuildingDef, KitStyleId } from '../data/buildings';
 import { inked, Mats } from './materials';
 import { MB, type Col } from './mb';
 
 /** One part's models: solid (painted) and an optional glowing piece (lantern paper). */
-export interface PartGeo { solid: THREE.BufferGeometry; glow?: THREE.BufferGeometry }
+export interface PartGeo {
+  solid: THREE.BufferGeometry;
+  glow?: THREE.BufferGeometry;
+  /** Lanternfall+: a hanging piece that sways from `pivot` (a paper lantern), modelled with its pivot at the origin. */
+  swing?: { solid: THREE.BufferGeometry; glow: THREE.BufferGeometry; pivot: [number, number, number]; light: [number, number, number] };
+}
 
 interface Palette {
   wood: [number, number];
@@ -44,6 +49,7 @@ const PAL: Record<KitStyleId, Palette> = {
 /** A post from the deck up: square cedar (temple) or a round log lashed near the top (timber). */
 function post(m: MB, s: KitStyleId, x: number, z: number, y0: number, h: number) {
   const P = PAL[s];
+  m.setMark('wood');
   if (s === 'temple') {
     m.box(0.17, h, 0.17, P.wood, { p: [x, y0 + h / 2, z], wobble: 0.004 });
     m.box(0.22, 0.06, 0.22, P.woodDark, { p: [x, y0 + 0.03, z] });
@@ -58,6 +64,7 @@ function post(m: MB, s: KitStyleId, x: number, z: number, y0: number, h: number)
     m.torus(0.1, 0.022, P.rope, { p: [x, y0 + h - 0.22, z], r: [Math.PI / 2, 0, 0] }, 5, 10);
     m.torus(0.1, 0.022, P.rope, { p: [x, y0 + h - 0.32, z], r: [Math.PI / 2, 0, 0] }, 5, 10);
   }
+  m.setMark('none');
 }
 
 /** A horizontal beam between two points at height y. */
@@ -65,22 +72,23 @@ function beam(m: MB, s: KitStyleId, ax: number, az: number, bx: number, bz: numb
   const P = PAL[s];
   const len = Math.hypot(bx - ax, bz - az);
   const ry = Math.atan2(bx - ax, bz - az);
-  if (s === 'temple') m.box(0.13 * thick, 0.16 * thick, len, P.woodDark, { p: [(ax + bx) / 2, y, (az + bz) / 2], r: [0, ry, 0] });
-  else m.cyl(0.07 * thick, 0.07 * thick, len, P.wood, { p: [(ax + bx) / 2, y, (az + bz) / 2], r: [Math.PI / 2, ry, 0], wobble: 0.006 }, 7);
+  if (s === 'temple') m.box(0.13 * thick, 0.16 * thick, len, P.woodDark, { p: [(ax + bx) / 2, y, (az + bz) / 2], r: [0, ry, 0], mark: 'wood' });
+  else m.cyl(0.07 * thick, 0.07 * thick, len, P.wood, { p: [(ax + bx) / 2, y, (az + bz) / 2], r: [Math.PI / 2, ry, 0], wobble: 0.006, mark: 'wood' }, 7);
 }
 
 /** Footings and a floor: stone blocks + planks (temple) or stones + logs (timber). */
 function floor(m: MB, s: KitStyleId, w: number, d: number, y: number) {
   const P = PAL[s];
+  m.setMark('wood');
   for (const fx of [-1, 0, 1]) for (const fz of [-1, 1]) {
-    if (s === 'temple') m.box(0.32, y, 0.32, P.stone, { p: [fx * (w / 2 - 0.2), y / 2, fz * (d / 2 - 0.2)], wobble: 0.02 });
-    else m.ico(0.24, P.stone, { p: [fx * (w / 2 - 0.2), y * 0.45, fz * (d / 2 - 0.2)], s: [1.1, y * 3, 1], wobble: 0.03 }, 1);
+    if (s === 'temple') m.box(0.32, y, 0.32, P.stone, { p: [fx * (w / 2 - 0.2), y / 2, fz * (d / 2 - 0.2)], wobble: 0.02, mark: 'stone' });
+    else m.ico(0.24, P.stone, { p: [fx * (w / 2 - 0.2), y * 0.45, fz * (d / 2 - 0.2)], s: [1.1, y * 3, 1], wobble: 0.03, mark: 'stone' }, 1);
   }
   if (s === 'temple' && fine()) {
     // Capped footings, a fascia board around the deck, and planks that each take a slightly different tone.
     for (const fx of [-1, 0, 1]) for (const fz of [-1, 1]) {
-      m.box(0.38, 0.05, 0.38, P.stone, { p: [fx * (w / 2 - 0.2), 0.02, fz * (d / 2 - 0.2)], wobble: 0.01 });
-      m.box(0.26, 0.04, 0.26, P.stone, { p: [fx * (w / 2 - 0.2), y + 0.01, fz * (d / 2 - 0.2)] });
+      m.box(0.38, 0.05, 0.38, P.stone, { p: [fx * (w / 2 - 0.2), 0.02, fz * (d / 2 - 0.2)], wobble: 0.01, mark: 'stone' });
+      m.box(0.26, 0.04, 0.26, P.stone, { p: [fx * (w / 2 - 0.2), y + 0.01, fz * (d / 2 - 0.2)], mark: 'stone' });
     }
     m.box(w, 0.08, d, P.woodDark, { p: [0, y + 0.04, 0] });
     for (const side of [-1, 1]) {
@@ -90,8 +98,8 @@ function floor(m: MB, s: KitStyleId, w: number, d: number, y: number) {
     const n = 12;
     const tones: [number, number][] = [P.plank, [0xb0926a, 0xd2bb94], [0xbfa173, 0xdfc9a3]];
     for (let i = 0; i < n; i++) m.box(w / n - 0.02, 0.05, d - 0.02, tones[(i * 7) % 3]!, { p: [-w / 2 + (i + 0.5) * (w / n), y + 0.105 + ((i * 5) % 3) * 0.004, 0], wobble: 0.002 });
-    m.box(1.0, 0.16, 0.36, P.stone, { p: [0, 0.08, d / 2 + 0.24], wobble: 0.012 });
-    m.box(0.9, 0.16, 0.3, P.stone, { p: [0, 0.24, d / 2 + 0.06], wobble: 0.012 });
+    m.box(1.0, 0.16, 0.36, P.stone, { p: [0, 0.08, d / 2 + 0.24], wobble: 0.012, mark: 'stone' });
+    m.box(0.9, 0.16, 0.3, P.stone, { p: [0, 0.24, d / 2 + 0.06], wobble: 0.012, mark: 'stone' });
   } else if (s === 'temple') {
     m.box(w, 0.08, d, P.woodDark, { p: [0, y + 0.04, 0] });
     const n = 8;
@@ -102,8 +110,9 @@ function floor(m: MB, s: KitStyleId, w: number, d: number, y: number) {
   } else {
     const n = 9;
     for (let i = 0; i < n; i++) m.cyl(0.13, 0.13, w + 0.1, P.plank, { p: [0, y + 0.06, -d / 2 + (i + 0.5) * (d / n)], r: [0, 0, Math.PI / 2], wobble: 0.01 }, 7);
-    m.ico(0.2, P.stone, { p: [0.1, 0.1, d / 2 + 0.3], s: [1.6, 0.6, 1.1], wobble: 0.03 }, 1);
+    m.ico(0.2, P.stone, { p: [0.1, 0.1, d / 2 + 0.3], s: [1.6, 0.6, 1.1], wobble: 0.03, mark: 'stone' }, 1);
   }
+  m.setMark('none');
 }
 
 /** Half of a wall screen between two x positions at depth z: shoji (temple) or woven reeds (timber). */
@@ -137,7 +146,7 @@ function roof(m: MB, s: KitStyleId, w: number, d: number, eave: number, rise: nu
     if (s === 'temple' && fine()) {
       // A board under the tiles, then rounded tiles laid in courses: each tile is a little wider at its
       // lower end, so every course casts a soft step onto the next.
-      m.box(w + 0.7, 0.06, slope, P.woodDark, { p: [0, cy - 0.06, cz], r: [side * ang, 0, 0] });
+      m.box(w + 0.7, 0.06, slope, P.woodDark, { p: [0, cy - 0.06, cz], r: [side * ang, 0, 0], mark: 'wood' });
       const cols = 12, courses = 6;
       const seg = slope / courses;
       for (let i = 0; i < cols; i++) {
@@ -155,9 +164,9 @@ function roof(m: MB, s: KitStyleId, w: number, d: number, eave: number, rise: nu
       const nr = 10;
       for (let i = 0; i < nr; i++) {
         const x = -(w + 0.4) / 2 + (i + 0.5) * ((w + 0.4) / nr);
-        m.box(0.07, 0.08, 0.3, P.wood, { p: [x, eave - 0.1, side * (half - 0.12)], r: [side * ang, 0, 0] });
+        m.box(0.07, 0.08, 0.3, P.wood, { p: [x, eave - 0.1, side * (half - 0.12)], r: [side * ang, 0, 0], mark: 'wood' });
       }
-      for (const sx of [-1, 1]) m.box(0.05, 0.2, slope + 0.1, P.woodDark, { p: [sx * (w / 2 + 0.38), cy - 0.02, cz], r: [side * ang, 0, 0] });
+      for (const sx of [-1, 1]) m.box(0.05, 0.2, slope + 0.1, P.woodDark, { p: [sx * (w / 2 + 0.38), cy - 0.02, cz], r: [side * ang, 0, 0], mark: 'wood' });
       m.box(w + 0.8, 0.1, 0.18, P.roof, { p: [0, eave - 0.02, side * (half + 0.02)], r: [-side * 0.25, 0, 0] });
     } else if (s === 'temple') {
       // A board under the tiles, then rows of rounded tiles running down the slope.
@@ -264,6 +273,13 @@ const shelterKit: KitBuilder = {
     const m = new MB();
     const g = new MB();
     roof(m, s, W, D, FLOOR + 2.1, s === 'temple' ? 0.95 : 1.15);
+    if (s === 'temple' && rich()) {
+      // Lanternfall+: the lantern hangs from its cord and sways; modelled around the top of the cord.
+      const lm = new MB(); const lg = new MB();
+      lantern(lm, lg, 0, -0.57, 0);
+      const solid = m.build(ao);
+      return { solid, swing: { solid: lm.build({ off: true }), glow: lg.build({ off: true }), pivot: [PX + 0.3, FLOOR + 1.6 + 0.57, PZ + 0.35], light: [0, -0.57, 0] } };
+    }
     if (s === 'temple') lantern(m, g, PX + 0.3, FLOOR + 1.6, PZ + 0.35);
     return g.empty ? { solid: m.build(ao) } : { solid: m.build(ao), glow: g.build({ off: true }) };
   },
@@ -295,7 +311,7 @@ export function partGeo(kit: string, part: string, style: KitStyleId = 'temple')
 
 /** Scaffolding: squared lumber with a ladder (temple) or poles lashed with rope (timber). */
 function scaffoldGeo(s: KitStyleId): THREE.BufferGeometry {
-  const m = new MB();
+  const m = new MB().setMark('wood');
   const P = PAL[s];
   const ex = 1.7, ez = 1.4;
   const pole = (x: number, z: number, h: number) => s === 'temple'
@@ -341,7 +357,7 @@ const MARKER_FRAG = /* glsl */ `
 `;
 
 interface ShownPart {
-  meshes: THREE.Mesh[];
+  meshes: THREE.Object3D[];
   ghost: THREE.Mesh;
   built: boolean;
   /** Seconds left before the part starts settling (waits for the flying item to land). */
@@ -359,7 +375,27 @@ export class BuildingView {
   private markerMat: THREE.ShaderMaterial;
   private markerAlpha = 1;
   private ghostMat: THREE.MeshBasicMaterial;
+  /** Lanternfall+: hanging pieces that sway, and the part they belong to. */
+  private swingers: { pivot: THREE.Group; part: number; light: THREE.Vector3; phase: number }[] = [];
   active = false;
+
+  /**
+   * Lanternfall+: where this building's hanging lanterns are (world space) and how much they shine
+   * (0 until their part has settled in). Writes up to `out.length` entries; returns how many.
+   */
+  lamps(out: THREE.Vector4[], from = 0): number {
+    let n = 0;
+    for (const s of this.swingers) {
+      const o = out[from + n];
+      if (!o) break;
+      const p = this.parts[s.part]!;
+      const shown = p.built && p.delay <= 0 ? p.t : 0;
+      const v = s.pivot.localToWorld(s.light.clone());
+      o.set(v.x, v.y, v.z, shown);
+      n++;
+    }
+    return n;
+  }
 
   constructor(readonly def: BuildingDef, x: number, z: number, rot: number, heightAt: (x: number, z: number) => number, built: boolean[], readonly style: KitStyleId = 'temple') {
     const y = heightAt(x, z);
@@ -370,8 +406,20 @@ export class BuildingView {
       const geo = partGeo(def.kit, p.id, style);
       const mesh = inked(new THREE.Mesh(geo.solid, Mats.std), 'building');
       mesh.castShadow = mesh.receiveShadow = true;
-      const meshes: THREE.Mesh[] = [mesh];
+      const meshes: THREE.Object3D[] = [mesh];
       if (geo.glow) meshes.push(new THREE.Mesh(geo.glow, Mats.glow));
+      if (geo.swing) {
+        // The settle animation moves `holder`; `pivot` hangs inside it and sways.
+        const holder = new THREE.Group();
+        const pivot = new THREE.Group();
+        pivot.position.set(...geo.swing.pivot);
+        const lm = inked(new THREE.Mesh(geo.swing.solid, Mats.std), 'building');
+        lm.castShadow = true;
+        pivot.add(lm, new THREE.Mesh(geo.swing.glow, Mats.glow));
+        holder.add(pivot);
+        meshes.push(holder);
+        this.swingers.push({ pivot, part: i, light: new THREE.Vector3(...geo.swing.light), phase: i * 1.7 });
+      }
       const ghost = new THREE.Mesh(geo.solid, this.ghostMat);
       ghost.renderOrder = 4;
       this.root.add(...meshes, ghost);
@@ -421,7 +469,7 @@ export class BuildingView {
   partCenter(index: number, out: THREE.Vector3): THREE.Vector3 {
     const p = this.parts[index];
     if (!p) return this.root.getWorldPosition(out);
-    p.meshes[0]!.geometry.boundingBox!.getCenter(out);
+    (p.meshes[0] as THREE.Mesh).geometry.boundingBox!.getCenter(out);
     return this.root.localToWorld(out);
   }
 
@@ -451,6 +499,12 @@ export class BuildingView {
         mesh.scale.setScalar(shown ? 0.85 + 0.15 * Math.min(1, ease) : 1);
       }
       p.ghost.visible = !shown || p.t < 0.6;
+    }
+    for (const s of this.swingers) {
+      // A slow, uneven sway, as if a breeze came and went.
+      const t = time + s.phase;
+      s.pivot.rotation.z = Math.sin(t * 1.3) * 0.07 + Math.sin(t * 0.47) * 0.04;
+      s.pivot.rotation.x = Math.cos(t * 1.07) * 0.05;
     }
     const done = this.complete && this.parts.every((p) => p.t >= 1);
     this.scaffoldS = damp(this.scaffoldS, anyBuilt && !done ? 1 : 0, done ? 1.2 : 3, dt);

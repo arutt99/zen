@@ -102,6 +102,9 @@ caretaker styles (**chibi** + **storybook**); two kits on the shelter (**temple*
   edge, the stone lantern and the temple shelter. Side-by-side screenshots in `docs/phase2/README.md`
 - [x] **Lanternfall+** look (owner leans toward Lanternfall-like for its crisp bands, ink on everything, rich
   color and no grain/haze): Lanternfall-like plus Painted+'s occlusion, contact shadows and detail pass
+- [x] Lanternfall+ **rich** detail (owner: PC first, all six ideas): leafy inked crowns, roots, inked wood/bark/
+  stone marks, ground dressing, pond ripples/shoreline/koi, butterflies, drifting leaves, bobbing lotus,
+  swaying lantern, lantern light at night
 - [ ] **Owner:** try the looks, caretakers and kits on the phone and decide **A4, A5, A6** (see `docs/phase2/README.md`)
 - [ ] **Owner:** gate check (below)
 
@@ -118,6 +121,12 @@ caretaker styles (**chibi** + **storybook**); two kits on the shelter (**temple*
 - Fences block only at their middle (one collision circle per prop); they're placed off the walking routes. A segment collider comes with Phase 3's layout work.
 - The Zen-kit pieces are placed for review, not as the final valley layout (Phase 3).
 - Switching the look reloads the page; caretaker, kit and time switch live.
+- **Phones set aside by the owner for the Lanternfall+ rich pass (2026-11-10): PC first.** The plan still
+  treats phone and PC as equals; before Lanternfall+ ships to phones it needs a phone budget (fewer
+  dressing pieces, no stone cracks, fewer leaf clumps on Medium) and a frame-rate check.
+- Lanternfall+ rich: ~4× the vertices of Lanternfall-like in decor and kits, ~0.6 s more model building at
+  load on a desktop; the pond reflection is a tint of the bank, not a real reflection; leaves can settle
+  on the path; butterflies fly through trunks now and then.
 - Painted+ and Lanternfall+: the occlusion bake adds load time (about 0.25 s more on a desktop; a phone is untested, estimate
   ~1 s). Frame cost should be close to Painted (same draw calls plus one small ground texture, but about twice
   the vertices in trees and the shelter); not measured on a phone yet.

@@ -43,7 +43,7 @@ async function shot(browser, name, { look, time, character = 'chibi', kit = 'tem
   // Let the camera, mist and particles settle (software GL runs at a few fps).
   await page.waitForTimeout(9000);
   const out = path.join(outDir, `${name}.jpg`);
-  await page.screenshot({ path: out, type: 'jpeg', quality: 82 });
+  await page.screenshot({ path: out, type: 'jpeg', quality: 82, timeout: 300000 });
   console.log(`${errors.length ? 'ERR ' : 'ok  '} ${path.relative(process.cwd(), out)}`);
   for (const e of errors) console.log('   ', e);
   await ctx.close();
@@ -63,6 +63,7 @@ async function shot(browser, name, { look, time, character = 'chibi', kit = 'tem
     await shot(browser, `plus-${look}-kit`, { look, time: 'day', kit: 'temple', view: 'site' });
     await shot(browser, `plus-${look}-kit-partial`, { look, time: 'day', kit: 'temple', view: 'sitePartial' });
     await shot(browser, `plus-${look}-golden`, { look, time: 'golden', view: 'shelter' });
+    await shot(browser, `plus-${look}-night`, { look, time: 'night', kit: 'temple', view: 'site' });
   }
   for (const character of ['chibi', 'storybook']) {
     await shot(browser, `caretaker-${character}`, { look: 'painted', time: 'day', character, view: 'close' });
