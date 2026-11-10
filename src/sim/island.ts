@@ -98,7 +98,12 @@ const FIELD_RES = 2; // cells per world unit
 const FIELD_R = 16; // world units of tracked path distance
 
 /** Collision radius per decor kind, as a fraction of its scale (trunks, not canopies). */
-const SOLID_R: Record<string, number> = { oak: 0.45, birch: 0.3, pine: 0.4, willow: 0.55, cherry: 0.4, bush: 0.55, rock: 0.85, bench: 0.75 };
+const SOLID_R: Record<string, number> = {
+  oak: 0.45, birch: 0.3, pine: 0.4, willow: 0.55, cherry: 0.4, bush: 0.55, rock: 0.85, bench: 0.75,
+  maple: 0.35, bamboo: 0.6, mossy_stone: 0.8, stone_lantern: 0.45, fence_wood: 0.25, fence_rope: 0.15,
+  // Walk over (or on) these.
+  raked_gravel: 0, stepping_stone: 0, lotus: 0,
+};
 
 export class IslandWorld {
   place: PlaceDef;
@@ -250,7 +255,7 @@ export class IslandWorld {
 
   /** Circles the caretaker can't walk through: trunks, rocks, props. */
   get solids(): { x: number; z: number; r: number }[] {
-    return this.blockers.map((b) => ({ x: b.x, z: b.z, r: (SOLID_R[b.kind] ?? 0.4) * b.scale }));
+    return this.blockers.filter((b) => (SOLID_R[b.kind] ?? 0.4) > 0).map((b) => ({ x: b.x, z: b.z, r: (SOLID_R[b.kind] ?? 0.4) * b.scale }));
   }
 
   private keepClear(x: number, z: number, r: number) {
@@ -305,7 +310,7 @@ export class IslandWorld {
       placed.push({ x, z, r, kind: 'rock', scale, rot: rng() * 6.28, tint: rng() });
     }
     for (const q of p.props) {
-      placed.push({ x: q.x, z: q.z, r: 1, kind: q.kind, scale: 1, rot: q.rot ?? 0, tint: 0.5 });
+      placed.push({ x: q.x, z: q.z, r: 1, kind: q.kind, scale: q.scale ?? 1, rot: q.rot ?? 0, tint: 0.5 });
     }
     this.blockers = placed;
   }

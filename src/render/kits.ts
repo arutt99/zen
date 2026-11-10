@@ -1,40 +1,215 @@
-// Building kits: one simple procedural model per part (plan 3.3). A building grows one part per unit
-// delivered; each part settles into place, and a ghost outline shows what is still missing. While
-// it is incomplete, scaffolding stands around it. The kit style is art decision point A5 (Phase 2):
-// these are deliberately plain placeholders.
+// Building kits (plan 3.3, art decision point A5): a small library of procedural building parts
+// (footings, decks, posts, beams, wall screens, roofs, lanterns, scaffolding) in two styles, and the
+// shelter assembled from them one part per unit delivered. Each part settles into place; a ghost
+// outline shows what is still missing; scaffolding stands around an unfinished building.
+// Later buildings (gravel garden, hall, bell tower) are assembled from the same library.
 import * as THREE from 'three';
 import { damp } from '../core/util';
-import type { BuildingDef } from '../data/buildings';
+import type { BuildingDef, KitStyleId } from '../data/buildings';
 import { inked, Mats } from './materials';
-import { MB } from './mb';
+import { MB, type Col } from './mb';
 
-const CEDAR: [number, number] = [0x6e5640, 0x9a7a58];
-const LIGHT: [number, number] = [0xb89a6e, 0xd9c39d];
-const ROOF: [number, number] = [0x6f5a44, 0xa88a62];
+/** One part's models: solid (painted) and an optional glowing piece (lantern paper). */
+export interface PartGeo { solid: THREE.BufferGeometry; glow?: THREE.BufferGeometry }
 
-type KitBuilder = Record<string, () => THREE.BufferGeometry>;
+interface Palette {
+  wood: [number, number];
+  woodDark: [number, number];
+  plank: [number, number];
+  stone: [number, number];
+  roof: [number, number];
+  wall: [number, number];
+  rope: number;
+}
 
-/** Shelter: 2.8 x 2.4 m deck, four posts, a gabled roof. Faces +z. */
-const shelterKit: KitBuilder = {
-  deck: () => {
-    const m = new MB();
-    m.box(2.8, 0.16, 2.4, LIGHT, { p: [0, 0.3, 0], wobble: 0.01 });
-    for (const [x, z] of [[-1.2, -1], [1.2, -1], [-1.2, 1], [1.2, 1]] as const) m.box(0.3, 0.3, 0.3, [0x7d7b6e, 0x9d9c8b], { p: [x, 0.12, z], wobble: 0.03 });
-    for (let i = 0; i < 6; i++) m.box(0.02, 0.01, 2.36, CEDAR[0], { p: [-1.15 + i * 0.46, 0.385, 0] });
-    return m.build();
+const PAL: Record<KitStyleId, Palette> = {
+  temple: {
+    wood: [0x6e5640, 0x9a7a58], woodDark: [0x4e3a2a, 0x6e5440], plank: [0xb89a6e, 0xd9c39d],
+    stone: [0x8a8878, 0xb0ad9c], roof: [0x55605f, 0x7c8886], wall: [0xeee2c8, 0xf6eedc], rope: 0xc8b07a,
   },
-  post_back_left: () => new MB().box(0.18, 2.0, 0.18, CEDAR, { p: [-1.2, 1.38, -1.0], wobble: 0.01 }).build(),
-  post_back_right: () => new MB().box(0.18, 2.0, 0.18, CEDAR, { p: [1.2, 1.38, -1.0], wobble: 0.01 }).build(),
-  post_front_left: () => new MB().box(0.18, 1.85, 0.18, CEDAR, { p: [-1.2, 1.31, 1.0], wobble: 0.01 }).build(),
-  post_front_right: () => new MB().box(0.18, 1.85, 0.18, CEDAR, { p: [1.2, 1.31, 1.0], wobble: 0.01 }).build(),
-  roof: () => {
+  timber: {
+    wood: [0x5e4632, 0x8a6a4a], woodDark: [0x4a3626, 0x6a5038], plank: [0x9a7a55, 0xc4a678],
+    stone: [0x7d7b6e, 0x9d9c8b], roof: [0xa88a52, 0xd8c088], wall: [0xb8a06a, 0xd8c690], rope: 0xc8b07a,
+  },
+};
+
+// ---------------------------------------------------------------------------------------------
+// The part library. Positions are in the building's local space (+z faces the camera's side).
+
+/** A post from the deck up: square cedar (temple) or a round log lashed near the top (timber). */
+function post(m: MB, s: KitStyleId, x: number, z: number, y0: number, h: number) {
+  const P = PAL[s];
+  if (s === 'temple') {
+    m.box(0.17, h, 0.17, P.wood, { p: [x, y0 + h / 2, z], wobble: 0.004 });
+    m.box(0.22, 0.06, 0.22, P.woodDark, { p: [x, y0 + 0.03, z] });
+  } else {
+    m.cyl(0.085, 0.105, h, P.wood, { p: [x, y0 + h / 2, z], wobble: 0.01, r: [0.015, 0, -0.01] }, 8, 2);
+    m.torus(0.1, 0.022, P.rope, { p: [x, y0 + h - 0.22, z], r: [Math.PI / 2, 0, 0] }, 5, 10);
+    m.torus(0.1, 0.022, P.rope, { p: [x, y0 + h - 0.32, z], r: [Math.PI / 2, 0, 0] }, 5, 10);
+  }
+}
+
+/** A horizontal beam between two points at height y. */
+function beam(m: MB, s: KitStyleId, ax: number, az: number, bx: number, bz: number, y: number, thick = 1) {
+  const P = PAL[s];
+  const len = Math.hypot(bx - ax, bz - az);
+  const ry = Math.atan2(bx - ax, bz - az);
+  if (s === 'temple') m.box(0.13 * thick, 0.16 * thick, len, P.woodDark, { p: [(ax + bx) / 2, y, (az + bz) / 2], r: [0, ry, 0] });
+  else m.cyl(0.07 * thick, 0.07 * thick, len, P.wood, { p: [(ax + bx) / 2, y, (az + bz) / 2], r: [Math.PI / 2, ry, 0], wobble: 0.006 }, 7);
+}
+
+/** Footings and a floor: stone blocks + planks (temple) or stones + logs (timber). */
+function floor(m: MB, s: KitStyleId, w: number, d: number, y: number) {
+  const P = PAL[s];
+  for (const fx of [-1, 0, 1]) for (const fz of [-1, 1]) {
+    if (s === 'temple') m.box(0.32, y, 0.32, P.stone, { p: [fx * (w / 2 - 0.2), y / 2, fz * (d / 2 - 0.2)], wobble: 0.02 });
+    else m.ico(0.24, P.stone, { p: [fx * (w / 2 - 0.2), y * 0.45, fz * (d / 2 - 0.2)], s: [1.1, y * 3, 1], wobble: 0.03 }, 1);
+  }
+  if (s === 'temple') {
+    m.box(w, 0.08, d, P.woodDark, { p: [0, y + 0.04, 0] });
+    const n = 8;
+    for (let i = 0; i < n; i++) m.box(w / n - 0.025, 0.06, d, P.plank, { p: [-w / 2 + (i + 0.5) * (w / n), y + 0.11, 0], wobble: 0.003 });
+    // Two stone steps up to the front.
+    m.box(1.0, 0.16, 0.36, P.stone, { p: [0, 0.08, d / 2 + 0.24], wobble: 0.012 });
+    m.box(0.9, 0.16, 0.3, P.stone, { p: [0, 0.24, d / 2 + 0.06], wobble: 0.012 });
+  } else {
+    const n = 9;
+    for (let i = 0; i < n; i++) m.cyl(0.13, 0.13, w + 0.1, P.plank, { p: [0, y + 0.06, -d / 2 + (i + 0.5) * (d / n)], r: [0, 0, Math.PI / 2], wobble: 0.01 }, 7);
+    m.ico(0.2, P.stone, { p: [0.1, 0.1, d / 2 + 0.3], s: [1.6, 0.6, 1.1], wobble: 0.03 }, 1);
+  }
+}
+
+/** Half of a wall screen between two x positions at depth z: shoji (temple) or woven reeds (timber). */
+function screen(m: MB, s: KitStyleId, x0: number, x1: number, z: number, y0: number, h: number) {
+  const P = PAL[s];
+  const w = x1 - x0, cx = (x0 + x1) / 2;
+  if (s === 'temple') {
+    m.box(w, h, 0.04, P.wall, { p: [cx, y0 + h / 2, z] });
+    const cols = Math.max(2, Math.round(w / 0.32));
+    for (let i = 0; i <= cols; i++) m.box(0.035, h, 0.06, P.woodDark, { p: [x0 + (i / cols) * w, y0 + h / 2, z] });
+    for (let j = 0; j <= 4; j++) m.box(w, 0.035, 0.06, P.woodDark, { p: [cx, y0 + (j / 4) * h, z] });
+  } else {
+    const n = Math.round(w / 0.07);
+    for (let i = 0; i < n; i++) {
+      const x = x0 + (i + 0.5) * (w / n);
+      m.cyl(0.03, 0.034, h, i % 3 ? P.wall : [P.wall[0], 0xe6d6a0], { p: [x, y0 + h / 2, z + (i % 2 ? 0.015 : -0.015)] }, 5);
+    }
+    for (const yy of [0.25, 0.6, 0.9]) m.box(w, 0.04, 0.08, P.rope, { p: [cx, y0 + h * yy, z] });
+  }
+}
+
+/** A gabled roof over a w x d footprint: grey tiles in rows with a ridge (temple) or layered thatch (timber). */
+function roof(m: MB, s: KitStyleId, w: number, d: number, eave: number, rise: number): void {
+  const P = PAL[s];
+  const half = d / 2 + 0.45;
+  const slope = Math.hypot(half, rise);
+  const ang = Math.atan2(rise, half);
+  const ridge = eave + rise;
+  for (const side of [-1, 1]) {
+    const cz = side * half / 2, cy = eave + rise / 2;
+    if (s === 'temple') {
+      // A board under the tiles, then rows of rounded tiles running down the slope.
+      m.box(w + 0.7, 0.06, slope, P.woodDark, { p: [0, cy - 0.06, cz], r: [side * ang, 0, 0] });
+      const rows = 11;
+      for (let i = 0; i < rows; i++) {
+        const x = -(w + 0.6) / 2 + (i + 0.5) * ((w + 0.6) / rows);
+        m.cyl(0.11, 0.11, slope, P.roof, { p: [x, cy + 0.04, cz], r: [Math.PI / 2 + side * ang, 0, 0], s: [1, 1, 0.55] }, 7);
+      }
+      // A gentle upturn at the eave: an end row of tiles.
+      m.box(w + 0.8, 0.1, 0.18, P.roof, { p: [0, eave - 0.02, side * (half + 0.02)], r: [-side * 0.25, 0, 0] });
+    } else {
+      // Thatch: three overlapping thick layers, the lowest overhanging most.
+      for (let k = 0; k < 3; k++) {
+        const t = k / 3;
+        const len = slope * (1 - t * 0.28);
+        const zz = side * (half - len * Math.cos(ang) / 2 - t * 0.02);
+        const yy = ridge - (Math.abs(zz) / half) * rise + 0.08 + k * 0.05;
+        m.box(w + 0.6 - k * 0.1, 0.2, len, k === 0 ? P.roof : [P.roof[0], 0xe6cc94], { p: [0, yy, zz], r: [side * ang, 0, 0], wobble: 0.07, wobbleFreq: 2.6 });
+      }
+      // A ragged straw fringe along the eave.
+      const n = 26;
+      for (let i = 0; i < n; i++) {
+        const x = -(w + 0.55) / 2 + (i + 0.5) * ((w + 0.55) / n);
+        const len = 0.22 + ((i * 7) % 5) * 0.03;
+        m.cone(0.07, len, [0xc8a868, 0x9a7a48], { p: [x, eave - 0.02 - len / 2 + 0.08, side * (half - 0.02)], r: [Math.PI + side * 0.35, 0, 0] }, 4);
+      }
+    }
+  }
+  if (s === 'temple') {
+    m.box(w + 0.9, 0.16, 0.22, P.roof, { p: [0, ridge + 0.1, 0] });
+    for (const sx of [-1, 1]) m.box(0.2, 0.28, 0.3, P.roof, { p: [sx * (w / 2 + 0.42), ridge + 0.16, 0], r: [0, 0, sx * -0.3] });
+  } else {
+    m.cyl(0.16, 0.16, w + 0.8, [P.roof[0], 0xc8a868], { p: [0, ridge + 0.14, 0], r: [0, 0, Math.PI / 2], wobble: 0.02 }, 8);
+    for (const sx of [-1, 1]) for (const tilt of [-0.55, 0.55]) {
+      m.cyl(0.04, 0.04, 0.9, P.wood, { p: [sx * (w / 2 + 0.2), ridge + 0.22, 0], r: [tilt, 0, 0] }, 5);
+    }
+    for (let i = -2; i <= 2; i++) m.torus(0.17, 0.02, P.rope, { p: [i * (w / 5), ridge + 0.14, 0], r: [0, Math.PI / 2, 0] }, 4, 10);
+  }
+}
+
+/** A hanging paper lantern: solid frame/cap + glowing paper. */
+function lantern(m: MB, g: MB, x: number, y: number, z: number) {
+  m.cyl(0.015, 0.015, 0.3, 0x3a2e28, { p: [x, y + 0.42, z] }, 4);
+  m.cyl(0.13, 0.15, 0.05, 0x3a2e28, { p: [x, y + 0.27, z] }, 10);
+  m.cyl(0.15, 0.13, 0.05, 0x3a2e28, { p: [x, y - 0.27, z] }, 10);
+  g.lathe([[0.001, -0.25], [0.12, -0.24], [0.2, -0.1], [0.21, 0.05], [0.17, 0.2], [0.11, 0.25], [0.001, 0.26]], [0xf0a050, 0xffd090], { p: [x, y, z], gain: 1.6 }, 12);
+}
+
+/** A noren curtain hung from a lintel: two lavender panels with a pale lotus. */
+function noren(m: MB, x: number, y: number, z: number, w: number) {
+  const panel: Col = [0x7c6c94, 0x968ab0];
+  for (const side of [-1, 1]) m.box(w / 2 - 0.03, 0.62, 0.025, panel, { p: [x + side * w / 4, y - 0.31, z] });
+  for (let i = 0; i < 5; i++) {
+    const a = (i - 2) * 0.42;
+    m.sphere(0.09, 0xe8dcd0, { p: [x + Math.sin(a) * 0.13, y - 0.36 + Math.cos(a) * 0.08, z + 0.02], s: [0.55, 1.2, 0.2], r: [0, 0, -a] }, 6, 5);
+  }
+}
+
+// ---------------------------------------------------------------------------------------------
+// The shelter: 2.8 x 2.4 m, four posts, back screen, a front lintel, a gabled roof. Faces +z.
+
+type KitBuilder = Record<string, (s: KitStyleId) => PartGeo>;
+const W = 2.8, D = 2.4, FLOOR = 0.42;
+const PX = 1.2, PZ = 1.0;
+
+const shelterKit: KitBuilder = {
+  deck: (s) => { const m = new MB(); floor(m, s, W, D, FLOOR); return { solid: m.build() }; },
+  post_back_left: (s) => {
     const m = new MB();
-    m.box(3.1, 0.14, 0.16, CEDAR, { p: [0, 2.3, 1.0] });
-    m.box(3.1, 0.14, 0.16, CEDAR, { p: [0, 2.42, -1.0] });
-    m.box(3.5, 0.1, 1.75, ROOF, { p: [0, 2.72, 0.72], r: [0.42, 0, 0], wobble: 0.015 });
-    m.box(3.5, 0.1, 1.75, ROOF, { p: [0, 2.72, -0.72], r: [-0.42, 0, 0], wobble: 0.015 });
-    m.cyl(0.08, 0.08, 3.6, CEDAR, { p: [0, 3.06, 0], r: [0, 0, Math.PI / 2] }, 7);
-    return m.build();
+    post(m, s, -PX, -PZ, FLOOR + 0.14, 2.0);
+    screen(m, s, -PX + 0.08, 0, -PZ, FLOOR + 0.14, 1.55);
+    return { solid: m.build() };
+  },
+  post_back_right: (s) => {
+    const m = new MB();
+    post(m, s, PX, -PZ, FLOOR + 0.14, 2.0);
+    screen(m, s, 0, PX - 0.08, -PZ, FLOOR + 0.14, 1.55);
+    beam(m, s, -PX - 0.2, -PZ, PX + 0.2, -PZ, FLOOR + 2.12);
+    return { solid: m.build() };
+  },
+  post_front_left: (s) => {
+    const m = new MB();
+    post(m, s, -PX, PZ, FLOOR + 0.14, 1.85);
+    beam(m, s, -PX, -PZ - 0.15, -PX, PZ + 0.15, FLOOR + 1.95, 0.9);
+    if (s === 'timber') m.cyl(0.04, 0.04, 1.3, PAL.timber.wood, { p: [-PX, FLOOR + 1.4, PZ - 0.45], r: [0.85, 0, 0] }, 5);
+    return { solid: m.build() };
+  },
+  post_front_right: (s) => {
+    const m = new MB();
+    const g = new MB();
+    post(m, s, PX, PZ, FLOOR + 0.14, 1.85);
+    beam(m, s, PX, -PZ - 0.15, PX, PZ + 0.15, FLOOR + 1.95, 0.9);
+    beam(m, s, -PX - 0.2, PZ, PX + 0.2, PZ, FLOOR + 1.98);
+    if (s === 'temple') noren(m, 0, FLOOR + 1.9, PZ + 0.08, 1.3);
+    else m.cyl(0.04, 0.04, 1.3, PAL.timber.wood, { p: [PX, FLOOR + 1.4, PZ - 0.45], r: [0.85, 0, 0] }, 5);
+    return g.empty ? { solid: m.build() } : { solid: m.build(), glow: g.build() };
+  },
+  roof: (s) => {
+    const m = new MB();
+    const g = new MB();
+    roof(m, s, W, D, FLOOR + 2.1, s === 'temple' ? 0.95 : 1.15);
+    if (s === 'temple') lantern(m, g, PX + 0.3, FLOOR + 1.6, PZ + 0.35);
+    return g.empty ? { solid: m.build() } : { solid: m.build(), glow: g.build() };
   },
 };
 
@@ -43,27 +218,47 @@ const KITS: Record<string, KitBuilder> = { shelter_kit: shelterKit };
 /** Every part id each kit can draw (the data test checks buildings only use these). */
 export const KIT_PARTS: Record<string, string[]> = Object.fromEntries(Object.entries(KITS).map(([k, v]) => [k, Object.keys(v)]));
 
-const geoCache = new Map<string, THREE.BufferGeometry>();
-export function partGeo(kit: string, part: string): THREE.BufferGeometry {
-  const key = `${kit}/${part}`;
+const geoCache = new Map<string, PartGeo>();
+export function partGeo(kit: string, part: string, style: KitStyleId = 'temple'): PartGeo {
+  const key = `${style}/${kit}/${part}`;
   let g = geoCache.get(key);
   if (!g) {
-    g = KITS[kit]![part]!();
-    g.computeBoundingBox();
+    g = KITS[kit]![part]!(style);
+    g.solid.computeBoundingBox();
     geoCache.set(key, g);
   }
   return g;
 }
 
-function scaffoldGeo(): THREE.BufferGeometry {
+/** Scaffolding: squared lumber with a ladder (temple) or poles lashed with rope (timber). */
+function scaffoldGeo(s: KitStyleId): THREE.BufferGeometry {
   const m = new MB();
-  const pole = (x: number, z: number, h: number) => m.cyl(0.045, 0.055, h, LIGHT, { p: [x, h / 2, z], r: [0.03, 0, -0.02] }, 5);
-  pole(-1.65, 1.35, 3.0); pole(1.65, 1.35, 3.0); pole(-1.65, -1.35, 3.2); pole(1.65, -1.35, 3.2);
-  m.cyl(0.035, 0.035, 3.4, LIGHT, { p: [0, 1.6, 1.35], r: [0, 0, Math.PI / 2] }, 5);
-  m.cyl(0.035, 0.035, 3.4, LIGHT, { p: [0, 1.7, -1.35], r: [0, 0, Math.PI / 2] }, 5);
-  m.cyl(0.035, 0.035, 2.8, LIGHT, { p: [-1.65, 2.2, 0], r: [Math.PI / 2, 0, 0] }, 5);
-  m.cyl(0.035, 0.035, 2.8, LIGHT, { p: [1.65, 2.2, 0], r: [Math.PI / 2, 0, 0] }, 5);
-  for (const [x, z] of [[-1.65, 1.35], [1.65, 1.35], [-1.65, -1.35], [1.65, -1.35]] as const) m.torus(0.07, 0.025, 0xa48a62, { p: [x, 1.6, z], r: [Math.PI / 2, 0, 0] }, 5, 10);
+  const P = PAL[s];
+  const ex = 1.7, ez = 1.4;
+  const pole = (x: number, z: number, h: number) => s === 'temple'
+    ? m.box(0.09, h, 0.09, P.plank, { p: [x, h / 2, z], r: [0.02, 0, -0.015] })
+    : m.cyl(0.045, 0.055, h, [0x8a9a5a, 0xc8c08a], { p: [x, h / 2, z], r: [0.03, 0, -0.02] }, 5);
+  const bar = (ax: number, az: number, bx: number, bz: number, y: number) => {
+    const len = Math.hypot(bx - ax, bz - az), ry = Math.atan2(bx - ax, bz - az);
+    if (s === 'temple') m.box(0.07, 0.07, len, P.plank, { p: [(ax + bx) / 2, y, (az + bz) / 2], r: [0, ry, 0] });
+    else m.cyl(0.035, 0.035, len, [0x8a9a5a, 0xc8c08a], { p: [(ax + bx) / 2, y, (az + bz) / 2], r: [Math.PI / 2, ry, 0] }, 5);
+  };
+  pole(-ex, ez, 3.2); pole(ex, ez, 3.2); pole(-ex, -ez, 3.4); pole(ex, -ez, 3.4);
+  for (const y of [1.3, 2.5]) {
+    bar(-ex, ez, ex, ez, y); bar(-ex, -ez, ex, -ez, y + 0.1);
+    bar(-ex, -ez, -ex, ez, y + 0.2); bar(ex, -ez, ex, ez, y + 0.2);
+  }
+  if (s === 'temple') {
+    // A ladder leaning on the front right.
+    for (const sx of [-0.2, 0.2]) m.box(0.06, 2.6, 0.06, P.plank, { p: [ex + 0.35 + sx, 1.25, ez + 0.3], r: [0.2, 0, 0] });
+    for (let i = 0; i < 7; i++) m.box(0.42, 0.04, 0.05, P.plank, { p: [ex + 0.35, 0.3 + i * 0.34, ez + 0.3 - (0.3 + i * 0.34) * 0.2 + 0.25] });
+    // A plank walkway on the back bars.
+    m.box(2 * ex, 0.05, 0.3, P.plank, { p: [0, 2.64, -ez + 0.1] });
+  } else {
+    for (const [x, z] of [[-ex, ez], [ex, ez], [-ex, -ez], [ex, -ez]] as const) for (const y of [1.3, 2.5]) m.torus(0.07, 0.025, P.rope, { p: [x, y + 0.1, z], r: [Math.PI / 2, 0, 0] }, 5, 10);
+    // Diagonal braces.
+    m.cyl(0.03, 0.03, 3.6, [0x8a9a5a, 0xc8c08a], { p: [0, 1.9, -ez], r: [0, 0, 0.62] }, 5);
+  }
   return m.build();
 }
 
@@ -83,7 +278,7 @@ const MARKER_FRAG = /* glsl */ `
 `;
 
 interface ShownPart {
-  mesh: THREE.Mesh;
+  meshes: THREE.Mesh[];
   ghost: THREE.Mesh;
   built: boolean;
   /** Seconds left before the part starts settling (waits for the flying item to land). */
@@ -103,21 +298,23 @@ export class BuildingView {
   private ghostMat: THREE.MeshBasicMaterial;
   active = false;
 
-  constructor(readonly def: BuildingDef, x: number, z: number, rot: number, heightAt: (x: number, z: number) => number, built: boolean[]) {
+  constructor(readonly def: BuildingDef, x: number, z: number, rot: number, heightAt: (x: number, z: number) => number, built: boolean[], readonly style: KitStyleId = 'temple') {
     const y = heightAt(x, z);
     this.root.position.set(x, y - 0.05, z);
     this.root.rotation.y = rot;
     this.ghostMat = new THREE.MeshBasicMaterial({ color: 0xfff4dc, transparent: true, opacity: 0.22, depthWrite: false });
     def.parts.forEach((p, i) => {
-      const geo = partGeo(def.kit, p.id);
-      const mesh = inked(new THREE.Mesh(geo, Mats.std));
+      const geo = partGeo(def.kit, p.id, style);
+      const mesh = inked(new THREE.Mesh(geo.solid, Mats.std), 'building');
       mesh.castShadow = mesh.receiveShadow = true;
-      const ghost = new THREE.Mesh(geo, this.ghostMat);
+      const meshes: THREE.Mesh[] = [mesh];
+      if (geo.glow) meshes.push(new THREE.Mesh(geo.glow, Mats.glow));
+      const ghost = new THREE.Mesh(geo.solid, this.ghostMat);
       ghost.renderOrder = 4;
-      this.root.add(mesh, ghost);
-      this.parts.push({ mesh, ghost, built: !!built[i], delay: 0, t: built[i] ? 1 : 0 });
+      this.root.add(...meshes, ghost);
+      this.parts.push({ meshes, ghost, built: !!built[i], delay: 0, t: built[i] ? 1 : 0 });
     });
-    this.scaffold = inked(new THREE.Mesh(scaffoldGeo(), Mats.std));
+    this.scaffold = inked(new THREE.Mesh(scaffoldGeo(style), Mats.std), 'building');
     this.scaffold.castShadow = true;
     this.root.add(this.scaffold);
     const done = built.every(Boolean);
@@ -161,7 +358,7 @@ export class BuildingView {
   partCenter(index: number, out: THREE.Vector3): THREE.Vector3 {
     const p = this.parts[index];
     if (!p) return this.root.getWorldPosition(out);
-    p.mesh.geometry.boundingBox!.getCenter(out);
+    p.meshes[0]!.geometry.boundingBox!.getCenter(out);
     return this.root.localToWorld(out);
   }
 
@@ -179,9 +376,11 @@ export class BuildingView {
       // Settle: drop in from a little above with a soft overshoot, never a pop.
       const k = p.t;
       const ease = 1 + 2.2 * Math.pow(k - 1, 3) + 1.2 * Math.pow(k - 1, 2);
-      p.mesh.visible = shown;
-      p.mesh.position.y = shown ? (1 - Math.min(1, ease)) * 0.9 : 0;
-      p.mesh.scale.setScalar(shown ? 0.85 + 0.15 * Math.min(1, ease) : 1);
+      for (const mesh of p.meshes) {
+        mesh.visible = shown;
+        mesh.position.y = shown ? (1 - Math.min(1, ease)) * 0.9 : 0;
+        mesh.scale.setScalar(shown ? 0.85 + 0.15 * Math.min(1, ease) : 1);
+      }
       p.ghost.visible = !shown || p.t < 0.6;
     }
     const done = this.complete && this.parts.every((p) => p.t >= 1);

@@ -21,6 +21,8 @@ export class FollowCamera {
   /** Extra pull-back while sitting (plan 3.5), 0..1. */
   sitting = false;
   private sitK = 0;
+  /** Height above the caretaker's feet that the camera looks at. */
+  lookLift = 0.8;
 
   constructor(readonly camera: THREE.PerspectiveCamera) {
     this.dist = this.option.zooms[0].distance;
@@ -60,7 +62,7 @@ export class FollowCamera {
     this.height = damp(this.height, z.height * pull, 4, dt);
     const lx = THREE.MathUtils.lerp(target.x + vx * z.lookAhead, this.momentAt.x, mk * 0.6);
     const lz = THREE.MathUtils.lerp(target.z + vz * z.lookAhead, this.momentAt.z, mk * 0.6);
-    this.wantLook.set(lx, target.y + 0.8, lz);
+    this.wantLook.set(lx, target.y + this.lookLift, lz);
     this.wantPos.set(lx, target.y + this.height, lz + this.dist);
     if (this.first) { this.look.copy(this.wantLook); this.pos.copy(this.wantPos); this.first = false; }
     this.look.set(damp(this.look.x, this.wantLook.x, 6, dt), damp(this.look.y, this.wantLook.y, 6, dt), damp(this.look.z, this.wantLook.z, 6, dt));

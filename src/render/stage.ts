@@ -4,18 +4,24 @@
 // rifts, explosion lights, windmills and the build-grid overlay are gone; the road is a packed-earth
 // path (no cobbles); grass, flower and ambient counts scale with the island's area; lily pads always
 // appear; a 'petals' ambient was added.
+// Phase 2: the look preset (src/data/looks.ts) sets the ground's patch and path edges, grass density,
+// haze and a global color remap; `applyLight` changes sun, sky, fog, water and ambient particles live
+// for the time of day (src/core/daylight.ts); fireflies fade in at night.
 import * as THREE from 'three';
-import { INK } from './style';
+import { f, look } from './look';
 import { clamp, DataUtilsHalf, fbm, makeRng, smoothstep } from '../core/util-render';
 import type { IslandWorld } from '../sim/island';
 import type { PlacePreset as Biome } from '../data/presets';
 import type { QualitySettings as Quality } from '../data/quality';
 import { decorGeo } from './decor-models';
+import type { OutlineClass } from '../data/looks';
+import { inkRef, lightLevel } from '../core/daylight';
 
 const colorOf = (hex: number) => new THREE.Color(hex);
+const LIGHT_SHAFTS = false as boolean;
 /** Lanternfall's counts are tuned for its 140 x 104 m battlefields. */
 const LANTERNFALL_AREA = 70 * 52;
-import { Mats, paint, shared, celPatch, inked } from './materials';
+import { albedoGlsl, Mats, paint, shared, celPatch, inked } from './materials';
 import { MB } from './mb';
 
 const TERRAIN_FRAG_HEAD = /* glsl */ `
@@ -96,7 +102,7 @@ const WATER_FRAG = /* glsl */ `
       col = mix(col, uSky, fres * 0.75 + 0.05);
       vec3 hv = normalize(uSunDir + view);
       float spec = pow(max(dot(nrm, hv), 0.0), 170.0);
-      col += uSun * ${INK ? 'smoothstep(0.5, 0.6, spec) * 0.4' : 'spec * 2.4'};
+      col += uSun * smoothstep(0.5, 0.6, spec) * 0.4;
       // Stylized foam ripples washing against the shore.
       float wave = sin(depth * 11.0 - t * 1.3 + n1 * 7.0);
       float foam = smoothstep(0.7, 0.98, wave) * smoothstep(0.26, 0.04, depth) * 0.7;
@@ -212,14 +218,22 @@ export class Stage {
   sun: THREE.DirectionalLight;
   private disposables: { dispose(): void }[] = [];
   private islets: { obj: THREE.Object3D; y: number; phase: number }[] = [];
-  private ambientMat?: THREE.ShaderMaterial;
+  private ambientMats: { mat: THREE.ShaderMaterial; key: 'pollen' | 'fireflies'; alpha: number }[] = [];
+  private hemi!: THREE.HemisphereLight;
+  private skyU!: Record<string, THREE.IUniform>;
+  private cloudU: Record<string, THREE.IUniform>[] = [];
+  private waterU?: Record<string, THREE.IUniform>;
+  private envU?: Record<string, THREE.IUniform>;
+  private sunDir = new THREE.Vector3();
+  /** Fog density of the current light, before the mist boost. */
+  baseFog = 0.004;
   private fieldTex!: THREE.DataTexture;
   private waterFog?: THREE.IUniform<number>;
 
   constructor(public world: IslandWorld, preset: Biome, public q: Quality, pixelRatio: number) {
     this.biome = preset;
     const b = this.biome;
-    this.scene.fog = new THREE.FogExp2(b.fog, b.fogDensity);
+    this.scene.fog = new THREE.FogExp2(b.fog, b.fogDensity * look().haze.density);
     this.scene.background = null;
 
     const sunDir = new THREE.Vector3(...b.sunDir).normalize();
@@ -234,21 +248,78 @@ export class Stage {
     this.sun.shadow.normalBias = 0.05;
     this.sun.shadow.radius = 3;
     this.scene.add(this.sun);
-    this.scene.add(new THREE.HemisphereLight(b.hemiSky, b.hemiGround, b.hemiI));
-    shared.uRim.value.set(b.rim);
-    shared.uInkRef.value = 1.18 / ((b.sunI * 0.75 + b.hemiI * 0.8) / Math.PI);
+    this.hemi = new THREE.HemisphereLight(b.hemiSky, b.hemiGround, b.hemiI);
+    this.scene.add(this.hemi);
+    this.sunDir.copy(sunDir);
 
     this.buildField();
     this.buildTerrain();
-    if (world.hasWater) this.buildWater(sunDir);
-    this.buildSky(sunDir);
+    if (world.hasWater) this.buildWater();
+    this.buildSky();
     this.buildDecor();
     this.buildGrass();
     this.buildRoadside();
     this.buildIslets();
-    if (q.rays && b.rays > 0 && !INK) this.buildRays(sunDir);
+    // Lanternfall's light shafts belonged to its classic style; no look uses them yet (kept for a later preset).
+    if (LIGHT_SHAFTS && q.rays && b.rays > 0) this.buildRays(sunDir);
     this.buildAmbient(pixelRatio);
-    this.buildEnvironment(sunDir);
+    this.buildEnvironment();
+    this.applyLight(b);
+  }
+
+  /**
+   * Sets the time of day's light, sky, fog, water and ambient particles (src/core/daylight.ts blends
+   * the preset). Ground colors stay; light and the look's shading do the rest.
+   */
+  applyLight(p: Biome) {
+    const L = look();
+    this.sun.color.set(p.sunColor);
+    this.sun.intensity = p.sunI;
+    this.sunDir.set(...p.sunDir).normalize();
+    this.sun.position.copy(this.sunDir).multiplyScalar(170);
+    this.hemi.color.set(p.hemiSky);
+    this.hemi.groundColor.set(p.hemiGround);
+    this.hemi.intensity = p.hemiI;
+    shared.uRim.value.set(p.rim);
+    shared.uInkRef.value = inkRef(p);
+    shared.uLight.value = lightLevel(p);
+    shared.uGlow.value = p.glow;
+    // Haze: the look thickens fog a little and pulls its color toward warm paper.
+    const fogCol = colorOf(p.fog).lerp(colorOf(0xf2e4c8), L.haze.paper * 0.35 * shared.uLight.value);
+    (this.scene.fog as THREE.FogExp2).color.copy(fogCol);
+    this.baseFog = p.fogDensity * L.haze.density;
+    const sk = this.skyU;
+    (sk.uZenith!.value as THREE.Color).set(p.zenith);
+    (sk.uHorizon!.value as THREE.Color).set(p.horizon);
+    (sk.uLow!.value as THREE.Color).set(p.low);
+    (sk.uSun!.value as THREE.Color).set(p.sunColor);
+    (sk.uCloud!.value as THREE.Color).set(p.cloudLit);
+    sk.uStars!.value = p.stars;
+    for (const c of this.cloudU) {
+      (c.uLit!.value as THREE.Color).set(p.cloudLit);
+      (c.uShade!.value as THREE.Color).set(p.cloudShade);
+      (c.uFade!.value as THREE.Color).set(p.low);
+    }
+    if (this.waterU) {
+      const w = this.waterU;
+      (w.uShallow!.value as THREE.Color).set(p.waterShallow);
+      (w.uDeep!.value as THREE.Color).set(p.waterDeep);
+      (w.uSky!.value as THREE.Color).set(p.zenith).lerp(colorOf(p.horizon), 0.6);
+      (w.uSun!.value as THREE.Color).set(p.sunColor);
+      (w.uFog!.value as THREE.Color).copy(fogCol);
+      (w.uFoam!.value as THREE.Color).set(0xffffff).lerp(colorOf(p.horizon), 0.2).multiplyScalar(0.5 + 0.5 * shared.uLight.value);
+    }
+    for (const a of this.ambientMats) {
+      a.mat.uniforms.uAlpha!.value = a.alpha * (a.key === 'pollen' ? p.pollen : p.fireflies);
+    }
+    if (this.envU) {
+      (this.envU.a!.value as THREE.Color).set(p.zenith);
+      (this.envU.c!.value as THREE.Color).set(p.horizon);
+      (this.envU.l!.value as THREE.Color).set(p.hemiGround);
+      (this.envU.s!.value as THREE.Color).set(p.sunColor);
+      this.envI = p.envI;
+      this.scene.environmentIntensity = p.envI;
+    }
   }
 
   private track<T extends { dispose(): void }>(d: T): T {
@@ -256,13 +327,13 @@ export class Stage {
     return d;
   }
 
-  private buildEnvironment(sunDir: THREE.Vector3) {
+  private buildEnvironment() {
     // Soft sky-colored image-based light. Gives metal something to reflect.
     const b = this.biome;
     const envScene = new THREE.Scene();
     const mat = new THREE.ShaderMaterial({
       side: THREE.BackSide,
-      uniforms: { a: { value: colorOf(b.zenith) }, c: { value: colorOf(b.horizon) }, l: { value: colorOf(b.hemiGround) }, s: { value: colorOf(b.sunColor) }, d: { value: sunDir } },
+      uniforms: this.envU = { a: { value: colorOf(b.zenith) }, c: { value: colorOf(b.horizon) }, l: { value: colorOf(b.hemiGround) }, s: { value: colorOf(b.sunColor) }, d: { value: this.sunDir } },
       vertexShader: `varying vec3 v; void main(){ v = position; gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.0); }`,
       fragmentShader: `uniform vec3 a,c,l,s,d; varying vec3 v; void main(){ vec3 n=normalize(v); vec3 col = n.y>0.0? mix(c,a,pow(n.y,0.6)) : mix(c,l,pow(-n.y,0.5)); col += s*pow(max(dot(n,d),0.0),24.0)*5.0; gl_FragColor=vec4(col,1.0);} `,
     });
@@ -321,7 +392,9 @@ export class Stage {
     const w = this.world;
     const b = this.biome;
     const step = this.q.terrainStep;
-    const inkGround = INK;
+    const inkGround = true;
+    const G = look().ground;
+    const ps = G.patchSoftness;
     const inkTint = `vec3(${b.ink.tint.map((v) => v.toFixed(3)).join(', ')})`;
     const nx = Math.ceil((w.extW * 2) / step) + 1;
     const nz = Math.ceil((w.extH * 2) / step) + 1;
@@ -360,6 +433,7 @@ export class Stage {
       uTime: shared.uTime,
       uRim: shared.uRim,
       uInkRef: shared.uInkRef,
+      uLight: shared.uLight,
       uField: { value: this.fieldTex },
       uExt: { value: new THREE.Vector2(w.extW, w.extH) },
       uGroundA: { value: colorOf(b.groundA) },
@@ -406,8 +480,8 @@ export class Stage {
           ${inkGround ? /* glsl */ `
           // Broad painted patches with crisp edges in place of fine noise.
           float inkPat = n1 * 0.72 + n2 * 0.28 + (n3 - 0.5) * 0.015;
-          col = mix(uGroundA * ${inkTint} * 0.94, uGroundB * ${inkTint}, smoothstep(0.455, 0.47, inkPat));
-          col = mix(col, mix(uGroundB * 1.12, uGroundC, ${b.ink.high.toFixed(2)}) * ${inkTint}, smoothstep(0.525, 0.54, inkPat));
+          col = mix(uGroundA * ${inkTint} * 0.94, uGroundB * ${inkTint}, smoothstep(${f(0.4625 - ps)}, ${f(0.4625 + ps)}, inkPat));
+          col = mix(col, mix(uGroundB * 1.12, uGroundC, ${b.ink.high.toFixed(2)}) * ${inkTint}, smoothstep(${f(0.5325 - ps)}, ${f(0.5325 + ps)}, inkPat));
           ` : ''}
           // Cliffs and steep slopes, with layered strata.
           float slope = 1.0 - clamp(vPNormal.y, 0.0, 1.0);
@@ -424,7 +498,7 @@ export class Stage {
           col = mix(col, uPeak, smoothstep(uPeakH, uPeakH + 2.4, hgt + (n2 - 0.5) * 2.8) * (1.0 - rock * 0.45));
           // The road: packed earth and worn cobbles with a soft trampled margin.
           float edge = uPathW * 0.5 + ${inkGround ? '(n2 - 0.5) * 0.7' : '(n3 - 0.5) * 0.65 + (n2 - 0.5) * 0.85'};
-          float roadMask = 1.0 - smoothstep(${inkGround ? 'edge - 0.03, edge + 0.03' : 'edge - 0.22, edge + 0.12'}, roadD);
+          float roadMask = 1.0 - smoothstep(${f(-G.pathSoftness)} + edge, edge + ${f(G.pathSoftness)}, roadD);
           float margin = 1.0 - smoothstep(edge, edge + 1.6, roadD);
           col = mix(col, col * vec3(0.76, 0.72, 0.64), margin * (1.0 - roadMask));
           vec3 roadCol = mix(uRoadB, uRoadA, n3 * 0.6 + n2 * 0.4);
@@ -442,8 +516,9 @@ export class Stage {
           col = mix(col, roadCol, roadMask);
           ${inkGround ? /* glsl */ `
           float inkEdge = smoothstep(edge - 0.2, edge - 0.08, roadD) * (1.0 - smoothstep(edge + 0.02, edge + 0.14, roadD));
-          col = mix(col, vec3(0.12, 0.06, 0.035), inkEdge * 0.8);
+          col = mix(col, vec3(0.12, 0.06, 0.035), inkEdge * ${f(G.pathInk)});
           ` : ''}
+          ${albedoGlsl('col')}
           diffuseColor.rgb = col;
         `)
         .replace('#include <emissivemap_fragment>', /* glsl */ `
@@ -475,7 +550,7 @@ export class Stage {
     this.scene.add(mesh);
   }
 
-  private buildWater(sunDir: THREE.Vector3) {
+  private buildWater() {
     const w = this.world;
     const b = this.biome;
     const mat = new THREE.ShaderMaterial({
@@ -483,7 +558,7 @@ export class Stage {
       depthWrite: false,
       vertexShader: WATER_VERT,
       fragmentShader: WATER_FRAG,
-      uniforms: {
+      uniforms: this.waterU = {
         uBrush: shared.uBrush,
         uTime: shared.uTime,
         uField: { value: this.fieldTex },
@@ -494,7 +569,7 @@ export class Stage {
         uSun: { value: colorOf(b.sunColor) },
         uFog: { value: colorOf(b.fog) },
         uFoam: { value: colorOf(0xffffff).lerp(colorOf(b.horizon), 0.2) },
-        uSunDir: { value: sunDir },
+        uSunDir: { value: this.sunDir },
         uLava: { value: 0 },
         uFogDensity: { value: b.fogDensity },
         uLevel: { value: w.waterLevel },
@@ -510,7 +585,7 @@ export class Stage {
     this.scene.add(mesh);
   }
 
-  private buildSky(sunDir: THREE.Vector3) {
+  private buildSky() {
     const b = this.biome;
     const mat = this.track(new THREE.ShaderMaterial({
       side: THREE.BackSide,
@@ -519,17 +594,17 @@ export class Stage {
       fog: false,
       vertexShader: `varying vec3 vDir; void main(){ vDir = position; vec4 p = projectionMatrix * mat4(mat3(viewMatrix)) * vec4(position, 1.0); gl_Position = p.xyww; }`,
       fragmentShader: SKY_FRAG,
-      uniforms: {
+      uniforms: this.skyU = {
         uZenith: { value: colorOf(b.zenith) },
         uHorizon: { value: colorOf(b.horizon) },
         uLow: { value: colorOf(b.low) },
         uSun: { value: colorOf(b.sunColor) },
         uCloud: { value: colorOf(b.cloudLit) },
-        uSunDir: { value: sunDir },
+        uSunDir: { value: this.sunDir },
         uBrush: shared.uBrush,
         uTime: shared.uTime,
         uAurora: { value: 0 },
-        uStars: { value: colorOf(b.zenith).r + colorOf(b.zenith).g < 0.08 ? 1 : 0 },
+        uStars: { value: b.stars },
       },
     }));
     const sky = new THREE.Mesh(this.track(new THREE.SphereGeometry(100, 32, 18)), mat);
@@ -551,12 +626,13 @@ export class Stage {
           uLit: { value: colorOf(b.cloudLit) },
           uShade: { value: colorOf(b.cloudShade) },
           uFade: { value: colorOf(b.low) },
-          uSunDir: { value: sunDir },
+          uSunDir: { value: this.sunDir },
           uAlpha: { value: alpha },
           uScale: { value: scale },
           uSpeed: { value: speed },
         },
       }));
+      this.cloudU.push(m.uniforms);
       const g = this.track(new THREE.CircleGeometry(900, 48));
       g.rotateX(-Math.PI / 2);
       const mesh = new THREE.Mesh(g, m);
@@ -569,7 +645,7 @@ export class Stage {
     layer(-15, 0.5, 1.7, 1.8);
   }
 
-  private instanced(geo: THREE.BufferGeometry, mat: THREE.Material, items: THREE.Matrix4[], colors?: THREE.Color[], shadow = true) {
+  private instanced(geo: THREE.BufferGeometry, mat: THREE.Material, items: THREE.Matrix4[], colors?: THREE.Color[], shadow = true, ink: OutlineClass | null = 'nature') {
     const mesh = new THREE.InstancedMesh(geo, mat, items.length);
     items.forEach((m, i) => mesh.setMatrixAt(i, m));
     if (colors) colors.forEach((c, i) => mesh.setColorAt(i, c));
@@ -577,7 +653,7 @@ export class Stage {
     mesh.castShadow = shadow;
     mesh.receiveShadow = true;
     mesh.frustumCulled = false;
-    if (shadow) inked(mesh);
+    if (shadow && ink) inked(mesh, ink);
     this.scene.add(mesh);
     this.disposables.push({ dispose: () => mesh.dispose() });
     return mesh;
@@ -600,16 +676,18 @@ export class Stage {
       const mats: THREE.Matrix4[] = [];
       const cols: THREE.Color[] = [];
       for (const b of list) {
-        const y = world.height(b.x, b.z);
+        const y = geo.floats ? world.waterLevel + 0.02 : world.height(b.x, b.z) - (geo.flat ? 0.02 : 0.08);
         Q.setFromAxisAngle(Y, b.rot);
-        P.set(b.x, y - 0.08, b.z);
+        P.set(b.x, y, b.z);
         S.setScalar(b.scale);
         mats.push(M.compose(P, Q, S).clone());
-        const t = 0.84 + b.tint * 0.32;
+        const t = geo.flat || geo.ink === 'building' ? 1 : 0.84 + b.tint * 0.32;
         cols.push(new THREE.Color(t, t * (0.95 + b.tint * 0.08), t * (0.9 + (1 - b.tint) * 0.14)));
       }
-      this.instanced(geo.solid, Mats.std, mats, cols);
-      if (geo.leaf) this.instanced(geo.leaf, Mats.stdFoliage, mats, cols);
+      const ink = geo.flat ? null : geo.ink ?? 'nature';
+      const solid = this.instanced(geo.solid, Mats.std, mats, cols, !geo.floats, ink);
+      if (geo.flat) solid.castShadow = false;
+      if (geo.leaf) this.instanced(geo.leaf, Mats.stdFoliage, mats, cols, true, ink ?? 'nature');
       if (geo.glow) this.instanced(geo.glow, Mats.glow, mats, undefined, false);
     }
   }
@@ -617,9 +695,9 @@ export class Stage {
   private buildGrass() {
     const world = this.world;
     const b = this.biome;
-    const inkGround = INK;
+    const inkGround = true;
     const area = (world.extW * world.extH) / LANTERNFALL_AREA;
-    const budget = Math.floor((inkGround ? Math.min(this.q.grass, 1500) : this.q.grass) * b.grassDensity * Math.max(area, 0.35));
+    const budget = Math.floor(Math.min(this.q.grass, 1500) * look().ground.grass * b.grassDensity * Math.max(area, 0.35));
     const rng = makeRng(world.seed + 5);
     if (budget > 0) {
       const blades = new MB();
@@ -651,8 +729,8 @@ export class Stage {
       const p = new THREE.Vector3();
       const s = new THREE.Vector3();
       const c = new THREE.Color();
-      const a = colorOf(b.grass[0]);
-      const bb = colorOf(b.grass[1]);
+      const a = colorOf(b.grass[0]).multiplyScalar(look().ground.grassLight);
+      const bb = colorOf(b.grass[1]).multiplyScalar(look().ground.grassLight);
       let placed = 0;
       for (let t = 0; t < budget * 3 && placed < budget; t++) {
         const inner = rng() < 0.82;
@@ -845,58 +923,60 @@ export class Stage {
   }
 
   private buildAmbient(pixelRatio: number) {
+    // Two layers that cross-fade with the time of day: pollen by day, fireflies at night.
     const world = this.world;
-    const b = this.biome;
-    const rng = makeRng(world.seed + 3);
     type Cfg = { n: number; vel: [number, number, number]; wobble: number; pulse: number; size: number; color: number; gain: number; alpha: number; h: number; additive: boolean };
-    const cfgs: Record<Biome['ambient'], Cfg> = {
-      petals: { n: 520, vel: [0.45, -0.32, 0.18], wobble: 1.6, pulse: 0, size: 2.3, color: 0xf3c2cf, gain: 1.05, alpha: 0.85, h: 9, additive: false },
-      pollen: { n: 800, vel: [0.35, 0.03, 0.14], wobble: 1.4, pulse: 0, size: 1.9, color: 0xffeeb8, gain: 1.5, alpha: 0.7, h: 10, additive: true },
-      fireflies: { n: 650, vel: [0.1, 0.04, 0.06], wobble: 2.6, pulse: 1.4, size: 3.4, color: 0xcfff8c, gain: 3.4, alpha: 0.95, h: 7, additive: true },
+    const cfgs: Record<'pollen' | 'fireflies', Cfg> = {
+      pollen: { n: 120, vel: [0.35, 0.03, 0.14], wobble: 1.4, pulse: 0, size: 1.9, color: 0xffeeb8, gain: 1.5, alpha: 0.7, h: 10, additive: true },
+      fireflies: { n: 260, vel: [0.1, 0.04, 0.06], wobble: 2.6, pulse: 1.4, size: 3.4, color: 0xd8ff9c, gain: 3.4, alpha: 0.95, h: 5, additive: true },
     };
-    const c = cfgs[b.ambient];
-    if (INK) c.n = Math.floor(c.n * (b.ambient === 'pollen' ? 0.15 : 0.4));
-    const n = Math.floor(c.n * this.q.ambient * Math.max((world.extW * world.extH) / LANTERNFALL_AREA, 0.4));
-    const box = new THREE.Vector3(world.extW * 0.92, c.h / 2, world.extH * 0.92);
-    const pos = new Float32Array(n * 3);
-    const seed = new Float32Array(n * 4);
-    for (let i = 0; i < n; i++) {
-      pos[i * 3] = (rng() * 2 - 1) * box.x;
-      pos[i * 3 + 1] = (rng() * 2 - 1) * box.y;
-      pos[i * 3 + 2] = (rng() * 2 - 1) * box.z;
-      for (let k = 0; k < 4; k++) seed[i * 4 + k] = rng();
-    }
-    const geo = this.track(new THREE.BufferGeometry());
-    geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
-    geo.setAttribute('aSeed', new THREE.BufferAttribute(seed, 4));
-    this.ambientMat = this.track(new THREE.ShaderMaterial({
-      transparent: true,
-      depthWrite: false,
-      blending: c.additive ? THREE.AdditiveBlending : THREE.NormalBlending,
-      fog: false,
-      vertexShader: AMBIENT_VERT,
-      fragmentShader: AMBIENT_FRAG,
-      uniforms: {
-        uTime: shared.uTime,
-        uScale: { value: window.innerHeight * pixelRatio * 0.5 },
-        uSize: { value: c.size },
-        uPulse: { value: c.pulse },
-        uWobble: { value: c.wobble },
-        uVel: { value: new THREE.Vector3(...c.vel) },
-        uBox: { value: box },
-        uColor: { value: colorOf(c.color).multiplyScalar(c.gain) },
-        uAlpha: { value: c.alpha },
-      },
-    }));
-    const pts = new THREE.Points(geo, this.ambientMat);
-    pts.frustumCulled = false;
-    pts.renderOrder = 8;
-    this.scene.add(pts);
+    (['pollen', 'fireflies'] as const).forEach((key, li) => {
+      const c = cfgs[key];
+      const rng = makeRng(world.seed + 3 + li * 101);
+      const n = Math.floor(c.n * look().ambient * this.q.ambient * Math.max((world.extW * world.extH) / LANTERNFALL_AREA, 0.4));
+      const box = new THREE.Vector3(world.extW * 0.92, c.h / 2, world.extH * 0.92);
+      const pos = new Float32Array(n * 3);
+      const seed = new Float32Array(n * 4);
+      for (let i = 0; i < n; i++) {
+        pos[i * 3] = (rng() * 2 - 1) * box.x;
+        pos[i * 3 + 1] = (rng() * 2 - 1) * box.y;
+        pos[i * 3 + 2] = (rng() * 2 - 1) * box.z;
+        for (let k = 0; k < 4; k++) seed[i * 4 + k] = rng();
+      }
+      const geo = this.track(new THREE.BufferGeometry());
+      geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+      geo.setAttribute('aSeed', new THREE.BufferAttribute(seed, 4));
+      const mat = this.track(new THREE.ShaderMaterial({
+        transparent: true,
+        depthWrite: false,
+        blending: c.additive ? THREE.AdditiveBlending : THREE.NormalBlending,
+        fog: false,
+        vertexShader: AMBIENT_VERT,
+        fragmentShader: AMBIENT_FRAG,
+        uniforms: {
+          uTime: shared.uTime,
+          uScale: { value: window.innerHeight * pixelRatio * 0.5 },
+          uSize: { value: c.size },
+          uPulse: { value: c.pulse },
+          uWobble: { value: c.wobble },
+          uVel: { value: new THREE.Vector3(...c.vel) },
+          uBox: { value: box },
+          uColor: { value: colorOf(c.color).multiplyScalar(c.gain) },
+          uAlpha: { value: c.alpha },
+        },
+      }));
+      this.ambientMats.push({ mat, key, alpha: c.alpha });
+      const pts = new THREE.Points(geo, mat);
+      pts.frustumCulled = false;
+      pts.renderOrder = 8;
+      this.scene.add(pts);
+    });
   }
 
   /** Fog density for the whole scene (the mist response, plan 3.4 changes it as the place heals). */
   setFogDensity(d: number) {
     (this.scene.fog as THREE.FogExp2).density = d;
+    for (const a of this.ambientMats) a.mat.visible = (a.mat.uniforms.uAlpha!.value as number) > 0.01;
     if (this.waterFog) this.waterFog.value = d;
   }
 

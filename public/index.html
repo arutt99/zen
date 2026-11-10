@@ -51,7 +51,11 @@
     font: 11px ui-monospace, monospace; opacity: .6; }
   #menu { position: fixed; inset: 0; display: none; align-items: center; justify-content: center; background: rgba(74,59,44,.35); }
   #menu.show { display: flex; }
-  #menu .panel { background: var(--paper); border-radius: 20px; padding: 20px 24px; min-width: 260px; }
+  #menu .panel { background: var(--paper); border-radius: 20px; padding: 20px 24px; min-width: 260px; max-height: calc(100vh - 32px); overflow-y: auto; box-sizing: border-box; touch-action: pan-y; -webkit-overflow-scrolling: touch; }
+  #menu label.range { align-items: center; }
+  #menu label.range input { flex: 1; min-height: 44px; }
+  #menu label.range span { font-variant-numeric: tabular-nums; min-width: 44px; text-align: right; }
+  #menu .note { margin: 0 0 6px; }
   #menu label { display: flex; justify-content: space-between; gap: 12px; margin: 10px 0; }
   #menu select, #menu button { min-height: 44px; font: inherit; }
   #rotate { position: fixed; inset: 0; display: none; align-items: center; justify-content: center; text-align: center;
@@ -80,6 +84,13 @@
     <h2 style="margin:0 0 8px">Settings</h2>
     <label>Quality <select id="quality"><option value="low">Low</option><option value="medium">Medium</option><option value="high">High</option><option value="ultra">Ultra</option></select></label>
     <label>Sound <select id="sound"><option value="on">On</option><option value="off">Off</option></select></label>
+    <h3 style="margin:14px 0 4px;font-size:15px">Art trial (Phase 2)</h3>
+    <label>Look <select id="look"></select></label>
+    <p class="note" id="look-note"></p>
+    <label>Caretaker <select id="character"></select></label>
+    <label>Building kit <select id="kit"></select></label>
+    <label>Time <select id="time-mode"><option value="clock">Follow my clock</option><option value="fixed">Choose</option></select></label>
+    <label class="range"><input type="range" id="time-at" min="0" max="999" step="1"><span id="time-label"></span></label>
     <button id="menu-close">Close</button>
   </div>
 </div>

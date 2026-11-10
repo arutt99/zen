@@ -34,6 +34,7 @@ repo Settings → Pages → Build and deployment → Source: **GitHub Actions**.
 npm run typecheck  # strict TypeScript
 npm test           # headless unit tests (sim, save, data), node:test
 npm run smoke      # browser smoke test at phone and laptop sizes (needs Playwright installed)
+npm run shots      # art screenshot sets into docs/phase2 (needs Playwright; slow with software GL)
 ```
 
 CI (`.github/workflows/ci.yml`) runs typecheck, tests and build on every push and keeps the built
@@ -47,7 +48,7 @@ file as a downloadable artifact.
 | Gather, deposit | Automatic: walk up to a tree, a mossy boulder or the build site | Automatic |
 | Context action (sit) | The round button that appears when useful | E / Space / Enter / gamepad A |
 | Zoom (two presets) | Pinch | Mouse wheel, `-`/`=`, bumpers |
-| Menu | ☰ button | Esc / Start |
+| Menu (settings, and the Phase 2 art trial: look, caretaker, kit, time of day) | ☰ button | Esc / Start |
 
 ## Engine
 
@@ -59,13 +60,15 @@ adapted; Lanternfall itself is untouched. `TASKS.md` lists which file came from 
 ```
 src/
   main.ts          boot, game loop, HUD wiring
-  core/            save (versioned, corrupt-safe), seeded random + noise, frame pacing
-  data/            places, buildings, gathering balance, feel (movement, camera/scale trials), presets,
-                   quality tiers, data validation  (all tunable numbers live here)
+  core/            save (versioned, corrupt-safe), clock + time-of-day blending, seeded random + noise, frame pacing
+  data/            places, buildings (+ kit styles), gathering balance, feel, look presets, time-of-day
+                   presets and day cycles, characters, animals, quality tiers, data validation
+                   (all tunable numbers live here)
   sim/             headless rules (no three.js): state (facts), progress (derived), core loop (beat,
-                   gather, deposit, regrowth), gather nodes, pacing bot, island geometry, proximity, walker
-  render/          engine + post chain, painterly materials, model builder, decor, stage, camera, caretaker,
-                   gather nodes, building kits, mist, effects, particles
+                   gather, deposit, regrowth), gather nodes, animal wandering, pacing bot, island geometry,
+                   proximity, walker
+  render/          engine + post chain, active look, painterly materials, model builder, decor (Zen kit),
+                   stage, camera, caretaker, deer, gather nodes, building kit library, mist, effects, particles
   audio/           synth kit, audio engine (buses, sound bank), sound recipes
   ui/              keyboard / gamepad / touch joystick input, touch detection
 public/            HTML shell, web manifest, icon (inlined into the build)

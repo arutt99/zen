@@ -53,15 +53,43 @@ function buildGeos() {
   return { stump, upper, puff, notch, rock, chunk, moss };
 }
 
+const RING_FRAG = /* glsl */ `
+  uniform float uAlpha;
+  varying vec2 vUv;
+  void main() {
+    float r = length(vUv - 0.5) * 2.0;
+    float ring = smoothstep(0.8, 0.9, r) * (1.0 - smoothstep(0.92, 1.0, r));
+    gl_FragColor = vec4(1.0, 0.96, 0.84, ring * uAlpha * 0.5);
+  }
+`;
+
 export abstract class NodeView {
   readonly root = new THREE.Group();
   protected parts: Part[] = [];
   private shake = 0;
+  /** A soft ring on the ground that shows a gatherable node as the caretaker comes near (Phase 2). */
+  private ring: THREE.Mesh;
+  private ringMat: THREE.ShaderMaterial;
+  /** 0..1: how strongly to show the ring (set each frame from the caretaker's distance). */
+  hint = 0;
 
   constructor(readonly node: GatherNode, y: number, rot: number) {
     this.root.position.set(node.x, y, node.z);
     this.root.rotation.y = rot;
     geos ??= buildGeos();
+    const g = new THREE.CircleGeometry(node.def.radius * 0.9, 40);
+    g.rotateX(-Math.PI / 2);
+    this.ringMat = new THREE.ShaderMaterial({
+      transparent: true, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -2,
+      vertexShader: 'varying vec2 vUv; void main(){ vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }',
+      fragmentShader: RING_FRAG,
+      uniforms: { uAlpha: { value: 0 } },
+    });
+    this.ring = new THREE.Mesh(g, this.ringMat);
+    this.ring.position.y = 0.16;
+    this.ring.renderOrder = 3;
+    this.ring.visible = false;
+    this.root.add(this.ring);
   }
 
   protected part(obj: THREE.Object3D, parent: THREE.Object3D = this.root): Part {
@@ -91,6 +119,9 @@ export abstract class NodeView {
       p.obj.visible = s > 0;
       p.obj.scale.copy(p.full).multiplyScalar(s);
     }
+    const a = damp(this.ringMat.uniforms.uAlpha!.value as number, this.node.units > 0 ? this.hint : 0, 4, dt);
+    this.ringMat.uniforms.uAlpha!.value = a;
+    this.ring.visible = a > 0.01;
     this.shake = Math.max(0, this.shake - dt * 3);
     const k = this.shake * this.shake;
     this.root.rotation.x = Math.sin(time * 38) * 0.035 * k;

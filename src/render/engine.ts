@@ -1,6 +1,9 @@
 // Copied from Lanternfall (games/lanternfall/src/render/engine.ts @ b282628).
 // Changes: the quality table moved to src/data/quality.ts; the RTS camera rig was removed (Moss & Bell
 // uses a follow camera, src/render/camera.ts); the field of view is set by the follow camera.
+// Phase 2: the look preset (src/data/looks.ts) sets bloom, a warm grade on top of the time of day's,
+// paper grain and posterizing; the Kuwahara and tilt-shift passes stay off (they belonged to
+// Lanternfall's classic style).
 // Renderer and post-processing chain.
 import * as THREE from 'three';
 import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
@@ -11,7 +14,7 @@ import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js'
 import { QUALITY, type QualitySettings as Quality, type QualityTier as QualityId } from '../data/quality';
 import type { PlacePreset as Biome } from '../data/presets';
 import { inkShared, Mats } from './materials';
-import { INK } from './style';
+import { look, f } from './look';
 
 // Removes invalid and extreme HDR values, which the bloom blur would otherwise spread across the whole frame.
 const SanitizeShader = {
@@ -75,13 +78,19 @@ const FinalShader = {
     uTime: { value: 0 },
     uFade: { value: 0 },
     uDesat: { value: 0 },
+    uGrain: { value: 0 },
+    uPx: { value: 1 },
+    tPaper: { value: null as THREE.Texture | null },
   },
   vertexShader: /* glsl */ `varying vec2 vUv; void main(){ vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }`,
   fragmentShader: /* glsl */ `
-    uniform sampler2D tDiffuse; uniform vec2 uTexel; uniform float uTilt, uSat, uVignette, uTime, uFade, uDesat;
+    uniform sampler2D tDiffuse; uniform vec2 uTexel; uniform float uTilt, uSat, uVignette, uTime, uFade, uDesat, uGrain, uPx;
     uniform vec3 uLift, uGain;
+    uniform sampler2D tPaper;
     varying vec2 vUv;
     float rnd(vec2 p){ return fract(sin(dot(p, vec2(12.9898, 78.233))) * 43758.5453); }
+    // Still paper (a pre-drawn tile), fixed to the screen in CSS pixels.
+    float paper(vec2 px) { return texture2D(tPaper, px / 256.0).r; }
     void main() {
       vec3 c = texture2D(tDiffuse, vUv).rgb;
       // Tilt-shift gives the battlefield the feel of a handcrafted miniature.
@@ -101,12 +110,54 @@ const FinalShader = {
       vec2 q = vUv - 0.5;
       float v = 1.0 - dot(q, q) * 2.0 * uVignette * 2.0;
       c *= clamp(v, 0.0, 1.0);
+      POSTERIZE
+      if (uGrain > 0.0) {
+        float pp = paper(vUv / uTexel / uPx) - 0.5;
+        c *= 1.0 + pp * uGrain * 2.0;
+        c += pp * uGrain * 0.08;
+      }
       c += (rnd(vUv * 913.0 + uTime) - 0.5) * 0.006 * (l + 0.1);
       c *= 1.0 - uFade;
       gl_FragColor = vec4(max(c, 0.0), 1.0);
     }
   `,
 };
+
+let paperTex: THREE.Texture | null = null;
+/** A 256 px tile of paper: fine tooth, soft blotches and long fibres (the look's grain overlay). */
+function paperTexture(): THREE.Texture {
+  if (paperTex) return paperTex;
+  const size = 256;
+  const c = document.createElement('canvas');
+  c.width = c.height = size;
+  const g = c.getContext('2d')!;
+  g.fillStyle = '#808080';
+  g.fillRect(0, 0, size, size);
+  let seed = 7;
+  const r = () => ((seed = (seed * 16807) % 2147483647) / 2147483647);
+  for (let i = 0; i < 90; i++) { // soft blotches
+    const v = Math.floor(128 + (r() - 0.5) * 60);
+    g.fillStyle = `rgba(${v},${v},${v},0.18)`;
+    g.beginPath(); g.arc(r() * size, r() * size, 10 + r() * 30, 0, Math.PI * 2); g.fill();
+  }
+  for (let i = 0; i < 260; i++) { // fibres
+    const v = Math.floor(128 + (r() - 0.5) * 120);
+    g.strokeStyle = `rgba(${v},${v},${v},0.35)`;
+    g.lineWidth = 0.6 + r() * 0.8;
+    const x = r() * size, y = r() * size, a = (r() - 0.5) * 0.8, l = 8 + r() * 30;
+    g.beginPath(); g.moveTo(x, y); g.lineTo(x + Math.cos(a) * l, y + Math.sin(a) * l); g.stroke();
+  }
+  const img = g.getImageData(0, 0, size, size);
+  for (let i = 0; i < img.data.length; i += 4) { // fine tooth
+    const n = (r() - 0.5) * 50;
+    img.data[i] = img.data[i + 1] = img.data[i + 2] = Math.max(0, Math.min(255, img.data[i]! + n));
+  }
+  g.putImageData(img, 0, 0);
+  paperTex = new THREE.CanvasTexture(c);
+  paperTex.wrapS = paperTex.wrapT = THREE.RepeatWrapping;
+  paperTex.colorSpace = THREE.NoColorSpace;
+  return paperTex;
+}
 
 export class Engine {
   renderer: THREE.WebGLRenderer;
@@ -130,7 +181,7 @@ export class Engine {
     this.renderer = new THREE.WebGLRenderer({ canvas, antialias: false, powerPreference: 'high-performance', stencil: false });
     this.renderer.shadowMap.enabled = true;
     this.renderer.shadowMap.type = THREE.PCFShadowMap;
-    if (INK) {
+    {
       // The outline shell has no use in the shadow map, so shadows draw each mesh once.
       const shadows = this.renderer.shadowMap;
       const renderShadows = shadows.render;
@@ -159,8 +210,20 @@ export class Engine {
     this.composer = new EffectComposer(this.renderer, target);
     this.renderPass = new RenderPass(this.scene, this.camera);
     this.paintPass = new ShaderPass(PaintShader);
-    this.bloomPass = new UnrealBloomPass(new THREE.Vector2(size.x, size.y), INK ? 0.24 : 0.42, INK ? 0.5 : 0.72, INK ? 1.2 : 1.02);
-    this.finalPass = new ShaderPass(FinalShader);
+    const bl = look().post.bloom;
+    this.bloomPass = new UnrealBloomPass(new THREE.Vector2(size.x, size.y), bl.strength, bl.radius, bl.threshold);
+    const p = look().post;
+    const fs = FinalShader.fragmentShader.replace('POSTERIZE', p.posterize > 0 ? /* glsl */ `
+      {
+        // Limited palette, like pigments pressed from a few blocks.
+        float lv = ${f(p.posterize)};
+        vec3 q = floor(c * lv + 0.5) / lv;
+        c = mix(c, q, ${f(p.posterizeMix)});
+      }` : '');
+    this.finalPass = new ShaderPass({ ...FinalShader, fragmentShader: fs });
+    this.finalPass.uniforms.uGrain.value = p.grain;
+    if (p.grain > 0) this.finalPass.uniforms.tPaper.value = paperTexture();
+    this.finalPass.uniforms.uVignette.value = p.vignette;
     const output = new OutputPass();
     this.composer.addPass(this.renderPass);
     this.composer.addPass(new ShaderPass(SanitizeShader));
@@ -169,11 +232,13 @@ export class Engine {
     this.composer.addPass(this.finalPass);
     this.composer.addPass(output);
     this.applyToggles();
+    this.setGrade(this.grade);
   }
 
   private applyToggles() {
-    this.paintPass.enabled = !INK && this.quality.painterly && this.painterlyOn;
-    this.finalPass.uniforms.uTilt.value = !INK && this.quality.tilt && this.tiltOn ? 1 : 0;
+    // Lanternfall's classic-style passes; no look uses them (kept for a future look preset).
+    this.paintPass.enabled = false;
+    this.finalPass.uniforms.uTilt.value = 0;
   }
 
   setQuality(id: QualityId) {
@@ -190,13 +255,21 @@ export class Engine {
     this.applyToggles();
   }
 
+  private grade: Biome['grade'] = { lift: [0, 0, 0], gain: [1, 1, 1], sat: 1 };
+
   setScene(scene: THREE.Scene, biome: Biome) {
     this.scene = scene;
     this.renderPass.scene = scene;
-    const g = biome.grade;
-    this.finalPass.uniforms.uLift.value.set(...g.lift);
-    this.finalPass.uniforms.uGain.value.set(...g.gain);
-    this.finalPass.uniforms.uSat.value = g.sat;
+    this.setGrade(biome.grade);
+  }
+
+  /** The time of day's color grade, with the look's grade on top. */
+  setGrade(g: Biome['grade']) {
+    this.grade = g;
+    const p = look().post;
+    this.finalPass.uniforms.uLift.value.set(g.lift[0] + p.lift[0], g.lift[1] + p.lift[1], g.lift[2] + p.lift[2]);
+    this.finalPass.uniforms.uGain.value.set(g.gain[0] * p.gain[0], g.gain[1] * p.gain[1], g.gain[2] * p.gain[2]);
+    this.finalPass.uniforms.uSat.value = g.sat * p.sat;
   }
 
   /** Scales rendering resolution, used by automatic performance adjustment. */
@@ -217,6 +290,7 @@ export class Engine {
     const texelY = 1 / (h * dpr);
     this.paintPass.uniforms.uTexel.value.set(texel, texelY);
     this.finalPass.uniforms.uTexel.value.set(texel, texelY);
+    this.finalPass.uniforms.uPx.value = dpr;
     this.paintPass.uniforms.uRadius.value = 2.4 * Math.max(1, dpr * 0.8);
     this.camera.aspect = w / h;
     inkShared.uAspect.value = w / h;

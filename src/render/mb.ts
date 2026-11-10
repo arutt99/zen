@@ -1,7 +1,7 @@
-// Copied from Lanternfall (games/lanternfall/src/render/mb.ts @ b282628). Unchanged.
+// Copied from Lanternfall (games/lanternfall/src/render/mb.ts @ b282628). Outline data is added when the look draws outlines.
 // Model builder: composes primitives with vertex colors into one merged geometry.
 import * as THREE from 'three';
-import { INK } from './style';
+import { anyOutline } from './look';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { fbm } from '../core/util';
 
@@ -163,7 +163,7 @@ export class MB {
     for (const p of this.parts) p.dispose();
     this.parts = [];
     merged.computeBoundingSphere();
-    if (INK) addInkData(merged);
+    if (anyOutline()) addInkData(merged);
     return merged;
   }
 }

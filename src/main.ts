@@ -1,5 +1,7 @@
-// Moss & Bell — Phase 1 entry point ("the feel"): the home island on Lanternfall's engine, the core
-// loop (gather on the beat → carry → deposit → watch it grow → the mist lifts), the HUD, and the save.
+// Moss & Bell — entry point. Phase 1: the home island on Lanternfall's engine, the core loop (gather on
+// the beat → carry → deposit → watch it grow → the mist lifts), the HUD, and the save. Phase 2: the look
+// presets (A6), the caretaker and deer in two proportion styles (A4), building kit styles (A5), the
+// time of day from the clock with a debug slider, and the canopy fade.
 // Game rules run in src/sim (CoreLoop); this file only wires them to rendering, sound and the page.
 
 import * as THREE from 'three';
@@ -9,7 +11,14 @@ import { browserStore, loadSave, writeSave, type SaveData } from './core/save';
 import { BEAT_SECONDS, MATERIALS, NODE_KINDS, SATCHEL_CAP } from './data/gathering';
 import { CAMERA_OPTIONS, SCALE_OPTIONS } from './data/feel';
 import { PLACES } from './data/places';
-import { PRESETS } from './data/presets';
+import { CHARACTER_STYLES, CARETAKER, type CharacterStyleId } from './data/characters';
+import { KIT_STYLES, KIT_STYLE_INFO, type KitStyleId } from './data/buildings';
+import { LOOKS, LOOK_IDS } from './data/looks';
+import { MOMENTS } from './data/presets';
+import { clockLabel, presetAt, timeOfDay } from './core/daylight';
+import { DeerView } from './render/deer';
+import { look, reloadIntoLook, useLook } from './render/look';
+import { Wanderer } from './sim/animals';
 import { defaultTier, type QualityTier } from './data/quality';
 import { validateData } from './data/validate';
 import { FollowCamera } from './render/camera';
@@ -23,7 +32,7 @@ import { nodeView } from './render/nodes';
 import { Stage } from './render/stage';
 import { IslandWorld } from './sim/island';
 import { CoreLoop } from './sim/loop';
-import { mistAmount, partsBuilt, remaining, restoration } from './sim/progress';
+import { animalsPresent, mistAmount, partsBuilt, remaining, restoration } from './sim/progress';
 import { PRIORITY, type Proximate } from './sim/proximity';
 import { GameState } from './sim/state';
 import { InputController } from './ui/input';
@@ -55,6 +64,8 @@ function boot(): void {
   const { data: save, recovered } = loadSave(store);
   if (recovered) console.warn(`[save] started fresh: ${recovered}`);
   void navigator.storage?.persist?.().catch(() => undefined);
+  // The look is chosen before anything is drawn: shaders are compiled for one look (src/data/looks.ts).
+  save.settings.look = useLook(save.settings.look).id;
 
   let engine: Engine;
   try {
@@ -75,7 +86,10 @@ function boot(): void {
   initMaterials();
 
   const place = PLACES.home_valley;
-  const preset = PRESETS[place.preset]!;
+  // Time of day: blended from the place's presets along its day cycle (src/core/daylight.ts).
+  const timeNow = () => timeOfDay(save.settings.time, new Date());
+  let dayT = timeNow();
+  let preset = presetAt(place.daylight, dayT);
   const world = new IslandWorld(place);
   let stage = new Stage(world, preset, engine.quality, engine.renderer.getPixelRatio());
   stage.bakeEnvironment(engine.renderer);
@@ -90,19 +104,55 @@ function boot(): void {
   const h = (x: number, z: number) => world.height(x, z);
 
   // --- views of the loop
-  const caretaker = new CaretakerView();
+  const characterOf = (id: string): CharacterStyleId => (CHARACTER_STYLES as readonly string[]).includes(id) ? id as CharacterStyleId : 'chibi';
+  const kitOf = (id: string): KitStyleId => (KIT_STYLES as readonly string[]).includes(id) ? id as KitStyleId : 'temple';
+  save.settings.character = characterOf(save.settings.character);
+  save.settings.kit = kitOf(save.settings.kit);
+  let caretaker = new CaretakerView(characterOf(save.settings.character));
   const cam = new FollowCamera(engine.camera);
   const nodeViews = loop.nodes.map((n) => nodeView(n, h(n.x, n.z) - 0.08, place.nodes.find((q) => q.id === n.id)?.rot ?? 0));
   const nodeViewById = new Map(nodeViews.map((v) => [v.node.id, v]));
-  const buildings = new Map(loop.sites.map((s) => [s.id, new BuildingView(s.def, s.x, s.z, s.rot, h, partsBuilt(s.def, state.deposits[s.id]!))]));
+  const makeBuildings = () => new Map(loop.sites.map((s) => [s.id, new BuildingView(s.def, s.x, s.z, s.rot, h, partsBuilt(s.def, state.deposits[s.id]!), kitOf(save.settings.kit))]));
+  let buildings = makeBuildings();
   const level = () => restoration(place, state.deposits);
   const mist = new Mist(place.mist.puffs, h, preset.fog, mistAmount(place, level()), place.seed + 41);
+  let lightTimer = 0, bakeTimer = 0, bakedT = dayT;
+  /** Re-blends the time of day (cheap), and re-bakes the sky light now and then (not every frame). */
+  const updateLight = (dt: number, force = false) => {
+    lightTimer += dt;
+    bakeTimer += dt;
+    if (!force && lightTimer < 0.1) return;
+    lightTimer = 0;
+    dayT = timeNow();
+    preset = presetAt(place.daylight, dayT);
+    stage.applyLight(preset);
+    engine.setGrade(preset.grade);
+    mist.setColor(preset.fog);
+    const dd = Math.abs(dayT - bakedT);
+    if (force || (Math.min(dd, 1 - dd) > 0.004 && bakeTimer > 0.6)) {
+      stage.rebakeEnvironment(engine.renderer);
+      bakedT = dayT;
+      bakeTimer = 0;
+    }
+  };
   let mistTarget = mist.amount;
   const fx = new Fx(engine.quality.ambient > 0.6 ? 900 : 500);
-  const actors = (): THREE.Object3D[] => [caretaker.root, ...nodeViews.map((v) => v.root), ...[...buildings.values()].map((b) => b.root), mist.points, fx.group];
+  // Animal friends present from the facts (plan 4.3); one that arrives during play walks in.
+  const deer: DeerView[] = [];
+  const addAnimals = (arriving: boolean) => {
+    for (const a of animalsPresent(place, state.deposits)) {
+      if (deer.some((d) => d.sim.def.id === a.id)) continue;
+      const sim = new Wanderer(a, (x, z) => world.walkable(x, z), place.seed + deer.length * 31, arriving);
+      const v = new DeerView(sim, characterOf(save.settings.character), h);
+      deer.push(v);
+      stage.scene.add(v.root);
+    }
+  };
+  const actors = (): THREE.Object3D[] => [caretaker.root, ...nodeViews.map((v) => v.root), ...[...buildings.values()].map((b) => b.root), ...deer.map((d) => d.root), mist.points, fx.group];
   const addActors = () => { for (const a of actors()) stage.scene.add(a); };
   const removeActors = () => { for (const a of actors()) a.removeFromParent(); };
   addActors();
+  addAnimals(false);
 
   // Quality changes rebuild the stage (grass and particle counts, terrain step), as Lanternfall does.
   const setTier = (t: QualityTier) => {
@@ -114,6 +164,7 @@ function boot(): void {
     stage.bakeEnvironment(engine.renderer);
     engine.setScene(stage.scene, preset);
     addActors();
+    updateLight(0, true);
     governor.reset();
   };
 
@@ -179,7 +230,63 @@ function boot(): void {
   save.settings.scale = chosenScale.id;
   cam.setOption(chosenCamera.id);
   caretaker.size = chosenScale.caretaker;
-  const toggleMenu = () => { menu.classList.toggle('show'); audio.play('click'); };
+  // --- Phase 2 trial settings: look (reloads), caretaker style, kit style, time of day.
+  const lookSel = $('look') as HTMLSelectElement;
+  const charSel = $('character') as HTMLSelectElement;
+  const kitSel = $('kit') as HTMLSelectElement;
+  const timeSel = $('time-mode') as HTMLSelectElement;
+  const timeRange = $('time-at') as HTMLInputElement;
+  const timeLabel = $('time-label');
+  const fill = (sel: HTMLSelectElement, items: [string, string][]) => { sel.innerHTML = items.map(([v, t]) => `<option value="${v}">${t}</option>`).join(''); };
+  fill(lookSel, LOOK_IDS.map((id) => [id, LOOKS[id].name]));
+  fill(charSel, CHARACTER_STYLES.map((id) => [id, CARETAKER[id].name]));
+  fill(kitSel, KIT_STYLES.map((id) => [id, KIT_STYLE_INFO[id].name]));
+  lookSel.value = look().id;
+  charSel.value = save.settings.character;
+  kitSel.value = save.settings.kit;
+  const showTime = () => {
+    timeSel.value = save.settings.time.mode;
+    timeRange.value = String(Math.round(timeNow() * 1000));
+    timeRange.disabled = false;
+    timeLabel.textContent = clockLabel(timeNow());
+    $('look-note').textContent = look().note;
+  };
+  showTime();
+  lookSel.addEventListener('change', () => {
+    save.settings.look = lookSel.value;
+    persist();
+    reloadIntoLook(look().id);
+  });
+  charSel.addEventListener('change', () => {
+    save.settings.character = characterOf(charSel.value);
+    removeActors();
+    caretaker.dispose();
+    caretaker = new CaretakerView(characterOf(save.settings.character));
+    for (const d of deer.splice(0)) d.root.removeFromParent();
+    addActors();
+    addAnimals(false);
+    persist();
+  });
+  kitSel.addEventListener('change', () => {
+    save.settings.kit = kitOf(kitSel.value);
+    removeActors();
+    for (const b of buildings.values()) b.dispose();
+    buildings = makeBuildings();
+    addActors();
+    persist();
+  });
+  timeSel.addEventListener('change', () => {
+    save.settings.time = { mode: timeSel.value === 'fixed' ? 'fixed' : 'clock', at: timeNow() };
+    showTime();
+    persist();
+  });
+  timeRange.addEventListener('input', () => {
+    save.settings.time = { mode: 'fixed', at: Number(timeRange.value) / 1000 };
+    showTime();
+    dirty = true;
+  });
+
+  const toggleMenu = () => { menu.classList.toggle('show'); audio.play('click'); if (menu.classList.contains('show')) showTime(); };
   $('menu-btn').addEventListener('click', toggleMenu);
   $('menu-close').addEventListener('click', toggleMenu);
   input.onMenu = toggleMenu;
@@ -270,6 +377,7 @@ function boot(): void {
         fx.complete(at);
         cam.celebrate(at);
         mistTarget = mistAmount(place, level());
+        addAnimals(true);
       }, BEAT_SECONDS * 1000 + 300);
       persist();
     }
@@ -333,6 +441,7 @@ function boot(): void {
   const governor = new ResolutionGovernor();
   const debug = $('debug');
   const focus = new THREE.Vector3();
+  const focus2 = new THREE.Vector3();
   let last = performance.now();
   let time = 0;
   let fpsFrames = 0, fpsTime = 0, fps = 0;
@@ -364,14 +473,24 @@ function boot(): void {
     if (bumpTimer > 0 && (bumpTimer -= dt) <= 0) satchelEl.classList.remove('bump');
 
     const y = world.height(walker.x, walker.z);
-    caretaker.update(dt, walker.x, y + (sitting ? 0.2 : 0), walker.z, walker.heading, walker.speed, state.satchel, loop.work);
+    caretaker.update(dt, walker.x, y + (sitting ? 0.2 : 0), walker.z, walker.heading, walker.speed, state.satchel, loop.work, sitting);
+    caretaker.root.updateMatrixWorld();
+    caretaker.chest(focus2);
+    shared.uFocus.value.set(focus2.x, focus2.y, focus2.z, 1);
+    for (const d of deer) { d.sim.update(dt, { x: walker.x, z: walker.z, speed: walker.speed }); d.update(dt); }
+    updateLight(dt);
     focus.set(walker.x, y, walker.z);
     cam.update(dt, focus, walker.vx, walker.vz);
-    for (const v of nodeViews) v.update(dt, time);
+    for (const v of nodeViews) {
+      // The ring fades in from 7 m and out again once the caretaker is working the node.
+      const d = Math.hypot(v.node.x - walker.x, v.node.z - walker.z);
+      v.hint = Math.max(0, Math.min(1, (7 - d) / 3)) * (d < v.node.def.radius ? 0.3 : 1);
+      v.update(dt, time);
+    }
     for (const b of buildings.values()) b.update(dt, time);
     const pixelScale = engine.renderer.domElement.height / (2 * Math.tan(THREE.MathUtils.degToRad(engine.camera.fov) / 2));
     mist.update(dt, mistTarget, pixelScale);
-    stage.setFogDensity(preset.fogDensity * (1 + (place.mist.fogBoost - 1) * mist.amount));
+    stage.setFogDensity(stage.baseFog * (1 + (place.mist.fogBoost - 1) * mist.amount));
     fx.update(dt, time, pixelScale);
     stage.update(time);
     engine.render(dt, time);
@@ -403,6 +522,34 @@ function boot(): void {
     get nodes() { return loop.nodes.map((n) => ({ id: n.id, units: n.units, phase: n.phase, x: n.x, z: n.z })); },
     get work() { return loop.work?.kind ?? null; },
     get mist() { return mist.amount; },
+    get look() { return look().id; },
+    get time() { return dayT; },
+    get deer() { return deer.map((d) => ({ x: d.sim.x, z: d.sim.z, act: d.sim.act })); },
+    /** Screenshots: fix the time of day (a fraction, or a named moment). */
+    setTime(t: number | keyof typeof MOMENTS) {
+      save.settings.time = { mode: 'fixed', at: typeof t === 'number' ? t : MOMENTS[t] };
+      updateLight(0, true);
+    },
+    /** Screenshots: a close camera on the caretaker, turned three-quarters, with the deer beside them. */
+    closeup(heading = 0.5, distance = 4.6, height = 2.9, lookLift = 0.8) {
+      cam.option = { ...cam.option, zooms: [{ distance, height, lookAhead: 0 }, cam.option.zooms[1]] };
+      cam.lookLift = lookLift;
+      walker.heading = heading;
+      caretaker.root.rotation.y = heading;
+      for (const d of deer) { d.sim.x = walker.x - 1.6; d.sim.z = walker.z - 0.6; d.sim.heading = 1.2; }
+    },
+    setCharacter(id: string) { charSel.value = id; charSel.dispatchEvent(new Event('change')); },
+    setKit(id: string) { kitSel.value = id; kitSel.dispatchEvent(new Event('change')); },
+    /** Screenshots: put facts in place as if delivered (rebuilds the views; no events). */
+    deliver(site: string, wood: number) {
+      state.deposits[site]!.wood = wood;
+      removeActors();
+      for (const b of buildings.values()) b.dispose();
+      buildings = makeBuildings();
+      addActors();
+      mistTarget = mistAmount(place, level());
+      addAnimals(false);
+    },
     /** Smoke tests and screenshots: put the caretaker somewhere. */
     teleport(x: number, z: number) { walker.x = x; walker.z = z; walker.vx = walker.vz = 0; },
     zoom(dir: 1 | -1) { cam.toggleZoom(dir); },

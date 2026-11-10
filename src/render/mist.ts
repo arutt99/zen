@@ -66,6 +66,11 @@ export class Mist {
     this.amount = amount;
   }
 
+  /** The mist takes the time of day's fog color, a little lighter. */
+  setColor(color: number): void {
+    (this.mat.uniforms.uColor!.value as THREE.Color).set(color).lerp(new THREE.Color(0xffffff), 0.35);
+  }
+
   update(dt: number, target: number, pixelScale: number): void {
     // Lifting takes several seconds, like mist burning off; it never snaps.
     const k = 1 - Math.exp(-dt * (target < this.amount ? 0.45 : 1.5));

@@ -1,5 +1,30 @@
 # Changelog
 
+## Phase 2: Warm the look (2026-11-10)
+- **Look presets** (`src/data/looks.ts`, plan 7.4) and a look switcher in Settings: **Painted** (the reference,
+  with the plan 7.1 retuning checklist applied), **Lanternfall-like** (the Phase 0 look) and **Woodblock print**
+  (the wildcard, owner pick). Each sets tone steps and softness, shadow tint, brush, a global color remap,
+  outline color/width and which objects get lines (figures, buildings, nature), ground patch and path edges,
+  grass, haze, bloom, grade, paper grain and posterizing. Lanternfall's ink/classic switch (`style.ts`) is gone.
+- **Time of day**: dawn, day, golden hour, dusk and night presets for the home valley, blended from the device
+  clock (`src/core/daylight.ts`). Lanterns glow and fireflies come out at night; night is dimmer, never dark.
+  Settings → Time: follow my clock, or choose a moment with the debug slider.
+- **The caretaker** rebuilt after the reference (cream top, brown hakama, bun, dot-and-line face, sandals,
+  woven basket that still fills item by item), with legs and arms that swing, in two proportion styles to
+  compare (A4): **chibi** and **storybook**.
+- **The deer**: a model in the same two styles and a headless wander rule (`src/sim/animals.ts`): it walks in
+  once the valley's restoration reaches its level, grazes, rests, and steps away from a caretaker who walks
+  right up to it. Temporarily tied to the shelter so it can be seen now; Phase 3 moves it to the gravel garden.
+- **Building kit library** (A5): footings, floors, posts, beams, screens, roofs, lanterns, noren and
+  scaffolding in two styles, **temple** and **timber**; the shelter is assembled from it. Switch in Settings.
+- **Zen kit decor**: maple, bamboo, mossy stones, stone lanterns, wooden and rope fences, raked gravel,
+  stepping stones and lotus, placed around the home valley for review; maple and bamboo join the groves.
+- **Canopy fade**: foliage between the camera and the caretaker thins out, so trees no longer hide them.
+- Gather trees and boulders show a soft ground ring as you approach, so they read apart from decor.
+- Save v3 (v2 migrates): look, caretaker style, kit style and time setting.
+- `scripts/shots.cjs` captures the screenshot sets in `docs/phase2/`.
+- Unit tests 41 → 52 (new: looks, clock and day blending, caretaker heights, deer wandering, Zen-kit placement, kit styles, save v3 migration).
+
 ## Phase 1 follow-up (2026-11-10)
 - Art decision points decided by the owner: **A2 camera A (Classic)**, **A3 Medium caretaker (1.8 m)**. The
   camera and caretaker-size trial settings were removed; older saves that picked another option fall back.

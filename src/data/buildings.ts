@@ -5,6 +5,24 @@ import type { PlaceId } from './places';
 
 export type BuildingId = 'shelter';
 
+/**
+ * Building kit styles (art decision point A5, due at the Phase 2 gate): the part set buildings are
+ * assembled from, and how a half-built building looks. Both draw the same part ids, so the cost and
+ * build order don't depend on the style; src/render/kits.ts has the models.
+ */
+export type KitStyleId = 'temple' | 'timber';
+export const KIT_STYLES: readonly KitStyleId[] = ['temple', 'timber'];
+export const KIT_STYLE_INFO: Record<KitStyleId, { name: string; note: string }> = {
+  temple: {
+    name: 'Temple (like the reference)',
+    note: 'Square cedar posts on stone footings, a raised plank floor, shoji screens, a grey tiled roof with a paper lantern and a noren curtain. Squared-timber scaffolding with a ladder.',
+  },
+  timber: {
+    name: 'Rustic timber',
+    note: 'Round log posts lashed with rope, a log floor, woven reed screens, a thick thatched roof with crossed ridge poles. Lashed-pole scaffolding.',
+  },
+};
+
 export interface PartDef {
   /** Model id in the building's render kit. */
   id: string;
