@@ -2,7 +2,7 @@
 
 The rules for building and tuning art. The **target look** is the painted storybook reference,
 `docs/art-reference.jpg` (plan 7.1). It is not final: the owner picks from the look presets at the Phase 2
-gate (A6). Until then every model must read well in all four presets.
+gate (A6). Until then every model must read well in all five presets.
 
 ## Scale
 - **1 unit = 1 metre.** The caretaker is ~1.8 m tall including the hair bun (placeholder), walk speed 4.2 m/s.
@@ -25,7 +25,7 @@ gate (A6). Until then every model must read well in all four presets.
 
 ## Look presets (Phase 2, plan 7.4)
 All style values live in `src/data/looks.ts`; the active look is chosen per page load (`src/render/look.ts`,
-Settings → Look, or `?look=painted|paintedplus|lanternfall|woodblock` in the address). Shaders are generated for one
+Settings → Look, or `?look=painted|paintedplus|lanternfall|lanternfallplus|woodblock` in the address). Shaders are generated for one
 look, so switching reloads the page.
 
 | Setting | Painted (target) | Painted+ | Lanternfall-like | Woodblock (wildcard) |
@@ -72,6 +72,13 @@ on by the look (`light` and `detail` in `src/data/looks.ts`) and costs nothing i
   barge boards and a rounded ridge. The timber kit gets the occlusion and shadows but no new parts yet.
 - `MB` parts accept `smooth: true` (weld corners, smooth normals) for rounded shapes.
 - Geometry caches (`decorGeo`, `partGeo`, node geometry) are keyed by look.
+
+## Lanternfall+ (owner request, 2026-11-10)
+The owner likes Lanternfall-like best, for four reasons: crisp light and shadow bands, dark ink lines on
+everything, richer color and contrast, and no grain or haze. Lanternfall+ keeps all of Lanternfall-like's
+values (shading, outline, color remap, ground, haze, post) and adds Painted+'s `light` and `detail`:
+baked occlusion 0.75, contact shadows 0.7, sun shadow radius 4, and the fine models. The ink outlines read
+cleanly on the finer models (tile courses, lantern, rounded stones); no thinning was needed.
 
 ## Time of day (Phase 2)
 Presets per place and time in `src/data/presets.ts` (`home_dawn`, `home_day`, `home_golden`, `home_dusk`,
@@ -140,7 +147,7 @@ palette (plan 7.2). Path `#D9C39D`/`#A48A62`, water `#9CC7B8`→`#3F7F7A`, cherr
 | A3 | World scale and spacing | **Decided: Medium caretaker, 1.8 m** (owner, 2026-11-10). Trees and spacing unchanged |
 | A4 | Character proportions | Phase 2 gate: **chibi** or **storybook** to try in Settings (`docs/phase2/README.md`) |
 | A5 | Building kit style | Phase 2 gate: **temple** or **timber** to try in Settings |
-| A6 | Shading family | Phase 2 gate: **Painted**, **Painted+**, **Lanternfall-like** or **Woodblock** to try in Settings |
+| A6 | Shading family | Phase 2 gate: **Painted**, **Painted+**, **Lanternfall-like**, **Lanternfall+** or **Woodblock** to try in Settings. Owner leaning toward Lanternfall-like (2026-11-10), not decided |
 | A7 | Seasonal palettes | Phase 5 gate |
 
 ## External assets

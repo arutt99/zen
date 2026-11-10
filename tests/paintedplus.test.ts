@@ -19,11 +19,23 @@ test('painted+ keeps painted\'s warmth but adds soft light and detail; other loo
   assert.ok(pp.outline.width < p.outline.width);
   assert.ok(pp.shading.softness >= p.shading.softness, 'at least as soft');
   assert.ok(pp.shading.shadowTint[0] >= pp.shading.shadowTint[2], 'warm shadow tint');
-  for (const id of LOOK_IDS) if (id !== 'paintedplus') {
+  for (const id of LOOK_IDS) if (id !== 'paintedplus' && id !== 'lanternfallplus') {
     assert.equal(LOOKS[id].detail, 'base', id);
     assert.equal(LOOKS[id].light.ao, 0, id);
     assert.equal(LOOKS[id].light.contact, 0, id);
   }
+});
+
+test('lanternfall+ is lanternfall\'s shading, lines and color with painted+\'s light and detail', () => {
+  const l = LOOKS.lanternfall, lp = LOOKS.lanternfallplus, pp = LOOKS.paintedplus;
+  assert.deepEqual(lp.shading, l.shading, 'crisp bands');
+  assert.deepEqual(lp.outline, l.outline, 'ink on everything');
+  assert.deepEqual(lp.albedo, l.albedo, 'rich color');
+  assert.deepEqual(lp.post, l.post, 'no grain');
+  assert.deepEqual(lp.haze, l.haze, 'no haze');
+  assert.deepEqual(lp.ground, l.ground);
+  assert.equal(lp.detail, pp.detail);
+  assert.ok(lp.light.ao > 0 && lp.light.contact > 0);
 });
 
 test('baked occlusion darkens where parts meet and near the ground, and leaves open faces alone', () => {

@@ -14,7 +14,7 @@ import { animalsPresent } from '../src/sim/progress';
 const place = PLACES.home_valley;
 
 test('look presets: painted (the target), painted+, lanternfall-like and the woodblock wildcard', () => {
-  assert.deepEqual([...LOOK_IDS], ['painted', 'paintedplus', 'lanternfall', 'woodblock']);
+  assert.deepEqual([...LOOK_IDS], ['painted', 'paintedplus', 'lanternfall', 'lanternfallplus', 'woodblock']);
   assert.equal(lookById('nonsense').id, 'painted');
   // Painted applies the plan 7.1 checklist: softer bands, warm light shadows, more brush, brown thin lines
   // on figures and buildings only, warmer and less saturated, paper grain, more haze.
