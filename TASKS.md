@@ -90,8 +90,10 @@ See plan section 10. Owner direction (2026-11-10): **nothing jumps from 0 to 100
 - **A future mindfulness edition:** two versions, the calm world-building game and one that adds real-time
   meditations and moments of reflection with guidance (plan 13). Noted, not planned; no work until later.
 - **Tending the grounds (2026-11-11):** upkeep as one of the main things you do: raking leaves and snow off
-  paths, picking up fallen sticks, cleaning and tidying the monastery and grounds (plan 14). Noted, not
-  planned; four open questions for the owner in plan 14. Leaves and snow touch A7 (seasonal palettes).
+  paths, picking up fallen sticks, cleaning and tidying the monastery and grounds (plan 14). Owner decided: no
+  reward, no interiors, tools chosen by hand from a tool row (walking on leaves without the rake never rakes).
+  Scheduled as **Phase 4b** after Phase 4's gate (agent's recommendation, accepted). Snow and seasonal leaf
+  colours wait for Phase 5 and A7.
 
 ## Phase 2: Warm the look
 See plan section 10. Owner choices before the build (2026-11-10): wildcard look = **woodblock print**; two
@@ -295,3 +297,18 @@ Started at the owner's request with Phase 3's gate still open (2026-11-10).
   the grove (a cheap detail pass, listed in `docs/phase4/README.md`).
 - All screenshots and the smoke test come from software rendering in a container; nothing in this phase has been
   checked on a phone or on the owner's PC.
+
+## Phase 4b: Tending the grounds (not started; after Phase 4's gate)
+See plan section 14 and section 10. Owner decisions 2026-11-11: no reward, no interiors, tools chosen by hand.
+
+- [ ] Tools as saved facts: rake (shelter), broom (hall), cloth (by the water); found once, kept
+- [ ] Tool row: 1–3 / 0 / Q / scroll on PC, shoulder button on gamepad, a tool button on phone; the tool shows
+  in the caretaker's hands. With no tool chosen nothing tidies
+- [ ] Proximity priority site > node > tidy > context (a held tool never blocks the core loop)
+- [ ] Leaf layer on paths and lawns (today's colours), raked patch by patch on the beat into growing piles
+- [ ] Sticks under trees, picked up with the rake and carried to a kindling stack by the shelter
+- [ ] Sweeping steps and decks; wiping lanterns, poem stones and the bell (grime and moss fade per stroke)
+- [ ] Mess comes back over real days up to a gentle cap, derived from "last tidied" facts and the clock
+- [ ] Phase 2's drifting leaves settle onto the leaf layer
+- [ ] Save v6 (v5 migrates); unit tests; smoke test (tool row, half-raked path survives reload)
+- [ ] **Owner:** gate check (plan section 10, Phase 4b)
