@@ -2,7 +2,8 @@
 // priority: build site > gather node > context interactable. Everything proximity-based implements
 // `Proximate`. Phase 0 only has context interactables (the bench), but the rule is in place.
 
-export const PRIORITY = { buildSite: 300, gatherNode: 200, context: 100 } as const;
+// Phase 4: an exit (the trail out of a place) wins over everything: walking into it always travels.
+export const PRIORITY = { exit: 400, buildSite: 300, gatherNode: 200, context: 100 } as const;
 
 export interface Proximate {
   readonly id: string;

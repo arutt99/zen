@@ -1,6 +1,6 @@
 // Boot-time and test-time data validation (plan 9.2). Returns readable problems; never throws.
 
-import { BUILDINGS, buildingCost } from './buildings';
+import { BUILDINGS, BUILDING_IDS, buildingCost } from './buildings';
 import { CAMERA_OPTIONS, SCALE_OPTIONS } from './feel';
 import { MATERIALS, NODE_KINDS, SATCHEL_CAP } from './gathering';
 import { PLACES } from './places';
@@ -19,6 +19,8 @@ export const DECOR_KINDS = [
   'maple', 'bamboo', 'mossy_stone', 'stone_lantern', 'fence_wood', 'fence_rope', 'raked_gravel', 'stepping_stone', 'lotus',
   // Phase 3: the old gate, restoration props (overgrowth and what replaces it), poem stones and note posts.
   'old_gate', 'bramble', 'tall_weeds', 'flower_bed', 'iris', 'path_lantern', 'trail_gate_shut', 'trail_gate_open', 'poem_stone', 'note_post',
+  // Phase 4: the travel map board, bamboo fences, fallen culms (grove overgrowth) and ferns.
+  'map_board', 'fence_bamboo', 'fallen_bamboo', 'fern',
 ] as const;
 
 const isColor = (n: unknown) => typeof n === 'number' && Number.isInteger(n) && n >= 0 && n <= 0xffffff;
@@ -102,6 +104,26 @@ export function validateData(): string[] {
         if (b && Math.hypot(g.x - st.x, g.z - st.z) < b.siteRadius + 0.3) problems.push(`place ${key}: growth "${g.id}" sits on site "${st.id}"`);
       }
     }
+    for (const g of p.growth) gate(`growth "${g.id}"`, g.requires);
+    // Phase 4: exits, arrivals and the map board.
+    if (!inside(p.map.x, p.map.z, 1)) problems.push(`place ${key}: the map board is outside the valley floor`);
+    if (!(p.map.at.x >= 0 && p.map.at.x <= 100 && p.map.at.y >= 0 && p.map.at.y <= 60)) problems.push(`place ${key}: map.at is off the painted map`);
+    if (!p.arrivals.map) problems.push(`place ${key}: needs a "map" arrival (travel by map)`);
+    for (const [aid, a] of Object.entries(p.arrivals)) {
+      if (!inside(a.x, a.z, 1)) problems.push(`place ${key}: arrival "${aid}" is outside the valley floor`);
+      for (const e of p.exits) if (Math.hypot(a.x - e.x, a.z - e.z) < e.r + 1.5) problems.push(`place ${key}: arrival "${aid}" is inside exit "${e.id}" (you would leave at once)`);
+    }
+    for (const e of p.exits) {
+      if (ids.has(e.id)) problems.push(`place ${key}: duplicate id "${e.id}"`);
+      ids.add(e.id);
+      const to = PLACES[e.to];
+      if (!to) problems.push(`place ${key}: exit "${e.id}" goes to unknown place "${e.to}"`);
+      else if (!to.arrivals[e.arrive]) problems.push(`place ${key}: exit "${e.id}" arrives at unknown point "${e.arrive}" in ${e.to}`);
+      if (e.to === p.id) problems.push(`place ${key}: exit "${e.id}" leads to itself`);
+      if (Math.abs(e.x) > p.halfW + 1.5 || Math.abs(e.z) > p.halfH + 1.5) problems.push(`place ${key}: exit "${e.id}" is beyond the walkable edge`);
+      gate(`exit "${e.id}"`, e.requires);
+      if (e.requires && !(e.closed?.length)) problems.push(`place ${key}: exit "${e.id}" has requires but nothing closing it`);
+    }
     if (!(p.water.murk >= 0 && p.water.murk <= 1 && p.water.clearAt > 0)) problems.push(`place ${key}: water murk/clearAt out of range`);
     if (!(p.mist.clearAt > 0 && p.mist.clearAt <= 1)) problems.push(`place ${key}: mist.clearAt must be in (0, 1]`);
     for (const [k, w] of p.decor.kinds) {
@@ -120,6 +142,8 @@ export function validateData(): string[] {
   }
   for (const [key, b] of Object.entries(BUILDINGS)) {
     if (b.id !== key) problems.push(`building ${key}: id "${b.id}" does not match its key`);
+    const siteCount = Object.values(PLACES).reduce((n, p) => n + p.sites.filter((st) => st.building === b.id).length, 0);
+    if (siteCount !== 1) problems.push(`building ${key}: has ${siteCount} sites (needs exactly one)`);
     if (!PLACES[b.place]) problems.push(`building ${key}: unknown place "${b.place}"`);
     if (b.parts.length === 0) problems.push(`building ${key}: needs at least one part`);
     const partIds = new Set<string>();
@@ -140,6 +164,7 @@ export function validateData(): string[] {
     for (const r of b.requires) {
       if (!BUILDINGS[r]) problems.push(`building ${key}: requires unknown building "${r}"`);
       else if (r === b.id) problems.push(`building ${key}: requires itself`);
+      else if (BUILDING_IDS.indexOf(r) > BUILDING_IDS.indexOf(b.id)) problems.push(`building ${key}: requires "${r}", which comes later in BUILDING_IDS`);
     }
     for (const [m, n] of Object.entries(buildingCost(b))) {
       if (n! > SATCHEL_CAP * 4) problems.push(`building ${key}: ${n} ${m} is more than four full satchels`);

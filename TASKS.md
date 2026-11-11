@@ -1,6 +1,8 @@
 # Tasks
 
-**Current phase: 3, Home grows. Built; waiting at the gate (owner checks below).** Phase 2's last gate item (the owner's PC frame-rate check in Lanternfall+) is still open and carries over. (plan section 10)
+**Current phase: 4, The first journey. Built; waiting at the gate (owner checks below).** The owner asked to go
+on to Phase 4 before checking Phase 3's gate (2026-11-10), so Phase 3's gate items and approvals, and Phase 2's
+PC frame-rate check, are still open and carry over. (plan section 10)
 
 The owner reported the Phase 0 and Phase 1 gate checks passed on their phone and PC (2026-11-10).
 
@@ -216,3 +218,77 @@ See plan section 10. Builds on decided art only (A1–A6); A7 (seasonal palettes
 - Lanternfall+ light slots: 8 lanterns light the ground at once, the 8 nearest the caretaker.
 - All screenshots and the smoke test come from software rendering in a container (about 1 fps); nothing in this
   phase has been checked on a phone or on the owner's PC.
+
+## Phase 4: The first journey
+See plan section 10. Builds on decided art only (A1–A6); A7 (seasonal palettes) is untouched until Phase 5.
+Started at the owner's request with Phase 3's gate still open (2026-11-10).
+
+- [x] **Places you travel between** (plan 4.1): `main.ts` now builds everything that belongs to one place (world,
+  stage, loop, nodes, buildings, restoration layer, animals, sit spots, words, rituals, map board) in `enter()` and
+  tears it down on travel; facts, caretaker, camera, HUD and settings stay. Travel fades to paper, builds the next
+  place, and fades back in; it saves on both sides
+- [x] **The trail, walked the first time**: past the bell tower a packed-earth trail leads through the (now open)
+  trail gate; walking out at its end travels to the grove (`exits` in `src/data/places.ts`, an `exit` proximity
+  target in `src/sim/loop.ts`, priority above everything). The shut gate blocks the way and a shut exit never
+  fires. The grove's own trail runs on from its south end back to the valley
+- [x] **The bamboo grove** (`bamboo_grove`): a long valley of tall bamboo with a trail winding up past a spring pool
+  to the shrine's clearing; its own light along the same day (`grove_*` presets), mist and murky water before the
+  shrine, fallen culms, brambles and weeds that recede; ferns, iris, flowers and trail lanterns (lit by
+  themselves at dusk) that come with it. A first-arrival line (draft)
+- [x] **Bamboo**, the new material: 8 clumps in the grove, one culm per unit (4 per clump, regrowing in 22 s), a
+  hollow-knock note on the pentatonic scale, bamboo in the basket, the HUD and the flying items
+- [x] **The wind shrine** (4 stone, 8 bamboo; grove restoration 0 → 1): stone platform, bamboo posts, a
+  split-bamboo roof and wind chimes that sway; its chimes join the grove's ambience once restored
+- [x] **The crane** arrives with the shrine and wades the spring pool, dips its bill, rests on one leg, and drifts
+  closer when you sit (the deer's wander rule)
+- [x] **Grove poem stones (2), a caretaker note at the shrine and sit spots (3)**: the trail bench, the pool stone
+  and the shrine's step (once restored). All text is draft (PLACEHOLDER tag)
+- [x] **The travel map** (plan 4.1): a painted map on a board by the home valley's trail gate and by the grove's
+  shrine; it opens once a second place has been found and travels by fade to the other place's map board
+  (tap/click a place; keys: ←/→ and E)
+- [x] **The tea house at home** (6 wood, 8 bamboo; plan 9.6): its site reveals itself once the grove's shrine is
+  restored (a site can now wait on a building in another place: `completedAll` in `src/sim/progress.ts`). Bamboo
+  walls, a fenced garden, a **water pipe that fills, tips and tocks** (heard nearby, always seen as a splash), and
+  touches that arrive with it (a lantern, flowers, a bamboo fence, a note)
+- [x] **The tea ritual**: kneel at the bench, the tea is poured, steam curls up; any input stands up early
+- [x] Audio: bamboo knock, the water pipe's tock, pouring, a travel sound; grove ambience (bamboo rustling, a
+  smaller spring, fewer birds, the shrine's chimes once restored)
+- [x] Save v5 (v4 migrates): `places` (places found). The place you're in is saved with your position; a reload
+  anywhere lands you there (or at that place's way in if the spot no longer stands up). Nothing else is new: all
+  of the journey is derived from deposits and places found
+- [x] Journey bot (`runJourneyBot`): plays the gate route with the real rules: home valley → trail → shrine and
+  bamboo → trail back → tea house
+- [x] Unit tests 71 → 85 (`tests/phase4.test.ts`, with a flood-fill reachability check of everything in both
+  places); the browser smoke test adds a journey run (walk out, cut bamboo, reload in the grove, map home)
+- [x] Screenshots: [`docs/phase4/README.md`](docs/phase4/README.md)
+- [ ] **Owner:** approve or rewrite the new words (2 poems, 2 notes, the grove's arrival lines; all drafts)
+- [ ] **Owner:** gate check (below)
+
+### Gate checklist (owner)
+- [ ] Walk to the grove (through the trail gate once the bell tower is built)
+- [ ] Restore the wind shrine
+- [ ] Bring bamboo home and build the tea house
+- [ ] Travel back by the map
+- [ ] Reloading at any point lands you somewhere sensible with nothing lost
+- [ ] (carried over) Phase 3's gate and Phase 2's PC frame-rate check, now in both places
+
+### Known Phase 4 gaps
+- **Pacing is short again.** The plan says the first journey adds 10–15 minutes. The journey bot does the grove
+  and the tea house in ~1.1 min playing perfectly and ~1.4 min "relaxed" (it knows the way; a first visit also
+  walks the trail, reads, sits and finds the map). Same levers as Phase 3, all data: costs, units per clump,
+  and how far the clumps sit from the shrine. I'd rather you play it first.
+- **The map board's place is my choice:** the plan says "at the home gate"; I put it by the **trail gate** (where
+  journeys start), not by the old gate at the south end. Moving it is one line of data.
+- Arriving at a place rebuilds it while the screen is paper-coloured. On a desktop that should take well under a
+  second in Lanternfall+; it is not measured (software GL here takes much longer), and not on a phone.
+- The plan also lists **bamboo fence decor** and the **water pipe** as home unlocks: the water pipe and a bamboo
+  fence come with the tea house; free placement of decor is Phase 5 (decorating).
+- The shut trail gate blocks the gate itself; the open valley floor beside it can be walked round, but a shut exit
+  never fires, so it only leads to the valley's quiet back corner.
+- The trail between places is the two places' own trails, not a separate trail map (a fade covers the join).
+- Collision is still one circle per building: the tea house's fences and bench and the shrine's posts can be
+  walked into a little.
+- The grove's background bamboo is the Phase 2 decor clump (big flat leaf ovals); a finer bamboo crown would suit
+  the grove (a cheap detail pass, listed in `docs/phase4/README.md`).
+- All screenshots and the smoke test come from software rendering in a container; nothing in this phase has been
+  checked on a phone or on the owner's PC.

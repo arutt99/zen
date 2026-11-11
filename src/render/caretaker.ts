@@ -95,6 +95,7 @@ export class CaretakerView {
   private basketTopY: number;
   private sticks: BasketItems;
   private stones: BasketItems;
+  private bamboo: BasketItems;
   private bob = 0;
   private bump = 0;
   private toolShow = 0;
@@ -182,7 +183,15 @@ export class CaretakerView {
       const r = (k === 0 ? 0.02 : 0.1) * s;
       return new THREE.Matrix4().compose(new THREE.Vector3(Math.cos(a) * r, bh * 0.28 + layer * 0.07, 0.05 + Math.sin(a) * r * 0.7), new THREE.Quaternion().setFromEuler(new THREE.Euler(i, i * 1.7, 0)), new THREE.Vector3(1, 1, 1));
     });
-    this.basket.add(this.sticks.mesh, this.stones.mesh);
+    // Phase 4: bamboo stands tall at the back of the basket, green and pale-ringed, a fan of cut culms.
+    const bambooGeo = new MB().cyl(0.03, 0.034, 0.78, [0x7a9048, 0xb8c070], {}, 6).cyl(0.038, 0.038, 0.025, 0x5f7238, { p: [0, 0.12, 0] }, 6).build();
+    this.bamboo = new BasketItems(bambooGeo, (i) => {
+      const a = (i % 5) * 0.32 - 0.64;
+      const row = Math.floor(i / 5);
+      const e = new THREE.Euler(-0.28 - row * 0.05, 0, a * 0.5);
+      return new THREE.Matrix4().compose(new THREE.Vector3(a * 0.12 * s, bh * 0.6 + row * 0.02, -0.08 - row * 0.025), new THREE.Quaternion().setFromEuler(e), new THREE.Vector3(1, 1, 1));
+    });
+    this.basket.add(this.sticks.mesh, this.stones.mesh, this.bamboo.mesh);
     this.body.add(this.basket);
 
     // --- arms: wide sleeves; the right one works, the left swings while walking.
@@ -227,7 +236,7 @@ export class CaretakerView {
 
   update(
     dt: number, x: number, y: number, z: number, heading: number, speed: number,
-    carry: { wood: number; stone: number }, work: { kind: WorkKind; phase: number } | null, sitting = false,
+    carry: { wood: number; stone: number; bamboo?: number }, work: { kind: WorkKind; phase: number } | null, sitting = false,
   ): void {
     this.root.position.set(x, y, z);
     this.root.scale.setScalar(this.size);
@@ -280,6 +289,7 @@ export class CaretakerView {
     this.basket.scale.set(1 + this.bump * 0.12, 1 - this.bump * 0.08, 1 + this.bump * 0.12);
     this.sticks.update(dt, carry.wood);
     this.stones.update(dt, carry.stone);
+    this.bamboo.update(dt, carry.bamboo ?? 0);
   }
 
   dispose(): void {

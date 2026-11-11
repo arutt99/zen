@@ -6,14 +6,16 @@ import type { PlaceDef } from '../data/places';
 import { WORDS } from '../data/words';
 
 export type Bag = Record<MaterialId, number>;
-export const emptyBag = (): Bag => ({ wood: 0, stone: 0 });
+export const emptyBag = (): Bag => ({ wood: 0, stone: 0, bamboo: 0 });
 
 export type GameEvent =
   | { type: 'gathered'; node: string; material: MaterialId; /** 0 = the node's first unit. */ unit: number; left: number }
   | { type: 'deposited'; site: string; material: MaterialId; /** Index into the building's part list. */ part: number }
   | { type: 'completed'; site: string; building: BuildingId }
   /** A poem stone or note was read for the first time (it joins the collection). */
-  | { type: 'collected'; id: string };
+  | { type: 'collected'; id: string }
+  /** A place was reached for the first time (Phase 4; the travel map unlocks with the second). */
+  | { type: 'discovered'; place: string };
 
 /** The facts as the save stores them. */
 export interface Facts {
@@ -21,6 +23,8 @@ export interface Facts {
   deposits: Partial<Record<string, Partial<Record<string, number>>>>;
   /** Ids of words found (poems, notes); unknown ids are dropped on load. */
   collection?: readonly string[];
+  /** Places reached so far (Phase 4); unknown ids are dropped on load. */
+  places?: readonly string[];
 }
 
 const count = (n: unknown, max: number) => (typeof n === 'number' && Number.isFinite(n) ? Math.max(0, Math.min(max, Math.floor(n))) : 0);
@@ -31,11 +35,16 @@ export class GameState {
   deposits: Record<string, Bag> = {};
   /** Words found so far (plan 4.4: poems and notes join the collection book, Phase 5). */
   readonly collection = new Set<string>();
+  /** Places reached so far (plan 4.1: walked the first time, then on the travel map). */
+  readonly places = new Set<string>();
   /** Which building each site holds, from the place data. */
   readonly siteBuilding: Record<string, BuildingId> = {};
   private listeners: ((e: GameEvent) => void)[] = [];
 
+  private knownPlaces: Set<string>;
+
   constructor(places: readonly PlaceDef[], facts?: Facts, private knownWords: ReadonlySet<string> = new Set(Object.keys(WORDS))) {
+    this.knownPlaces = new Set(places.map((p) => p.id));
     for (const p of places) {
       for (const s of p.sites) {
         this.siteBuilding[s.id] = s.building;
@@ -52,6 +61,15 @@ export class GameState {
       for (const m of MATERIALS) this.deposits[site]![m] = count(bag[m], cost[m] ?? 0);
     }
     for (const id of facts.collection ?? []) if (this.knownWords.has(id)) this.collection.add(id);
+    for (const id of facts.places ?? []) if (this.knownPlaces.has(id)) this.places.add(id);
+  }
+
+  /** Records that a place was reached. Returns true the first time only. */
+  discover(place: string): boolean {
+    if (!this.knownPlaces.has(place) || this.places.has(place)) return false;
+    this.places.add(place);
+    this.emit({ type: 'discovered', place });
+    return true;
   }
 
   /** Records that a word was read. Returns true the first time only. */
@@ -105,13 +123,13 @@ export class GameState {
   }
 
   /** The facts to save. Sites with nothing delivered are left out. */
-  toFacts(): { satchel: Bag; deposits: Record<string, Partial<Bag>>; collection: string[] } {
+  toFacts(): { satchel: Bag; deposits: Record<string, Partial<Bag>>; collection: string[]; places: string[] } {
     const deposits: Record<string, Partial<Bag>> = {};
     for (const [site, bag] of Object.entries(this.deposits)) {
       const out: Partial<Bag> = {};
       for (const m of MATERIALS) if (bag[m] > 0) out[m] = bag[m];
       if (Object.keys(out).length) deposits[site] = out;
     }
-    return { satchel: { ...this.satchel }, deposits, collection: [...this.collection].sort() };
+    return { satchel: { ...this.satchel }, deposits, collection: [...this.collection].sort(), places: [...this.places].sort() };
   }
 }

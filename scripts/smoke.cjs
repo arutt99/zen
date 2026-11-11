@@ -1,7 +1,8 @@
 // Browser smoke test: loads dist/index.html at phone and laptop sizes, checks it boots without
 // errors, the canvas is not blank, keyboard and touch move the caretaker, the core loop gathers and
 // deposits, later sites stay hidden, a poem stone can be read, a reload keeps exactly what was delivered
-// and read, and saves a screenshot of each run.
+// and read, and saves a screenshot of each run. Phase 4: the journey — walk out through the open trail gate
+// to the bamboo grove, cut bamboo, reload there (place and satchel kept), and travel home by the map.
 // Needs Playwright (`npm i -D playwright` locally; preinstalled in some CI images).
 const path = require('node:path');
 const fs = require('node:fs');
@@ -113,5 +114,40 @@ async function run(name, contextOpts, drive, { needMove = true, query = '' } = {
     await page.waitForTimeout(4000);
     await page.keyboard.up('KeyS');
   }, { query: LIGHT });
-  process.exit(laptop && keyboard && phone && loopRun ? 0 : 1);
+  const journey = await run('journey', { viewport: { width: 640, height: 360 } }, async (page) => {
+    const wait = (fn, t = 180000) => page.waitForFunction(fn, null, { timeout: t, polling: 200 });
+    const facts = () => page.evaluate(() => ({ place: window.__mb.place, places: window.__mb.places, s: window.__mb.satchel, d: window.__mb.deposits }));
+    // The home valley built (as facts), then walk north-east out through the trail gate.
+    await page.evaluate(() => { for (const [s, w, st] of [['shelter', 6, 0], ['gravel_garden', 4, 6], ['meditation_hall', 14, 10], ['bell_tower', 10, 8]]) window.__mb.deliver(s, w, st); });
+    await page.evaluate(() => window.__mb.teleport(17.6, -16.8));
+    await page.keyboard.down('KeyW'); await page.keyboard.down('KeyD');
+    await wait(() => window.__mb.place === 'bamboo_grove' && !window.__mb.travelling);
+    await page.keyboard.up('KeyW'); await page.keyboard.up('KeyD');
+    const grove = await facts();
+    if (JSON.stringify(grove.places) !== '["bamboo_grove","home_valley"]') throw new Error(`grove not discovered: ${JSON.stringify(grove)}`);
+    const clump = await page.evaluate(() => window.__mb.nodes.find((n) => n.kind === 'bamboo'));
+    await page.evaluate((n) => window.__mb.teleport(n.x - 1.2, n.z), clump);
+    await wait(() => window.__mb.satchel.bamboo >= 2);
+    await page.evaluate(() => window.__mb.teleport(5.2, -7.6)); // by the map board, away from the clump
+    await page.waitForTimeout(1500);
+    const before = await facts();
+    await page.reload();
+    await wait(() => window.__mb && window.__mb.fps > 0);
+    const after = await facts();
+    console.log(`   journey: before reload ${JSON.stringify(before)}, after ${JSON.stringify(after)}`);
+    if (JSON.stringify(before) !== JSON.stringify(after)) throw new Error('reload in the grove changed the facts or the place');
+    await wait(() => window.__mb.context === 'map');
+    await page.evaluate(() => window.__mb.pressContext());
+    await wait(() => window.__mb.mapOpen);
+    await page.evaluate(() => window.__mb.pressContext());
+    await wait(() => window.__mb.place === 'home_valley' && !window.__mb.travelling);
+    const home = await facts();
+    if (home.s.bamboo !== before.s.bamboo) throw new Error('bamboo did not come home');
+    console.log(`   journey: home by map with ${home.s.bamboo} bamboo`);
+    await page.evaluate(() => { window.__topSpeed = 0; setInterval(() => { window.__topSpeed = Math.max(window.__topSpeed, window.__mb.speed); }, 50); });
+    await page.keyboard.down('KeyS');
+    await page.waitForTimeout(4000);
+    await page.keyboard.up('KeyS');
+  }, { query: LIGHT });
+  process.exit(laptop && keyboard && phone && loopRun && journey ? 0 : 1);
 })().catch((e) => { console.error(e); process.exit(1); });

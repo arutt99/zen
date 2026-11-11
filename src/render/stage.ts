@@ -458,7 +458,7 @@ export class Stage {
       }
     }
     for (const n of w.place.nodes) {
-      const r = n.kind === 'tree' ? 0.5 : 1.0;
+      const r = n.kind === 'tree' ? 0.5 : n.kind === 'bamboo' ? 0.65 : 1.0;
       prints.push({ x: n.x, z: n.z, hx: r, hz: r, rot: 0, k: 0.85 });
     }
     for (const st of w.place.sites) {

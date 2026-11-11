@@ -71,6 +71,26 @@
   #rotate { position: fixed; inset: 0; display: none; align-items: center; justify-content: center; text-align: center;
     background: var(--paper); font-size: 20px; padding: 24px; }
   @media (orientation: portrait) and (pointer: coarse) { #rotate { display: flex; } }
+  /* Phase 4: travel. A paper-coloured fade between places, and the painted travel map. */
+  #fade { position: fixed; inset: 0; background: var(--paper); opacity: 0; pointer-events: none; transition: opacity .75s; }
+  #fade.show { opacity: 1; }
+  .travel { position: fixed; inset: 0; display: none; align-items: center; justify-content: center; background: rgba(74,59,44,.35); }
+  .travel.show { display: flex; }
+  .travel .sheet { position: relative; width: min(720px, calc(100vw - 32px)); aspect-ratio: 100 / 60; max-height: calc(100vh - 40px);
+    background: #f2e4c8; border-radius: 18px; box-shadow: 0 10px 40px rgba(74,59,44,.35); overflow: hidden; }
+  .travel svg { position: absolute; inset: 0; width: 100%; height: 100%; }
+  .travel .pins { position: absolute; inset: 0; }
+  .travel .pin { position: absolute; transform: translate(-50%, -50%); min-width: 48px; min-height: 48px; border: 0; background: none;
+    display: flex; flex-direction: column; align-items: center; gap: 2px; color: var(--ink); font: inherit; cursor: pointer; pointer-events: auto; }
+  .travel .pin .dot { width: 20px; height: 20px; border-radius: 50%; background: #846b50; border: 3px solid #f6eedc; box-shadow: 0 1px 4px rgba(0,0,0,.25); }
+  .travel .pin .name { font-weight: 700; font-size: 15px; background: rgba(246,238,220,.85); border-radius: 10px; padding: 2px 8px; }
+  .travel .pin.here { cursor: default; }
+  .travel .pin.here .dot { background: #c04a3a; }
+  .travel .pin.pick .name { outline: 2px solid #779777; }
+  .travel .here-tag { font-size: 11px; opacity: .7; }
+  .travel .close { position: absolute; top: 10px; right: 10px; min-width: 48px; min-height: 48px; border: 0; border-radius: 14px;
+    background: rgba(246,238,220,.9); font-size: 18px; color: var(--ink); }
+  .travel .hint { position: absolute; left: 0; right: 0; bottom: 10px; text-align: center; font-size: 12px; opacity: .6; }
   #boot-error { position: fixed; inset: 0; display: none; padding: 24px; background: var(--paper); white-space: pre-wrap; }
 </style>
 </head>
@@ -79,6 +99,7 @@
 <div id="hud">
   <div class="chip satchel empty" id="satchel" aria-label="Carrying">
     <span class="item" id="carry-wood" hidden><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="2" y="8" width="18" height="9" rx="4.5" fill="#a48a62"/><ellipse cx="19" cy="12.5" rx="3.2" ry="4.5" fill="#d9c39d" stroke="#846b50"/><circle cx="19" cy="12.5" r="1.4" fill="none" stroke="#846b50"/></svg><b>0</b></span>
+    <span class="item" id="carry-bamboo" hidden><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="2" width="5" height="20" rx="2" fill="#9aae5c" stroke="#5f7238"/><rect x="13" y="5" width="5" height="17" rx="2" fill="#b8c070" stroke="#5f7238"/><path d="M5 9h5M5 15h5M13 11h5M13 17h5" stroke="#5f7238"/></svg><b>0</b></span>
     <span class="item" id="carry-stone" hidden><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 17c-1-4 2-9 7-10s9 2 9 6-3 6-8 6-7 0-8-2z" fill="#9d9c8b" stroke="#6c6a68"/><path d="M8 11c2-1 4-1 5 0" stroke="#c9c6ba" fill="none"/></svg><b>0</b></span>
   </div>
   <div class="chip" id="chip"></div>
@@ -107,6 +128,23 @@
     <button id="menu-close">Close</button>
   </div>
 </div>
+<div class="travel" id="travel" role="dialog" aria-label="Travel map">
+  <div class="sheet">
+    <svg viewBox="0 0 100 60" preserveAspectRatio="none" aria-hidden="true">
+      <!-- A painted map: hills in washes of green, a river, the trail between known places (dotted). -->
+      <path d="M4 50 C 14 36, 22 30, 34 30 S 52 40, 60 30 S 80 8, 96 12 L 96 56 L 4 56 Z" fill="#cfd9a8" opacity=".7"/>
+      <path d="M8 44 C 18 34, 28 33, 36 36 S 48 46, 40 52 S 14 56, 8 44 Z" fill="#a9c47e" opacity=".85"/>
+      <path d="M60 16 C 68 8, 82 8, 88 16 S 84 32, 74 30 S 54 26, 60 16 Z" fill="#7ea86a" opacity=".85"/>
+      <path d="M2 24 C 20 20, 30 12, 46 14 S 70 4, 98 6" stroke="#9cc7b8" stroke-width="1.6" fill="none" opacity=".8"/>
+      <ellipse cx="26" cy="42" rx="3" ry="1.8" fill="#9cc7b8"/>
+      <path id="travel-trail" d="" stroke="#846b50" stroke-width=".9" stroke-dasharray="1.6 1.4" fill="none" stroke-linecap="round"/>
+    </svg>
+    <div class="pins" id="travel-pins"></div>
+    <button class="close" id="travel-close" aria-label="Close map">✕</button>
+    <div class="hint">Choose a place to travel there</div>
+  </div>
+</div>
+<div id="fade"></div>
 <div id="rotate">Turn your phone sideways to play.</div>
 <div id="boot-error"></div>
 <script>/*BUNDLE*/</script>

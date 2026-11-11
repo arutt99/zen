@@ -110,7 +110,7 @@ test('a partial deposit leaves the building partly built and the rest of the cos
   const d = state.deposits.shelter!;
   assert.equal(d.wood, 4);
   assert.deepEqual(partsBuilt(shelter, d), [true, true, true, true, false, false]);
-  assert.deepEqual(remaining(shelter, d), { wood: 2, stone: 0 });
+  assert.deepEqual(remaining(shelter, d), { wood: 2, stone: 0, bamboo: 0 });
   assert.equal(isComplete(shelter, d), false);
   assert.equal(loop.work, null, 'no work animation with nothing left to give');
   assert.equal(nextDeposit(shelter, d, state.satchel), null);
@@ -134,8 +134,8 @@ test('restoration and mist are derived from completed buildings only', () => {
 
 test('loading facts repairs them: unknown sites dropped, counts clamped to cost and cap', () => {
   const s = new GameState([home], { satchel: { wood: 999, stone: -4 }, deposits: { shelter: { wood: 50, stone: 3 }, ghost: { wood: 2 } } });
-  assert.deepEqual(s.satchel, { wood: SATCHEL_CAP, stone: 0 });
-  assert.deepEqual(s.deposits.shelter, { wood: shelter.parts.length, stone: 0 });
+  assert.deepEqual(s.satchel, { wood: SATCHEL_CAP, stone: 0, bamboo: 0 });
+  assert.deepEqual(s.deposits.shelter, { wood: shelter.parts.length, stone: 0, bamboo: 0 });
   assert.equal(s.deposits.ghost, undefined);
 });
 
@@ -156,7 +156,7 @@ test('save round trip restores exactly what was delivered and carried', () => {
 test('a corrupt save starts fresh with an empty satchel and no deposits', () => {
   const { data } = parseSave('{"v":2,"deposits":');
   const s = new GameState([home], data);
-  assert.deepEqual(s.satchel, { wood: 0, stone: 0 });
+  assert.deepEqual(s.satchel, { wood: 0, stone: 0, bamboo: 0 });
   assert.equal(s.deposits.shelter!.wood, 0);
 });
 

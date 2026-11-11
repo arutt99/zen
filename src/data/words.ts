@@ -30,6 +30,20 @@ export const OPENING: { lines: string[]; draft: boolean } = {
   draft: true,
 };
 
+/**
+ * Phase 4: a line or two the first time the caretaker reaches a journey place (plan 4.5: later journeys are
+ * later chapters of the same walk). Shown once, like the opening. DRAFT text for the owner.
+ */
+export const ARRIVALS: Partial<Record<string, { lines: string[]; draft: boolean }>> = {
+  bamboo_grove: {
+    lines: [
+      'Past the trail gate, the path climbs into tall bamboo.',
+      'Somewhere ahead, an old shrine is listening for the wind.',
+    ],
+    draft: true,
+  },
+};
+
 export const WORDS: Record<string, WordDef> = {
   // --- Poem stones (PLACEHOLDER verse, original, for the owner to replace or approve)
   poem_gate: {
@@ -48,6 +62,15 @@ export const WORDS: Record<string, WordDef> = {
     id: 'poem_bamboo', kind: 'poem', draft: true,
     lines: ['Bamboo past the wall,', 'knocking softly on itself:', 'a door not yet found.'],
   },
+  // --- Phase 4: the bamboo grove (PLACEHOLDER)
+  poem_grove_trail: {
+    id: 'poem_grove_trail', kind: 'poem', draft: true,
+    lines: ['A thousand green stems', 'lean together, then apart:', 'the path breathes with them.'],
+  },
+  poem_grove_pool: {
+    id: 'poem_grove_pool', kind: 'poem', draft: true,
+    lines: ['No crane here today.', 'Still, the water keeps a place', 'shaped like standing still.'],
+  },
   // --- Notes from earlier caretakers (PLACEHOLDER)
   note_shelter: {
     id: 'note_shelter', kind: 'note', draft: true, from: 'a caretaker, one late spring',
@@ -60,5 +83,13 @@ export const WORDS: Record<string, WordDef> = {
   note_tower: {
     id: 'note_tower', kind: 'note', draft: true, from: 'a caretaker, a winter evening',
     lines: ['Ring it once for the ones who built it, and once for whoever comes next.'],
+  },
+  note_shrine: {
+    id: 'note_shrine', kind: 'note', draft: true, from: 'a caretaker who walked here often',
+    lines: ['The wind does the ringing; we only hang the chimes and come back to listen.', 'Take a few stems home with you. The grove will not miss them.'],
+  },
+  note_tea: {
+    id: 'note_tea', kind: 'note', draft: true, from: 'a caretaker, one rainy afternoon',
+    lines: ['Water, leaves, a little patience. The rest of this valley was built so there would be time for this.'],
   },
 };

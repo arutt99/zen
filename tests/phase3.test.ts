@@ -20,12 +20,12 @@ import { GameState, type Bag } from '../src/sim/state';
 const home = PLACES.home_valley;
 const full = (id: keyof typeof BUILDINGS): Bag => {
   const c = buildingCost(BUILDINGS[id]);
-  return { wood: c.wood ?? 0, stone: c.stone ?? 0 };
+  return { wood: c.wood ?? 0, stone: c.stone ?? 0, bamboo: c.bamboo ?? 0 };
 };
-const none: Bag = { wood: 0, stone: 0 };
+const none: Bag = { wood: 0, stone: 0, bamboo: 0 };
 
 test('the four home-valley buildings follow plan 9.6: costs, order and restoration adding up to 1', () => {
-  assert.deepEqual(BUILDING_IDS, ['shelter', 'gravel_garden', 'meditation_hall', 'bell_tower']);
+  assert.deepEqual(BUILDING_IDS, ['shelter', 'gravel_garden', 'meditation_hall', 'bell_tower', 'wind_shrine', 'tea_house']);
   assert.deepEqual(buildingCost(BUILDINGS.shelter), { wood: 6 });
   assert.deepEqual(buildingCost(BUILDINGS.gravel_garden), { stone: 6, wood: 4 });
   assert.deepEqual(buildingCost(BUILDINGS.meditation_hall), { stone: 10, wood: 14 });
@@ -45,7 +45,7 @@ test('each site reveals itself only once the one before it is complete', () => {
   assert.deepEqual(open(), ['shelter', 'gravel_garden', 'meditation_hall', 'bell_tower']);
   // A site that somehow already has deliveries stays open, so no work is ever hidden.
   const odd: Record<string, Bag> = Object.fromEntries(home.sites.map((s) => [s.id, { ...none }]));
-  odd.bell_tower = { wood: 2, stone: 0 };
+  odd.bell_tower = { wood: 2, stone: 0, bamboo: 0 };
   assert.ok(siteOpen(BUILDINGS.bell_tower, completedBuildings(home, odd), odd.bell_tower));
 });
 
@@ -82,7 +82,7 @@ test('the restoration layer: overgrowth recedes and new growth arrives at the ri
   assert.equal(growthShown({ min: 0.45 }, 0.45), 1);
   assert.equal(growthShown({ min: 1 }, 0.2 + 0.25 + 0.3 + 0.25), 1, 'float sums still reach the last level');
   // Every piece of overgrowth is gone and every new piece is there once the valley is restored.
-  for (const g of home.growth) assert.equal(growthShown(g, 1), g.max !== undefined ? 0 : 1, g.id);
+  for (const g of home.growth) assert.equal(growthShown(g, 1, new Set(BUILDING_IDS)), g.max !== undefined ? 0 : 1, g.id);
   // Before anything is built, the valley is overgrown and nothing new has arrived.
   for (const g of home.growth) assert.equal(growthShown(g, 0), g.min !== undefined ? 0 : 1, g.id);
   // Something changes with every building (plan 3.4: every finished building visibly heals the land).
@@ -117,7 +117,7 @@ test('words: original drafts flagged for the owner, read once into the collectio
 
 test('save v4: collection and the opening flag, with v3 migrating', () => {
   const f = freshSave();
-  assert.equal(f.v, 4);
+  assert.equal(f.v, 5);
   assert.deepEqual(f.collection, []);
   assert.equal(f.opened, false);
   const v3 = { v: 3, at: { place: 'home_valley', x: 1, z: 2 }, satchel: {}, deposits: { shelter: { wood: 6 } }, settings: {} };

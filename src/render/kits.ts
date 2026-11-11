@@ -28,6 +28,13 @@ export interface PartGeo {
   lights?: [number, number, number][];
   /** The gravel garden's two raked patterns (straight, then rippled); the rake ritual swaps them. */
   patterns?: [THREE.BufferGeometry, THREE.BufferGeometry];
+  /**
+   * Phase 4: the tea house's water pipe (a bamboo rocker that slowly fills, tips with a tock and swings
+   * back), modelled with its pivot at the origin, tipping around local x.
+   */
+  rocker?: { solid: THREE.BufferGeometry; pivot: [number, number, number] };
+  /** Phase 4: where steam rises from (the tea set), in the building's local space. */
+  steam?: [number, number, number];
 }
 
 interface Palette {
@@ -732,7 +739,196 @@ const towerKit: KitBuilder = {
   lantern: (_s, ao) => stoneLanternPart(1.95, 1.5, -0.4, ao, 0.85),
 };
 
-const KITS: Record<string, KitBuilder> = { shelter_kit: shelterKit, garden_kit: gardenKit, hall_kit: hallKit, tower_kit: towerKit };
+
+// --- Phase 4: bamboo. A culm with its nodes; split-bamboo roofs; lashed bamboo screens and fences.
+const CULM: [number, number] = [0x7a9048, 0xb8c070];
+const CULM_NODE = 0x5f7238;
+const CORD = 0x2a2420;
+
+/** One upright bamboo culm from y0, with a node ring every ~0.45 m and a cut top. */
+function culm(m: MB, x: number, z: number, y0: number, h: number, r = 0.055, col: [number, number] = CULM) {
+  m.cyl(r * 0.92, r, h, col, { p: [x, y0 + h / 2, z] }, 7);
+  for (let k = 0.45; k < h - 0.1; k += 0.45) m.cyl(r * 1.14, r * 1.14, 0.03, CULM_NODE, { p: [x, y0 + k, z] }, 7);
+  m.cyl(r * 0.8, r * 0.8, 0.01, 0xe2d6a0, { p: [x, y0 + h + 0.004, z] }, 7);
+}
+
+/** A horizontal bamboo pole between two points at height y, lashed with dark cord at both ends. */
+function pole(m: MB, a: [number, number], b: [number, number], y: number, r = 0.04, col: [number, number] = CULM) {
+  const len = Math.hypot(b[0] - a[0], b[1] - a[1]);
+  const ry = Math.atan2(b[0] - a[0], b[1] - a[1]);
+  m.cyl(r, r, len, col, { p: [(a[0] + b[0]) / 2, y, (a[1] + b[1]) / 2], r: [Math.PI / 2, ry, 0] }, 6);
+  for (const [x, z] of [a, b]) m.torus(r * 1.5, 0.012, CORD, { p: [x, y, z], r: [0, ry, 0] }, 3, 7);
+}
+
+/** A screen of close-set culms planted in the ground from a to b, tied across with poles. */
+function bambooScreen(m: MB, a: [number, number], b: [number, number], h: number, r = 0.045) {
+  const len = Math.hypot(b[0] - a[0], b[1] - a[1]);
+  const n = Math.max(2, Math.round(len / (r * 2.15)));
+  for (let i = 0; i < n; i++) {
+    const t = (i + 0.5) / n;
+    const k = hash(i, Math.round(a[0] * 7 + b[1] * 13));
+    culm(m, a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t, 0, h * (0.97 + k * 0.05), r, k > 0.7 ? [0x8a9a52, 0xc8c47c] : CULM);
+  }
+  const ux = (b[1] - a[1]) / len, uz = -(b[0] - a[0]) / len;
+  for (const y of [h * 0.3, h * 0.78]) pole(m, [a[0] + ux * 0.06, a[1] + uz * 0.06], [b[0] + ux * 0.06, b[1] + uz * 0.06], y, 0.035);
+}
+
+/** A low bamboo fence from a to b: posts with cut tops and two lashed rails. */
+function bambooFence(m: MB, a: [number, number], b: [number, number], h = 0.85) {
+  const len = Math.hypot(b[0] - a[0], b[1] - a[1]);
+  const n = Math.max(1, Math.round(len / 0.9));
+  for (let i = 0; i <= n; i++) culm(m, a[0] + (b[0] - a[0]) * (i / n), a[1] + (b[1] - a[1]) * (i / n), 0, h, 0.05);
+  for (const y of [h * 0.42, h * 0.8]) pole(m, a, b, y, 0.032);
+}
+
+/** One side of a split-bamboo roof: halved culms laid down the slope, alternating up and down. */
+function bambooRoof(m: MB, side: number, w: number, half: number, eave: number, rise: number) {
+  const slope = Math.hypot(half, rise), ang = Math.atan2(rise, half);
+  const n = Math.round(w / 0.13);
+  for (let i = 0; i < n; i++) {
+    const x = -w / 2 + (i + 0.5) * (w / n);
+    const up = i % 2 === 0;
+    const tone: [number, number] = up ? [0x8a9a52, 0xc4c078] : [0x6f7a3e, 0x9aa060];
+    m.cyl(0.07, 0.07, slope + 0.25, tone, { p: [x, eave + rise / 2 + (up ? 0.05 : 0), side * half / 2], r: [Math.PI / 2 + side * ang, 0, 0], s: [1, 1, 0.45] }, 7);
+  }
+  // An eave pole lashed under the edge.
+  pole(m, [-w / 2 - 0.1, side * (half - 0.05)], [w / 2 + 0.1, side * (half - 0.05)], eave - 0.02, 0.045, [0x5e4632, 0x8a6a4a]);
+}
+
+// The wind shrine (Phase 4): a low stone platform (2.2 x 1.8 m) with a basin and a step; four bamboo posts
+// planted at its corners; a split-bamboo roof; a ridge pole; wind chimes under the front eave.
+const SPX = 1.25, SPZ = 1.0, SEAVE = 2.35, SRISE = 0.7, SW = 2.9, SHALF = 1.4;
+
+function chimesGeo(): THREE.BufferGeometry {
+  const m = new MB();
+  m.cyl(0.008, 0.008, 0.22, CORD, { p: [0, -0.11, 0] }, 3);
+  m.cyl(0.16, 0.16, 0.04, [0x5e4632, 0x8a6a4a], { p: [0, -0.24, 0], mark: 'wood' }, 10);
+  for (let i = 0; i < 6; i++) {
+    const a = (i / 6) * Math.PI * 2, len = 0.32 + (i % 3) * 0.1;
+    m.cyl(0.006, 0.006, 0.1, CORD, { p: [Math.cos(a) * 0.12, -0.31, Math.sin(a) * 0.12] }, 3);
+    m.cyl(0.025, 0.025, len, CULM, { p: [Math.cos(a) * 0.12, -0.36 - len / 2, Math.sin(a) * 0.12] }, 6);
+  }
+  // The striker and a paper strip that catches the wind.
+  m.cyl(0.004, 0.004, 0.5, CORD, { p: [0, -0.5, 0] }, 3);
+  m.cyl(0.05, 0.05, 0.02, [0x5e4632, 0x8a6a4a], { p: [0, -0.62, 0] }, 8);
+  m.box(0.09, 0.32, 0.008, [0xe8dcc4, 0xf6eedc], { p: [0, -0.92, 0] });
+  return m.build({ off: true });
+}
+
+const shrineKit: KitBuilder = {
+  platform_back: (_s, ao) => { const m = new MB(); stoneRow(m, [-1.1, -0.45], [1.1, -0.45], 0.3, 0.9, HSTONE, 81); return { solid: m.build(ao) }; },
+  post_back_left: (_s, ao) => { const m = new MB(); culm(m, -SPX, -SPZ, 0, SEAVE + 0.3, 0.07); return { solid: m.build(ao) }; },
+  post_back_right: (_s, ao) => { const m = new MB(); culm(m, SPX, -SPZ, 0, SEAVE + 0.3, 0.07); pole(m, [-SPX, -SPZ], [SPX, -SPZ], SEAVE - 0.05, 0.05); return { solid: m.build(ao) }; },
+  platform_front: (_s, ao) => { const m = new MB(); stoneRow(m, [-1.1, 0.45], [1.1, 0.45], 0.28, 0.9, HSTONE, 83); return { solid: m.build(ao) }; },
+  post_front_left: (_s, ao) => { const m = new MB(); culm(m, -SPX, SPZ, 0, SEAVE + 0.2, 0.07); pole(m, [-SPX, -SPZ], [-SPX, SPZ], SEAVE - 0.12, 0.045); return { solid: m.build(ao) }; },
+  post_front_right: (_s, ao) => {
+    const m = new MB();
+    culm(m, SPX, SPZ, 0, SEAVE + 0.2, 0.07);
+    pole(m, [SPX, -SPZ], [SPX, SPZ], SEAVE - 0.12, 0.045);
+    pole(m, [-SPX, SPZ], [SPX, SPZ], SEAVE - 0.05, 0.05);
+    return { solid: m.build(ao) };
+  },
+  step: (_s, ao) => { const m = new MB(); m.box(1.0, 0.16, 0.4, HSTONE, { p: [0, 0.08, 1.15], wobble: 0.015, mark: 'stone' }); return { solid: m.build(ao) }; },
+  roof_back: (_s, ao) => { const m = new MB(); bambooRoof(m, -1, SW, SHALF, SEAVE, SRISE); return { solid: m.build(ao) }; },
+  roof_front: (_s, ao) => {
+    const m = new MB();
+    bambooRoof(m, 1, SW, SHALF, SEAVE, SRISE);
+    return { solid: m.build(ao) };
+  },
+  basin: (_s, ao) => {
+    // A round stone basin on the platform, holding rain water, with a bamboo ladle across it.
+    const m = new MB();
+    stoneShape(m, 0.3, HSTONE, { p: [0.55, 0.5, 0.3], s: [1.1, 0.7, 1.1], wobble: 0.02 });
+    m.cyl(0.18, 0.16, 0.03, [0x5e8a86, 0x8cb8b0], { p: [0.55, 0.71, 0.3] }, 14);
+    m.cyl(0.013, 0.013, 0.55, CULM, { p: [0.55, 0.74, 0.3], r: [0, 0.7, Math.PI / 2] }, 4);
+    // A small flat offering stone on the other side: a place to set down a flower.
+    stoneShape(m, 0.22, HSTONE, { p: [-0.5, 0.36, 0.1], s: [1.4, 0.35, 1.0], wobble: 0.02 });
+    return { solid: m.build(ao) };
+  },
+  ridge: (_s, ao) => {
+    const m = new MB();
+    pole(m, [-SW / 2 - 0.25, 0], [SW / 2 + 0.25, 0], SEAVE + SRISE + 0.08, 0.075, [0x8a9a52, 0xc4c078]);
+    for (const sx of [-1, 1]) for (const tilt of [-0.6, 0.6]) m.cyl(0.03, 0.03, 0.7, CULM, { p: [sx * (SW / 2 + 0.1), SEAVE + SRISE + 0.18, 0], r: [tilt, 0, 0] }, 5);
+    return { solid: m.build(ao) };
+  },
+  chimes: (_s, ao) => {
+    // A short hanger under the front eave; the chimes sway from it (and in the wind's sound, ring).
+    const m = new MB();
+    m.cyl(0.03, 0.03, 0.5, CULM, { p: [0, SEAVE - 0.08, SHALF - 0.45], r: [0, 0, Math.PI / 2] }, 5);
+    return { solid: m.build(ao), swing: { solid: chimesGeo(), pivot: [0, SEAVE - 0.1, SHALF - 0.45] } };
+  },
+};
+
+// The tea house (Phase 4): a small log-floored house (2.6 x 2.2 m) on four posts under a thatched roof,
+// with bamboo walls planted around it, a little bamboo-fenced garden in front with a water pipe that tocks,
+// and a bamboo bench holding the tea set. Faces +z.
+const TW = 2.6, TD = 2.2, TF = 0.42, TPX = 1.1, TPZ = 0.92;
+
+function rockerGeo(): THREE.BufferGeometry {
+  // The rocking tube: a culm cut on a slant at its mouth, balanced on its axle, with a stopper at the back.
+  const m = new MB();
+  m.cyl(0.055, 0.055, 0.9, CULM, { p: [0, 0, 0.12], r: [Math.PI / 2, 0, 0] }, 8);
+  m.cyl(0.062, 0.062, 0.03, CULM_NODE, { p: [0, 0, -0.15] }, 8);
+  m.cyl(0.045, 0.045, 0.01, 0x3a4a3a, { p: [0, 0.02, 0.57], r: [0.6, 0, 0] }, 8);
+  return m.build({ off: true });
+}
+
+const teahouseKit: KitBuilder = {
+  deck: (s, ao) => { const m = new MB(); floor(m, s, TW, TD, TF); return { solid: m.build(ao) }; },
+  wall_back: (_s, ao) => { const m = new MB(); bambooScreen(m, [-TW / 2 - 0.05, -TD / 2 - 0.1], [TW / 2 + 0.05, -TD / 2 - 0.1], 2.35); return { solid: m.build(ao) }; },
+  post_back_left: (s, ao) => { const m = new MB(); post(m, s, -TPX, -TPZ, TF + 0.14, 1.95); return { solid: m.build(ao) }; },
+  post_back_right: (s, ao) => { const m = new MB(); post(m, s, TPX, -TPZ, TF + 0.14, 1.95); beam(m, s, -TPX - 0.2, -TPZ, TPX + 0.2, -TPZ, TF + 2.06); return { solid: m.build(ao) }; },
+  wall_left: (_s, ao) => { const m = new MB(); bambooScreen(m, [-TW / 2 - 0.1, -TD / 2 + 0.05], [-TW / 2 - 0.1, 0.25], 2.2); return { solid: m.build(ao) }; },
+  wall_right: (_s, ao) => { const m = new MB(); bambooScreen(m, [TW / 2 + 0.1, -TD / 2 + 0.05], [TW / 2 + 0.1, 0.25], 2.2); return { solid: m.build(ao) }; },
+  post_front_left: (s, ao) => { const m = new MB(); post(m, s, -TPX, TPZ, TF + 0.14, 1.85); beam(m, s, -TPX, -TPZ - 0.15, -TPX, TPZ + 0.15, TF + 1.95, 0.9); return { solid: m.build(ao) }; },
+  post_front_right: (s, ao) => {
+    const m = new MB();
+    post(m, s, TPX, TPZ, TF + 0.14, 1.85);
+    beam(m, s, TPX, -TPZ - 0.15, TPX, TPZ + 0.15, TF + 1.95, 0.9);
+    beam(m, s, -TPX - 0.2, TPZ, TPX + 0.2, TPZ, TF + 1.98);
+    return { solid: m.build(ao) };
+  },
+  fence_left: (_s, ao) => { const m = new MB(); bambooFence(m, [-1.75, 0.55], [-1.75, 2.35]); bambooFence(m, [-1.75, 2.35], [-0.75, 2.6], 0.7); return { solid: m.build(ao) }; },
+  roof: (s, ao) => { const m = new MB(); roof(m, s, TW, TD, TF + 2.1, 1.0); return { solid: m.build(ao) }; },
+  fence_right: (_s, ao) => { const m = new MB(); bambooFence(m, [1.85, 0.55], [1.85, 2.35]); return { solid: m.build(ao) }; },
+  water_pipe: (_s, ao) => {
+    // Shishi-odoshi-style: a spout on a post drips into the rocking tube on its two uprights; when full it
+    // tips, empties into a ring of pebbles, and knocks on a stone as it swings back.
+    const m = new MB();
+    culm(m, -1.2, 1.15, 0, 1.15, 0.05);
+    m.cyl(0.03, 0.03, 0.55, CULM, { p: [-1.2, 1.05, 1.38], r: [Math.PI / 2 + 0.25, 0, 0] }, 6);
+    for (const sx of [-0.12, 0.12]) culm(m, -1.2 + sx, 1.85, 0, 0.55, 0.035);
+    stoneShape(m, 0.16, HSTONE, { p: [-1.2, 0.08, 2.42], s: [1.2, 0.6, 1], wobble: 0.02 });
+    for (let i = 0; i < 9; i++) {
+      const a = (i / 9) * Math.PI * 2;
+      stoneShape(m, 0.07, [0x7d7b6e, 0xa6a493], { p: [-1.2 + Math.cos(a) * 0.32, 0.04, 2.0 + Math.sin(a) * 0.32], s: [1.2, 0.6, 1], wobble: 0.01 });
+    }
+    m.cyl(0.24, 0.24, 0.02, [0x5e8a86, 0x8cb8b0], { p: [-1.2, 0.03, 2.0] }, 12);
+    return { solid: m.build(ao), rocker: { solid: rockerGeo(), pivot: [-1.2, 0.5, 1.85] } };
+  },
+  bench: (_s, ao) => {
+    // A low slatted bamboo bench in the garden, for the tea set and for kneeling beside it.
+    const m = new MB();
+    for (const sx of [0.55, 1.65]) for (const sz of [1.45, 1.85]) culm(m, sx, sz, 0, 0.36, 0.035);
+    for (let i = 0; i < 6; i++) pole(m, [0.45, 1.42 + i * 0.09], [1.75, 1.42 + i * 0.09], 0.38, 0.03, [0x8a9a52, 0xc8c47c]);
+    return { solid: m.build(ao) };
+  },
+  tea_set: (_s, ao) => {
+    // A tea bowl, a bamboo whisk, a scoop and a ladle on a tray.
+    const m = new MB();
+    m.box(0.5, 0.025, 0.3, [0x5e4632, 0x8a6a4a], { p: [1.1, 0.42, 1.65], mark: 'wood' });
+    m.lathe([[0.001, 0], [0.07, 0], [0.09, 0.03], [0.1, 0.08], [0.09, 0.08], [0.06, 0.02], [0.001, 0.02]], [0x4a5a4a, 0x8aa08a], { p: [1.0, 0.435, 1.65] }, 12);
+    m.cyl(0.06, 0.06, 0.008, [0x6a9a3a, 0x8aba4a], { p: [1.0, 0.505, 1.65] }, 10);
+    m.cyl(0.012, 0.012, 0.12, [0xc8b47a, 0xe2d6a0], { p: [1.22, 0.5, 1.62] }, 5);
+    m.cone(0.04, 0.07, [0xd8c890, 0xeee2b8], { p: [1.22, 0.47, 1.62], r: [Math.PI, 0, 0] }, 8);
+    m.box(0.18, 0.012, 0.02, [0xc8b47a, 0xe2d6a0], { p: [1.12, 0.44, 1.76], r: [0, 0.3, 0] });
+    m.cyl(0.01, 0.01, 0.42, CULM, { p: [1.15, 0.45, 1.53], r: [0, 0.1, Math.PI / 2] }, 4);
+    m.cyl(0.03, 0.03, 0.05, CULM, { p: [0.94, 0.47, 1.52] }, 6);
+    return { solid: m.build(ao), steam: [1.0, 0.55, 1.65] };
+  },
+};
+
+const KITS: Record<string, KitBuilder> = { shelter_kit: shelterKit, garden_kit: gardenKit, hall_kit: hallKit, tower_kit: towerKit, shrine_kit: shrineKit, teahouse_kit: teahouseKit };
 
 /** Every part id each kit can draw (the data test checks buildings only use these). */
 export const KIT_PARTS: Record<string, string[]> = Object.fromEntries(Object.entries(KITS).map(([k, v]) => [k, Object.keys(v)]));
@@ -828,6 +1024,11 @@ export class BuildingView {
   private fixedLights: { part: number; at: THREE.Vector3 }[] = [];
   /** The gravel garden's raked patterns: shown index, and the wipe from one to the other (0 → 1). */
   private patterns: { meshes: [THREE.Mesh, THREE.Mesh]; part: number; shown: 0 | 1; wipe: number } | null = null;
+  /** Phase 4: the water pipe's rocker (tea house), and where steam rises from (the tea set). */
+  private rocker: { pivot: THREE.Group; part: number; t: number } | null = null;
+  private steamPoint: { part: number; at: THREE.Vector3 } | null = null;
+  /** Called (world position) each time the water pipe knocks back onto its stone. */
+  onTock: ((at: THREE.Vector3) => void) | null = null;
   active = false;
   /** False until the site reveals itself (its required buildings are complete); the marker then fades in. */
   open: boolean;
@@ -906,6 +1107,18 @@ export class BuildingView {
         this.swingers.push({ pivot, part: i, light: geo.swing.light ? new THREE.Vector3(...geo.swing.light) : undefined, phase: i * 1.7, heavy: !!geo.swing.heavy, kick: 0, kickT: 0 });
       }
       for (const l of geo.lights ?? []) this.fixedLights.push({ part: i, at: new THREE.Vector3(...l) });
+      if (geo.rocker) {
+        const holder = new THREE.Group();
+        const pivot = new THREE.Group();
+        pivot.position.set(...geo.rocker.pivot);
+        const rm = inked(new THREE.Mesh(geo.rocker.solid, Mats.std), 'building');
+        rm.castShadow = true;
+        pivot.add(rm);
+        holder.add(pivot);
+        meshes.push(holder);
+        this.rocker = { pivot, part: i, t: 2 };
+      }
+      if (geo.steam) this.steamPoint = { part: i, at: new THREE.Vector3(...geo.steam) };
       if (geo.patterns) {
         const a = new THREE.Mesh(geo.patterns[0], Mats.std);
         const b = new THREE.Mesh(geo.patterns[1], Mats.std);
@@ -1023,6 +1236,7 @@ export class BuildingView {
       old.scale.x = Math.max(0.001, 1 - k);
       old.position.x = half * k;
     }
+    if (this.rocker) this.updateRocker(dt);
     const done = this.complete && this.parts.every((p) => p.t >= 1);
     this.scaffoldS = damp(this.scaffoldS, anyBuilt && !done ? 1 : 0, done ? 1.2 : 3, dt);
     this.scaffold.visible = this.scaffoldS > 0.01;
@@ -1037,6 +1251,39 @@ export class BuildingView {
     u.uActive.value = damp(u.uActive.value as number, this.active ? 1 : 0, 6, dt);
     this.ghostMat.opacity = (0.22 * this.markerAlpha + 0.02) * this.reveal;
     for (const p of this.parts) if (this.reveal < 0.02) p.ghost.visible = false;
+  }
+
+  /**
+   * The water pipe (once its part is in): it fills for ~6 s with its mouth raised, tips forward and pours,
+   * then swings back and knocks on its stone. One cycle every ~7.5 s.
+   */
+  private updateRocker(dt: number): void {
+    const r = this.rocker!;
+    const p = this.parts[r.part]!;
+    if (!(p.built && p.delay <= 0 && p.t >= 1)) { r.pivot.rotation.x = -0.3; return; }
+    const FILL = 6, TIP = 0.35, POUR = 0.6, BACK = 0.3, CYCLE = FILL + TIP + POUR + BACK;
+    const prev = r.t;
+    r.t = (r.t + dt) % CYCLE;
+    const t = r.t;
+    // The knock lands as one cycle ends and the next begins.
+    if (t < prev) this.onTock?.(r.pivot.getWorldPosition(new THREE.Vector3()));
+    let a: number;
+    if (t < FILL) a = -0.3 + 0.12 * (t / FILL) * (t / FILL); // slowly nodding forward as it fills
+    else if (t < FILL + TIP) { const k = (t - FILL) / TIP; a = -0.18 + 0.63 * k * k; }
+    else if (t < FILL + TIP + POUR) a = 0.45;
+    else { const k = (t - FILL - TIP - POUR) / BACK; a = 0.45 - 0.75 * k * k; }
+    r.pivot.rotation.x = a;
+  }
+
+  /** Where steam rises from (the tea set), once it is in place; false when there's none. */
+  steamAt(out: THREE.Vector3): boolean {
+    const s = this.steamPoint;
+    if (!s) return false;
+    const p = this.parts[s.part]!;
+    if (!(p.built && p.delay <= 0)) return false;
+    this.root.updateMatrixWorld();
+    this.root.localToWorld(out.copy(s.at));
+    return true;
   }
 
   dispose(): void {

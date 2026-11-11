@@ -1,12 +1,12 @@
 // The headless core loop (plan 9.3): the beat clock, gathering, depositing and node regrowth, driven
 // by one move vector. Gather nodes and build sites are `Proximate`s picked by the one proximity rule.
 // The browser game and the pacing bot both run exactly this.
-import { BUILDINGS, type BuildingDef } from '../data/buildings';
+import { BUILDINGS, type BuildingDef, type BuildingId } from '../data/buildings';
 import { BEAT_SECONDS, FIRST_BEAT_SECONDS, type MaterialId } from '../data/gathering';
-import type { PlaceDef } from '../data/places';
+import type { ExitDef, PlaceDef } from '../data/places';
 import type { MoveInput } from './input';
 import { GatherNode } from './nodes';
-import { completedBuildings, isComplete, nextDeposit, partsBuiltCount, siteOpen } from './progress';
+import { completedAll, exitOpen, isComplete, nextDeposit, partsBuiltCount, siteOpen } from './progress';
 import { PRIORITY, ProximitySensor, type Proximate } from './proximity';
 import type { GameState } from './state';
 import { Walker, type Blocker, type WalkArea } from './walker';
@@ -44,8 +44,14 @@ export class CoreLoop {
   /** What the caretaker is doing this frame, for animation. */
   work: { kind: WorkKind; target: Proximate; /** 0 → 1 toward the next beat landing. */ phase: number } | null = null;
   readonly area: WalkArea;
+  /**
+   * Called when the caretaker walks into an open exit (Phase 4). The game travels; with no handler (the
+   * pacing bot, tests) nothing happens.
+   */
+  onLeave: ((exit: ExitDef) => void) | null = null;
   private blockers: Blocker[] = [];
   private blockersDirty = true;
+  private unsubscribe: () => void;
 
   constructor(readonly place: PlaceDef, readonly ground: GroundQuery, readonly state: GameState, start: { x: number; z: number }) {
     this.walker = new Walker(start.x, start.z);
@@ -53,7 +59,8 @@ export class CoreLoop {
     this.sites = place.sites.map((s) => ({ id: s.id, def: BUILDINGS[s.building], x: s.x, z: s.z, rot: s.rot ?? 0 }));
     for (const n of this.nodes) this.proximates.push(this.nodeTarget(n));
     for (const s of this.sites) this.proximates.push(this.siteTarget(s));
-    state.on((e) => { if (e.type === 'deposited') this.blockersDirty = true; });
+    for (const e of place.exits) this.proximates.push(this.exitTarget(e));
+    this.unsubscribe = state.on((e) => { if (e.type === 'deposited' || e.type === 'completed') this.blockersDirty = true; });
     const self = this;
     this.area = {
       walkable: (x, z) => ground.walkable(x, z),
@@ -69,8 +76,40 @@ export class CoreLoop {
       ...this.ground.solids,
       ...this.nodes.map((n) => ({ x: n.x, z: n.z, r: n.def.solidRadius })),
       ...this.sites.filter((s) => partsBuiltCount(s.def, this.state.deposits[s.id]!) > 0).map((s) => ({ x: s.x, z: s.z, r: s.def.solidRadius })),
+      // A shut exit (the trail gate before the bell tower) blocks the way through.
+      ...this.place.exits.filter((e) => !exitOpen(e, this.done())).flatMap((e) => e.closed ?? []),
     ];
     return this.blockers;
+  }
+
+  /** Every building complete, in any place (a site may wait on a building elsewhere). */
+  done(): Set<BuildingId> {
+    return completedAll(this.state.siteBuilding, this.state.deposits);
+  }
+
+  /** True when this exit can be walked. */
+  exitOpen(e: ExitDef): boolean {
+    return exitOpen(e, this.done());
+  }
+
+  /** Stops listening to the facts (when the game leaves this place). */
+  dispose(): void {
+    this.unsubscribe();
+  }
+
+  private exitTarget(e: ExitDef): Proximate {
+    return {
+      id: `exit:${e.id}`,
+      priority: PRIORITY.exit,
+      radius: e.r,
+      x: e.x,
+      z: e.z,
+      kind: 'auto',
+      isAvailable: () => exitOpen(e, this.done()),
+      onEnter: () => this.onLeave?.(e),
+      onTick: () => undefined,
+      onExit: () => undefined,
+    };
   }
 
   siteComplete(s: Site): boolean {
@@ -79,7 +118,7 @@ export class CoreLoop {
 
   /** True once the site has revealed itself (its required buildings are complete). */
   siteOpen(s: Site): boolean {
-    return siteOpen(s.def, completedBuildings(this.place, this.state.deposits), this.state.deposits[s.id]);
+    return siteOpen(s.def, this.done(), this.state.deposits[s.id]);
   }
 
   private nodeTarget(n: GatherNode): BeatTarget {
@@ -91,7 +130,7 @@ export class CoreLoop {
       x: n.x,
       z: n.z,
       kind: 'auto',
-      work: material === 'wood' ? 'chop' : 'chip',
+      work: material === 'stone' ? 'chip' : 'chop',
       timer: 0,
       isAvailable: () => n.canGather && this.state.room(material) > 0,
       onEnter: () => { t.timer = FIRST_BEAT_SECONDS; },

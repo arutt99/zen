@@ -38,6 +38,12 @@ export class FollowCamera {
     this.zoom = dir === undefined ? (this.zoom + 1) % n : Math.max(0, Math.min(n - 1, this.zoom + dir));
   }
 
+  /** Jump straight to the target on the next update (arriving in another place: no sweep across the map). */
+  snap(): void {
+    this.first = true;
+    this.moment = 0;
+  }
+
   /** Ease out to show a finished building and the land around it. */
   celebrate(at: THREE.Vector3): void {
     this.moment = COMPLETION_CAMERA.seconds;

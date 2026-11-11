@@ -21,6 +21,8 @@ export interface SfxDef {
 const WOOD = [1, 2.31, 3.67];
 const STONE = [1, 2.09, 3.28];
 const BELL = [0.5, 1, 1.19, 1.5, 2, 2.67, 4.02];
+/** A hollow bamboo tube: strong odd partials, like a closed pipe struck (plan 8: "bamboo: hollow knock"). */
+const BAMBOO = [1, 3.02, 5.1];
 
 /** D major pentatonic, from D4. Step 0 is the tonic. */
 export const PENTATONIC = [0, 2, 4, 7, 9] as const;
@@ -63,6 +65,28 @@ export const SFX = {
   place: { level: 0.12, gap: 0.08, variants: 3, jitter: 0.02, bus: 'effects', render: (k) => {
     k.strike(pentatonicHz(-5), WOOD, 0.45, 0.7, { rev: 0.5 });
     k.noise(0.04, 0.25, { type: 'lowpass', freq: 900, q: 0.7 });
+  } },
+  // --- Phase 4
+  /** Cutting bamboo: a hollow knock at the scale's root, pitched by the game like wood and stone. */
+  bamboo: { level: 0.13, gap: 0.05, variants: 3, jitter: 0, bus: 'effects', render: (k) => {
+    k.strike(pentatonicHz(0), BAMBOO, 0.32, 0.7, { rev: 0.35, rolloff: 0.5 });
+    k.noise(0.03, 0.25, { type: 'bandpass', freq: 1100, q: 3 });
+  } },
+  /** The tea house's water pipe knocks back on its stone: a dry, deep tock with a little splash. */
+  tock: { level: 0.12, gap: 0.5, variants: 2, jitter: 0.02, bus: 'effects', render: (k) => {
+    k.strike(pentatonicHz(-7), BAMBOO, 0.4, 0.8, { rev: 0.7, rolloff: 0.45 });
+    k.noise(0.25, 0.25, { color: 'pink', type: 'highpass', freq: 2400, at: 0.02, attack: 0.01, rev: 0.4 });
+  } },
+  /** Tea poured into the bowl: a soft trickle. */
+  pour: { level: 0.07, gap: 1, variants: 2, jitter: 0.03, bus: 'effects', render: (k) => {
+    k.noise(1.6, 0.5, { color: 'pink', type: 'bandpass', freq: 1800, to: 2600, q: 1.2, attack: 0.2, rev: 0.3 });
+    for (let t = 0.1; t < 1.5; t += k.r(0.04, 0.12)) k.tone(k.r(900, 1600), 0.05, k.r(0.02, 0.05), { type: 'sine', to: k.r(1600, 2600), at: t });
+  } },
+  /** Travelling (a trail walked or the map): a soft breath of wind and two low notes. */
+  travel: { level: 0.08, gap: 1, variants: 1, bus: 'effects', render: (k) => {
+    k.noise(2.2, 0.4, { color: 'brown', type: 'bandpass', freq: 400, to: 800, q: 0.6, attack: 0.8, rev: 0.6 });
+    k.strike(pentatonicHz(-3), [1, 2.76], 2.4, 0.25, { at: 0.5, rev: 1 });
+    k.strike(pentatonicHz(2), [1, 2.76], 2.4, 0.2, { at: 1.1, rev: 1 });
   } },
   // --- Phase 3
   /** The bell tower, rung by hand: a deep temple bell with a long, slow tail. */
@@ -126,6 +150,20 @@ export const AMBIENCE = {
       for (let t = k.r(0, 0.3); t < length - 0.2; t += period * k.r(0.95, 1.05)) {
         for (let i = 0; i < 3; i++) k.tone(f, 0.025, 0.25 * pan, { type: 'triangle', at: t + i * 0.045, attack: 0.002 });
       }
+    }
+  } },
+  /** Phase 4: wind in the bamboo, a dry, many-leaved hiss that swells and fades. */
+  rustle: { level: 0.035, seconds: 23, render: (k: Kit, length: number) => {
+    for (let t = 0; t < length - 1; t += k.r(2, 4.5)) k.noise(k.r(2.5, 4.5), k.r(0.25, 0.5), { color: 'pink', type: 'bandpass', freq: k.r(2800, 3800), to: k.r(2200, 3000), q: 0.7, at: t, attack: 1.2 });
+    k.crackle(120, 0.03, length - 0.5, 0.05, { freq: 5200, rev: 0.2 });
+  } },
+  /** Phase 4: the wind shrine's chimes (once restored), hollow bamboo notes now and then. */
+  chimes: { level: 0.05, seconds: 19, render: (k: Kit, length: number) => {
+    let t = 0.5;
+    while (t < length - 2.5) {
+      const n = Math.floor(k.r(1, 4));
+      for (let i = 0; i < n; i++) k.strike(pentatonicHz(Math.floor(k.r(4, 10))), BAMBOO, 1.6, k.r(0.25, 0.45), { at: t + i * k.r(0.15, 0.35), rev: 0.9, rolloff: 0.5 });
+      t += k.r(2.5, 6);
     }
   } },
   wind: { level: 0.04, seconds: 21, render: (k: Kit, length: number) => {
