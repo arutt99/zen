@@ -4,6 +4,7 @@ import { BUILDINGS, buildingCost, type BuildingId } from '../data/buildings';
 import { MATERIALS, SATCHEL_CAP, type MaterialId } from '../data/gathering';
 import type { PlaceDef } from '../data/places';
 import { WORDS } from '../data/words';
+import { angle } from '../core/save';
 import { FIND_IDS } from '../data/finds';
 import { DECORATIONS, DECORATE } from '../data/decorations';
 import { KIT_STYLES, type KitStyleId } from '../data/buildings';
@@ -93,7 +94,7 @@ export class GameState {
   private addDecoration(d: Decoration, emit: boolean): boolean {
     if (!DECORATIONS[d.id] || !this.knownPlaces.has(d.place) || this.decorationRoom(d.place) <= 0) return false;
     if (!Number.isFinite(d.x) || !Number.isFinite(d.z) || !Number.isFinite(d.rot)) return false;
-    this.decorations.push({ id: d.id, place: d.place, x: d.x, z: d.z, rot: d.rot });
+    this.decorations.push({ id: d.id, place: d.place, x: Math.round(d.x * 100) / 100, z: Math.round(d.z * 100) / 100, rot: angle(d.rot) });
     if (emit) this.emit({ type: 'decorated', index: this.decorations.length - 1 });
     return true;
   }

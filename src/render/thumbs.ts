@@ -20,13 +20,14 @@ export function thumb(renderer: THREE.WebGLRenderer, kind: string): string {
   };
   add(g.solid, Mats.std);
   add(g.leaf, Mats.stdFoliage);
-  if (g.glow) group.add(new THREE.Mesh(g.glow, Mats.glow));
   scene.add(group);
   scene.add(new THREE.HemisphereLight(0xf2ecdc, 0x8a8068, 1.4));
   const sun = new THREE.DirectionalLight(0xfff0d8, 2.8);
   sun.position.set(-3, 6, 4);
   scene.add(sun);
+  // Frame the thing itself; a find's glint floats above it and would shrink the picture.
   const box = new THREE.Box3().setFromObject(group);
+  if (g.glow) group.add(new THREE.Mesh(g.glow, Mats.glow));
   const size = box.getSize(new THREE.Vector3());
   const centre = box.getCenter(new THREE.Vector3());
   const r = Math.max(size.x, size.y, size.z) * 0.62 + 0.05;
@@ -37,7 +38,7 @@ export function thumb(renderer: THREE.WebGLRenderer, kind: string): string {
   rt.texture.colorSpace = THREE.SRGBColorSpace;
   // Draw in plain daylight whatever the time of day outside, and without the canopy fade.
   const keep = { light: shared.uLight.value, ink: shared.uInkRef.value, glow: shared.uGlow.value, focus: shared.uFocus.value.w };
-  shared.uLight.value = 1; shared.uInkRef.value = 0.9; shared.uGlow.value = 1; shared.uFocus.value.w = 0;
+  shared.uLight.value = 1; shared.uInkRef.value = 1.15; shared.uGlow.value = 1; shared.uFocus.value.w = 0;
   const prevTarget = renderer.getRenderTarget();
   const prevClear = renderer.getClearColor(new THREE.Color());
   const prevAlpha = renderer.getClearAlpha();

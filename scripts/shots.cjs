@@ -33,14 +33,13 @@ SERIES.push(
     { name: 'winter-night', js: `mb.setSeason('winter'); mb.setTime('night'); mb.teleport(-1.5, -4.5); mb.settle();` },
   ] },
   { name: 'finds', pre: HOME_ALL, js: '', shots: [
-    { name: 'find-blossom', js: `mb.setSeason('spring'); mb.setTime('day'); mb.teleport(-14.2, -2.2); mb.closeup(3.6, 4.6, 3.2, 0.4); mb.settle();` },
-    { name: 'find-leaf', js: `mb.setSeason('autumn'); mb.setTime('day'); mb.teleport(16.6, 8.6); mb.closeup(2.4, 4.6, 3.2, 0.4); mb.settle();` },
-    { name: 'find-card', js: `mb.takeFind('find_leaf');` },
+    { name: 'find-leaf', js: `mb.setSeason('autumn'); mb.setTime('day'); mb.teleport(16.2, 7.4); mb.closeup(1.6, 5.5, 4.2, 0.3); mb.settle();` },
+    { name: 'find-card', wait: 1500, js: `mb.takeFind('find_leaf');` },
     { name: 'book', js: `mb.takeFind('find_blossom'); mb.read('poem_pond'); mb.read('poem_gate'); mb.read(null); mb.openBook(true);` },
   ] },
   { name: 'decorate', pre: HOME_ALL + ` mb.decorate('stone_lantern', 5.0, 8.8, 0.3); mb.decorate('cherry', 9.5, 9.6, 1.0); mb.decorate('flower_bed', 4.0, 10.6, 0); mb.decorate('bench', 4.2, 8.2, 3.6); mb.decorate('mossy_stone', 12.5, 9.8, 0.8);`, js: '', shots: [
     { name: 'decorated', js: `mb.setSeason('spring'); mb.setTime('day'); mb.teleport(6.8, 7.0); mb.closeup(0.4, 8.0, 5.6, 0.6); mb.settle();` },
-    { name: 'decorate-mode', js: `mb.decorMode(true, 'maple'); mb.teleport(9.2, 7.4); mb.settle();` },
+    { name: 'decorate-mode', js: `mb.zoom(1); mb.teleport(3.6, 5.6); mb.decorMode(true, 'stone_lantern'); mb.settle();` },
   ] },
   { name: 'styles', pre: HOME_ALL + ` mb.setStyle('meditation_hall', 'temple'); mb.setStyle('shelter', 'temple');`, js: '', shots: [
     { name: 'style-hall-temple', js: `mb.setSeason('spring'); mb.setTime('day'); mb.teleport(-1.8, -6.4); mb.closeup(3.3, 8.5, 5.2, 1.4); mb.settle();` },
@@ -69,7 +68,7 @@ async function series(browser, ser) {
   for (const x of shots) {
     await page.evaluate((code) => { const mb = window.__mb; eval(code); }, x.js);
     // Let the camera, mist and particles settle (software GL runs at a few fps).
-    await page.waitForTimeout(9000);
+    await page.waitForTimeout(x.wait ?? 9000);
     const out = path.join(outDir, `${x.name}.jpg`);
     await page.screenshot({ path: out, type: 'jpeg', quality: 80, timeout: 300000 });
     console.log(`${errors.length ? 'ERR ' : 'ok  '} ${path.relative(process.cwd(), out)}`);

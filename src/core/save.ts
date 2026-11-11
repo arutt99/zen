@@ -134,10 +134,18 @@ function decorationList(o: unknown): PlacedDecoration[] {
   for (const d of o) {
     if (!isObj(d) || typeof d.id !== 'string' || !ID.test(d.id) || typeof d.place !== 'string' || !ID.test(d.place)) continue;
     if (!isNum(d.x) || !isNum(d.z)) continue;
-    out.push({ id: d.id, place: d.place, x: Math.round(d.x * 100) / 100, z: Math.round(d.z * 100) / 100, rot: isNum(d.rot) ? ((d.rot % (Math.PI * 2)) + Math.PI * 2) % (Math.PI * 2) : 0 });
+    out.push({ id: d.id, place: d.place, x: Math.round(d.x * 100) / 100, z: Math.round(d.z * 100) / 100, rot: isNum(d.rot) ? angle(d.rot) : 0 });
     if (out.length >= 200) break;
   }
   return out;
+}
+
+/** An angle in [0, 2π), rounded to 4 decimals, so it survives a save round trip exactly. */
+export function angle(r: number): number {
+  let a = r % (Math.PI * 2);
+  if (a < 0) a += Math.PI * 2;
+  a = Math.round(a * 1e4) / 1e4;
+  return a >= Math.round(Math.PI * 2 * 1e4) / 1e4 ? 0 : a;
 }
 
 function styleMap(o: unknown): Record<string, string> {

@@ -49,7 +49,7 @@ line of data.
 **My recommendation: Classic.** The gate asks that "setting the season to each of the four makes both places
 look clearly different", and Classic does that most clearly while staying inside Lanternfall+ (crisp bands, ink,
 rich color). Gentle is calm but its seasons blur together, especially in the grove, where bamboo stays green
-anyway. Bold is striking in autumn but pink trees in spring everywhere stray from the reference (cherries are
+anyway (in every palette, the grove's spring and summer are the closest pair). Bold is striking in autumn but pink trees in spring everywhere stray from the reference (cherries are
 special because they are few), and its winter is cold for a calm game. If Classic's winter feels too heavy
 (snow covers a lot of the detail you asked for), take Gentle's winter with Classic's other three.
 
@@ -62,9 +62,12 @@ and a short tuning pass follows on the chosen one.
 One small thing per place per season, out only in that season (8 in all). Walk up and **Look**; a wordless card
 shows it and it goes into the book. Never needed for anything; Settings → Season makes every one reachable.
 
-| A find in the world (spring, cherry sprig) | Autumn's maple leaf | The card |
-|---|---|---|
-| ![](find-blossom.jpg) | ![](find-leaf.jpg) | ![](find-card.jpg) |
+| At autumn's maple leaf ("Look") | The card |
+|---|---|
+| ![](find-leaf.jpg) | ![](find-card.jpg) |
+
+(My close-up camera didn't frame the finds well: trees stand between it and them. In play they are small
+objects with a soft glint; whether they are easy enough to spot is worth a look on your PC.)
 
 The **book** (book button, or B): finds by place and season (silhouettes until found), animal friends met
 (derived from what you've built), and every poem and note found (blank cards until read).

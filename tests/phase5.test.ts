@@ -213,6 +213,12 @@ test('save v7: seasons, hemisphere, palette, decorations and styles; v6 saves mi
   assert.equal(odd.decorations.length, 1);
   assert.equal(odd.decorations[0]!.x, 1.23);
   assert.ok(odd.decorations[0]!.rot >= 0 && odd.decorations[0]!.rot < Math.PI * 2);
+  // A placed rotation survives the save exactly (the smoke test caught 0.3 coming back as 0.29999…).
+  const st = new GameState(all);
+  st.decorate({ id: 'fern', place: 'home_valley', x: 5.004, z: 8.8, rot: 0.3 });
+  const back = parseSave(JSON.stringify({ ...freshSave(), decorations: st.toFacts().decorations })).data.decorations;
+  assert.deepEqual(back, st.toFacts().decorations);
+  assert.equal(back[0]!.rot, 0.3);
   assert.deepEqual(odd.styles, { shelter: 'temple' });
   assert.deepEqual(odd.settings.season, { mode: 'fixed', pick: 'spring' });
   assert.equal(odd.settings.hemisphere, 'north');

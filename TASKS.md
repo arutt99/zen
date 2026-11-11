@@ -352,7 +352,7 @@ with three candidate palettes side by side; no palette is locked and nothing els
   **My choice for the plan's open question:** restyle any time (also before or while building), not only at
   the build site. Saved per site; the default (timber) isn't stored
 - [x] Save v7 (v6 migrates): season, hemisphere, palette, decorations, styles
-- [x] Unit tests 87 → 98 (`tests/phase5.test.ts`); smoke test adds a seasons run (find, decorate, restyle, reload)
+- [x] Unit tests 87 → 98 (`tests/phase5.test.ts`); smoke test adds a seasons run (find, decorate, restyle, reload): all 6 smoke runs pass (software GL)
 - [ ] **Owner: decide A7** — Classic, Gentle or Bold, or a mix per season (e.g. Classic with Gentle's winter)
 - [ ] **Owner:** gate check (below)
 
@@ -370,6 +370,7 @@ with three candidate palettes side by side; no palette is locked and nothing els
 - Buildings and decorations get snow from the shader only; no icicles, no snow on the ground under roofs.
 - The cherry's spring pink is authored; in summer it turns green with the rest. Maples are orange in spring
   (as authored since Phase 2); in Classic/Bold they turn green in summer.
+- Seasonal finds are small; whether they're easy enough to spot (glint only, no ground ring) is untested in play.
 - Decorations can't be moved, only removed and placed again; rotation is in 45° steps; one at a time.
 - Decorating is home only (plan: "at home"); the grove has none.
 - The book has no pages per place or larger poem view; poems show in full on their cards.
