@@ -30,8 +30,8 @@ interface BeatTarget extends Proximate {
 
 export interface GroundQuery {
   walkable(x: number, z: number): boolean;
-  /** Fixed blockers: trunks, rocks and props from the island generator. */
-  solids: readonly Blocker[];
+  /** Fixed blockers: trunks, rocks and props from the island generator (Phase 5: plus placed decorations; read again when they change). */
+  readonly solids: readonly Blocker[];
 }
 
 export class CoreLoop {
@@ -60,7 +60,7 @@ export class CoreLoop {
     for (const n of this.nodes) this.proximates.push(this.nodeTarget(n));
     for (const s of this.sites) this.proximates.push(this.siteTarget(s));
     for (const e of place.exits) this.proximates.push(this.exitTarget(e));
-    this.unsubscribe = state.on((e) => { if (e.type === 'deposited' || e.type === 'completed') this.blockersDirty = true; });
+    this.unsubscribe = state.on((e) => { if (e.type === 'deposited' || e.type === 'completed' || e.type === 'decorated' || e.type === 'undecorated') this.blockersDirty = true; });
     const self = this;
     this.area = {
       walkable: (x, z) => ground.walkable(x, z),
@@ -180,14 +180,16 @@ export class CoreLoop {
 
   /**
    * Advances everything by dt. With `canMove` false (sitting), the caretaker stays put and doesn't
-   * work, but nodes keep regrowing.
+   * work, but nodes keep regrowing. With `act` false (Phase 5, decorating), the caretaker walks but
+   * gathers, deposits and travels nothing.
    */
-  step(dt: number, move: MoveInput, canMove = true): Proximate | null {
+  step(dt: number, move: MoveInput, canMove = true, act = true): Proximate | null {
     if (!(dt > 0)) return this.sensor.current;
     for (const n of this.nodes) n.update(dt);
     if (!canMove) { this.work = null; return null; }
     const w = this.walker;
     w.step(dt, move, this.area);
+    if (!act) { this.sensor.update(w.x, w.z, [], dt); this.work = null; return null; }
     const target = this.sensor.update(w.x, w.z, this.proximates, dt);
     this.work = null;
     if (target && 'work' in target) {

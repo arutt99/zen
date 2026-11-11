@@ -211,7 +211,7 @@ The owner wants to see options before committing. So the look is built to be **t
 | A4 | **Character proportions and style** (chibi vs taller, how faces are drawn) | All animation, the basket, animals and later residents follow it | **Decided: chibi** (owner, 2026-11-10) |
 | A5 | **Building kit style:** the part set buildings are assembled from (posts, beams, roofs) and how a partly built building looks | Every building and every partial state is made from it | **Decided: rustic timber is the default style**; every building is built in timber first. Temple (and later styles) become a free, per-building style choice in Phase 5, which the kit already allows (same part ids in every style). Timber gets a detail pass, roofs first, before Phase 3's buildings (owner, 2026-11-10) |
 | A6 | **Shading family:** painted-soft vs inked-cel vs another | Models are tuned against it; switching late means re-tuning every model | **Decided: Lanternfall+** (inked-cel, grounded, rich detail; owner, 2026-11-10) |
-| A7 | **Final palette per season** | Many places and props get tuned to it; cheap per item, costly in total | Phase 5 gate |
+| A7 | **Final palette per season** | Many places and props get tuned to it; cheap per item, costly in total | Phase 5 gate. **Open:** three candidates (Classic, Gentle, Bold) built and switchable in Settings; screenshots and recommendation in `docs/phase5/README.md` (2026-11-11) |
 
 **The agent's duty:** before a phase that would build on an undecided point, and again at the gate where it's due, the agent **stops and warns the owner in plain words**: which decision, the options with screenshots, what becomes expensive to change after this, and a recommendation. It never locks one of these silently, and never builds lots of content on an undecided point. Decisions are recorded in the table above (replace "Decide by" with the choice and the date).
 
@@ -392,7 +392,7 @@ Riverbank, mountain pass and further journeys · quiet residents · more rituals
 
 | Decision | Current default | Decided at |
 |---|---|---|
-| Art style | **Decided: Lanternfall+** (A6), **chibi** (A4), **timber by default** with per-building styles later (A5), all owner 2026-11-10. A7 (seasonal palettes) still open | Art decision points A1–A7 in 7.4 |
+| Art style | **Decided: Lanternfall+** (A6), **chibi** (A4), **timber by default** with per-building styles (A5, built in Phase 5), all owner 2026-11-10. A7 (seasonal palettes) still open: three candidates on trial (Phase 5) | Art decision points A1–A7 in 7.4 |
 | Phone budget for Lanternfall+ | Set aside: PC first (owner, 2026-11-10). Phones need a trimmed detail level and a frame-rate check | Before release to phones (Phase 6 at the latest) |
 | Chapter 1 opening (walk in vs start at the gate) | Starts at the gate (Phase 3 default; draft text) | Owner, at the Phase 3 gate |
 | A mindfulness edition (section 13) | Noted, not planned | After the game's first complete version |

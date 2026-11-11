@@ -5,7 +5,7 @@ import type { QualityTier } from '../data/quality';
 import { BUILDINGS, unitsForOldParts, type BuildingId } from '../data/buildings';
 import { MATERIALS } from '../data/gathering';
 
-export const SAVE_VERSION = 6;
+export const SAVE_VERSION = 7;
 export const SAVE_KEY = 'moss-and-bell/save';
 
 export interface SaveSettings {
@@ -22,7 +22,15 @@ export interface SaveSettings {
    * Time of day (plan 5): the device clock, always day, or a chosen moment (the slider), 0..1 of the day.
    */
   time: { mode: 'clock' | 'day' | 'fixed'; at: number };
+  /** Phase 5 (plan 5): the season follows the calendar or is chosen; the hemisphere flips the calendar. */
+  season: { mode: 'calendar' | 'fixed'; pick: string };
+  hemisphere: 'north' | 'south';
+  /** Art decision point A7 trial (undecided): which seasonal palette (src/data/seasons.ts). */
+  palette: string;
 }
+
+/** A placed decoration (Phase 5, decorating v1): a fact, like a deposit. */
+export interface PlacedDecoration { id: string; place: string; x: number; z: number; rot: number }
 
 /** Counts of each material, by material id. */
 export type Counts = Record<string, number>;
@@ -40,6 +48,10 @@ export interface SaveData {
   places: string[];
   /** True once the opening (plan 4.5) has been shown, so it never plays again. */
   opened: boolean;
+  /** Phase 5: decorations placed (plan 9.5's `decorations`). */
+  decorations: PlacedDecoration[];
+  /** Phase 5: building style per site id, where it isn't the default (timber). */
+  styles: Record<string, string>;
   settings: SaveSettings;
 }
 
@@ -59,7 +71,12 @@ export function freshSave(): SaveData {
     collection: [],
     places: [],
     opened: false,
-    settings: { quality: 'auto', sound: true, camera: 'a', scale: 'm', look: 'lanternfallplus', character: 'chibi', kit: 'timber', time: { mode: 'clock', at: 0.5 } },
+    decorations: [],
+    styles: {},
+    settings: {
+      quality: 'auto', sound: true, camera: 'a', scale: 'm', look: 'lanternfallplus', character: 'chibi', kit: 'timber', time: { mode: 'clock', at: 0.5 },
+      season: { mode: 'calendar', pick: 'spring' }, hemisphere: 'north', palette: '',
+    },
   };
 }
 
@@ -87,6 +104,8 @@ const migrations: Record<number, (old: Record<string, unknown>) => Record<string
     }
     return { ...old, v: 6, deposits };
   },
+  // v6 (pacing pass) had no seasons, decorations or styles: field repair below fills the defaults.
+  6: (old) => ({ ...old, v: 7 }),
 };
 
 const isNum = (n: unknown): n is number => typeof n === 'number' && Number.isFinite(n);
@@ -98,6 +117,41 @@ function counts(o: unknown): Counts {
   const out: Counts = {};
   if (!isObj(o)) return out;
   for (const [k, v] of Object.entries(o)) if (ID.test(k) && isNum(v) && v > 0) out[k] = Math.floor(v);
+  return out;
+}
+
+function seasonSetting(o: unknown, fallback: SaveSettings['season']): SaveSettings['season'] {
+  if (!isObj(o)) return { ...fallback };
+  const mode = o.mode === 'fixed' || o.mode === 'calendar' ? o.mode : fallback.mode;
+  const pick = o.pick === 'spring' || o.pick === 'summer' || o.pick === 'autumn' || o.pick === 'winter' ? o.pick : fallback.pick;
+  return { mode, pick };
+}
+
+/** Placed decorations: known shape only, finite coordinates, at most 200. Ids are checked against the data by sim/state. */
+function decorationList(o: unknown): PlacedDecoration[] {
+  if (!Array.isArray(o)) return [];
+  const out: PlacedDecoration[] = [];
+  for (const d of o) {
+    if (!isObj(d) || typeof d.id !== 'string' || !ID.test(d.id) || typeof d.place !== 'string' || !ID.test(d.place)) continue;
+    if (!isNum(d.x) || !isNum(d.z)) continue;
+    out.push({ id: d.id, place: d.place, x: Math.round(d.x * 100) / 100, z: Math.round(d.z * 100) / 100, rot: isNum(d.rot) ? angle(d.rot) : 0 });
+    if (out.length >= 200) break;
+  }
+  return out;
+}
+
+/** An angle in [0, 2π), rounded to 4 decimals, so it survives a save round trip exactly. */
+export function angle(r: number): number {
+  let a = r % (Math.PI * 2);
+  if (a < 0) a += Math.PI * 2;
+  a = Math.round(a * 1e4) / 1e4;
+  return a >= Math.round(Math.PI * 2 * 1e4) / 1e4 ? 0 : a;
+}
+
+function styleMap(o: unknown): Record<string, string> {
+  const out: Record<string, string> = {};
+  if (!isObj(o)) return out;
+  for (const [k, v] of Object.entries(o)) if (ID.test(k) && typeof v === 'string' && ID.test(v)) out[k] = v;
   return out;
 }
 
@@ -150,6 +204,8 @@ export function parseSave(raw: string | null): { data: SaveData; recovered: stri
       collection: Array.isArray(obj.collection) ? [...new Set(obj.collection.filter((x): x is string => typeof x === 'string' && ID.test(x)))].sort() : [],
       places: Array.isArray(obj.places) ? [...new Set(obj.places.filter((x): x is string => typeof x === 'string' && ID.test(x)))].sort() : [],
       opened: typeof obj.opened === 'boolean' ? obj.opened : base.opened,
+      decorations: decorationList(obj.decorations),
+      styles: styleMap(obj.styles),
       settings: {
         quality: quality === 'low' || quality === 'medium' || quality === 'high' || quality === 'ultra' ? quality : 'auto',
         sound: typeof settings?.sound === 'boolean' ? settings.sound : base.settings.sound,
@@ -159,6 +215,9 @@ export function parseSave(raw: string | null): { data: SaveData; recovered: stri
         character: typeof settings?.character === 'string' && ID.test(settings.character) ? settings.character : base.settings.character,
         kit: typeof settings?.kit === 'string' && ID.test(settings.kit) ? settings.kit : base.settings.kit,
         time: timeSetting(settings?.time, base.settings.time),
+        season: seasonSetting(settings?.season, base.settings.season),
+        hemisphere: settings?.hemisphere === 'south' ? 'south' : 'north',
+        palette: typeof settings?.palette === 'string' && ID.test(settings.palette) ? settings.palette : base.settings.palette,
       },
     },
     recovered: null,

@@ -23,6 +23,8 @@ export interface PlacePreset {
   grass: [number, number];
   grassDensity: number;
   flowers: number[];
+  /** Phase 5: a season's flower count multiplier (missing = 1). */
+  flowerDensity?: number;
   /** Ambient particles: daytime pollen and night fireflies, 0..1 each (they cross-fade). */
   pollen: number;
   fireflies: number;

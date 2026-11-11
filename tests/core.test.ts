@@ -33,7 +33,9 @@ test('save round trip keeps every fact', () => {
   const store = memStore();
   const s = freshSave();
   s.at = { place: 'home_valley', x: 3.25, z: -1.5 };
-  s.settings = { quality: 'high', sound: false, camera: 'b', scale: 's', look: 'lanternfall', character: 'chibi', kit: 'timber', time: { mode: 'fixed', at: 0.8 } };
+  s.settings = { quality: 'high', sound: false, camera: 'b', scale: 's', look: 'lanternfall', character: 'chibi', kit: 'timber', time: { mode: 'fixed', at: 0.8 }, season: { mode: 'fixed', pick: 'winter' }, hemisphere: 'south', palette: 'gentle' };
+  s.decorations = [{ id: 'stone_lantern', place: 'home_valley', x: 3.5, z: 4.25, rot: 1.5 }];
+  s.styles = { shelter: 'temple' };
   s.satchel = { wood: 3, stone: 1 };
   s.deposits = { shelter: { wood: 4 } };
   assert.ok(writeSave(store, s));

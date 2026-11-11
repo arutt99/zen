@@ -1,8 +1,8 @@
 # Tasks
 
-**Current phase: 4 is done (owner, 2026-11-11: gate checked, the pacing pass "looks better", the drafted words
-"fine for now"). Next: Phase 5, Seasons, collections, decorating, which starts by bringing art decision point A7
-(seasonal palettes) to the owner before anything is built on it.** Only the PC frame-rate check stays open (not
+**Current phase: 5, Seasons, collections, decorating — built, stopped at art decision point A7 (seasonal
+palettes) for the owner: pick Classic, Gentle or Bold (or a mix), see [`docs/phase5/README.md`](docs/phase5/README.md);
+then the gate check.** Phase 4 is done (owner, 2026-11-11). Only the PC frame-rate check stays open (not
 blocking). The gate first found the game **"way too quick"** (the whole journey in 1:30); see "Owner gate report"
 under Phase 4. (plan section 10)
 
@@ -328,7 +328,52 @@ Started at the owner's request with Phase 3's gate still open (2026-11-10).
 - More meshes while a part is under construction (each piece is its own mesh until the part is whole).
 - The frame-rate check at 50 fps / 70% is open: worth trying Medium vs High on the PC, and by night.
 
-## Phase 5: Seasons, collections, decorating (next)
-See plan section 10. **Art decision point A7 (seasonal palettes) is undecided.** Per AGENTS.md, the phase starts
-by bringing it to the owner: what must be decided, palette options for both places with screenshots, what gets
-expensive to change later, and a recommendation. Nothing seasonal is built on it before the owner picks.
+## Phase 5: Seasons, collections, decorating
+See plan section 10. **Art decision point A7 (seasonal palettes) is undecided**: the season *system* is built,
+with three candidate palettes side by side; no palette is locked and nothing else is tuned to one.
+
+- [x] **Seasons from the calendar** (`src/core/clock.ts`): meteorological months, Northern/Southern hemisphere,
+  or a chosen season. Settings → Season (follow the calendar / ✿ ☀ ❦ ❄) and Hemisphere
+- [x] **Season looks** (`src/data/seasons.ts`, `src/core/seasonal.ts`): ground, grass, flowers, path, water, fog,
+  peaks and grade; deciduous crowns per tree, evergreen tint; snow on upward faces (never on figures); ground
+  cover speckles; falling petals/leaves/snow; drifting leaf colors; butterflies by season. Live switch
+- [x] **A7 candidates: Classic, Gentle, Bold** (Settings → Season palette); screenshots of all three in both
+  places in all four seasons, plus dusk/night: [`docs/phase5/README.md`](docs/phase5/README.md)
+- [x] **Seasonal ambience** (plan 8): spring chorus, summer crickets, autumn wind and chimes, hushed winter
+- [x] **Seasonal findables** (`src/data/finds.ts`): one per place per season (8), out only in their season, a
+  wordless card on Look, then into the book. Never needed for anything
+- [x] **The collection book** (book button / B): finds by place × season, friends met (derived), poems and
+  notes found; pictures are the game's models as thumbnails (`src/render/thumbs.ts`)
+- [x] **Decorating v1** (sprout button / F, at home): 14 decorations from completed buildings and the wind
+  shrine; place, turn, remove; allowed ground with room, off the path and clear of sites, trees, seats, words,
+  finds and exits; a flood fill (`src/sim/decorate.ts`) refuses anything that would cut off what the game needs.
+  Solid ones collide. Limit 40. Saved as facts
+- [x] **Building styles** (A5): in decorate mode, walk up to any revealed building → Style (timber ↔ temple).
+  **My choice for the plan's open question:** restyle any time (also before or while building), not only at
+  the build site. Saved per site; the default (timber) isn't stored
+- [x] Save v7 (v6 migrates): season, hemisphere, palette, decorations, styles
+- [x] Unit tests 87 → 98 (`tests/phase5.test.ts`); smoke test adds a seasons run (find, decorate, restyle, reload): all 6 smoke runs pass (software GL)
+- [ ] **Owner: decide A7** — Classic, Gentle or Bold, or a mix per season (e.g. Classic with Gentle's winter)
+- [ ] **Owner:** gate check (below)
+
+### Gate checklist (owner)
+- [ ] Setting the season to each of the four makes both places look clearly different (Settings → Season)
+- [ ] Decorations persist (place some, reload)
+- [ ] Nothing seasonal blocks progress (finds are extras; "Season: choose" reaches every one)
+- [~] (carried over) PC frame rate in Lanternfall+ — open, not blocking
+
+### Known Phase 5 gaps
+- **A7 undecided**: after the pick, the unpicked palettes leave the code and the palette menu goes; then the
+  per-season tuning pass (e.g. which trees stay green, the pond's lily pads in winter look like ice floes).
+- Day length doesn't change with the season (the day cycle is a spring day all year).
+- No rain in summer (plan 8 lists it); no weather at all yet (plan "Later": weather moments).
+- Buildings and decorations get snow from the shader only; no icicles, no snow on the ground under roofs.
+- The cherry's spring pink is authored; in summer it turns green with the rest. Maples are orange in spring
+  (as authored since Phase 2); in Classic/Bold they turn green in summer.
+- Seasonal finds are small; whether they're easy enough to spot (glint only, no ground ring) is untested in play.
+- Decorations can't be moved, only removed and placed again; rotation is in 45° steps; one at a time.
+- Decorating is home only (plan: "at home"); the grove has none.
+- The book has no pages per place or larger poem view; poems show in full on their cards.
+- Collision for solid decorations is one circle each (fences block only near their middle).
+- All screenshots and the smoke test come from software rendering in a container; nothing in this phase has
+  been checked on a phone or on the owner's PC.

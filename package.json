@@ -2,7 +2,7 @@
   "name": "moss-and-bell",
   "version": "0.0.1",
   "private": true,
-  "description": "Moss & Bell: a calm, restorative caretaking game. Phase 4: the first journey.",
+  "description": "Moss & Bell: a calm, restorative caretaking game. Phase 5: seasons, collections, decorating.",
   "type": "module",
   "scripts": {
     "build": "node scripts/build.mjs",
@@ -11,7 +11,7 @@
     "typecheck": "tsc --noEmit",
     "test": "node scripts/test.mjs",
     "smoke": "node scripts/smoke.cjs",
-    "shots": "node scripts/shots.cjs docs/phase4"
+    "shots": "node scripts/shots.cjs docs/phase5"
   },
   "dependencies": {
     "three": "0.187.0"

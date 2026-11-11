@@ -231,3 +231,34 @@ palette (plan 7.2). Path `#D9C39D`/`#A48A62`, water `#9CC7B8`→`#3F7F7A`, cherr
 
 ## External assets
 None. Fonts are system fonts; all sound is synthesized. Log the source and license of any future asset here.
+
+## Seasons (Phase 5) — palette A7 NOT decided
+Which season it is: `src/core/clock.ts` (calendar months, hemisphere, or chosen). What it looks like: a
+**season look** from one of the candidate palettes in `src/data/seasons.ts` (Classic, Gentle, Bold; Settings →
+Season palette). Spring is the authored look (everything from Phases 0–4 was built as a spring day) and changes
+least. Nothing else is tuned against one palette until the owner decides A7 (`docs/phase5/README.md`).
+- **Preset values** (`seasonalPreset` in `src/core/seasonal.ts`): ground A/B/C, shore, hemisphere bounce,
+  grass colors and density, flower colors and count, path, water, fog, far-peak cap and snow line, grade
+  saturation and gain move toward the season by the look's `*Mix` amounts. Light, sky and the sun are untouched,
+  so the time of day reads the same in every season. A new season rebuilds the stage (like a quality change).
+- **Crowns** (`SEASON_LEAF_GLSL`, foliage only): geometry with `aSeason = 1` is deciduous (`DECIDUOUS` in
+  `decor-models.ts`, and gather trees); it moves toward one of three colors, picked per tree from where it
+  stands (2 m cells), keeping the crown's own light-to-dark gradient by matching brightness. Everything else
+  (pine, bamboo, moss, ferns) is evergreen and takes one tint. New leafy kinds: add them to `DECIDUOUS`.
+- **Snow** (`SNOW_GLSL`, `uSnow`): faces whose world normal points up turn snow-white, broken into drifts by
+  the brush texture. On every painted material except `Mats.figure` (the caretaker, deer and crane: snow never
+  settles on characters). New figures must use `Mats.figure`.
+- **Ground cover** (terrain shader, `uCover`, `uCover2`): crisp two-color speckles that gather in clumps off
+  the path (petals, fallen leaves, snow drifts).
+- **In the air**: a third ambient layer (`fall`) of petals, leaves or snowflakes drifting down; Lanternfall+
+  drifting leaves take the season's colors (none in deep winter) and butterflies thin out.
+- All of it is shared uniforms (`applySeason` in `materials.ts`) plus preset data: cheap to retune.
+
+## Seasonal finds, decorations, thumbnails (Phase 5)
+- Find models (`find_*` in `decor-models.ts`) are drawn a little larger than life so they read from the
+  camera, with a soft glint above (glow material). They live in a restoration-style layer (`GrowthLayer`) and
+  shrink away once found.
+- Decorations reuse Zen-kit decor kinds; the ghost while placing is a flat translucent tint (green: fits; red:
+  doesn't).
+- HUD pictures (decorating tray, the book) are the real models rendered once into 128 px thumbnails with the
+  game's materials and ink (`src/render/thumbs.ts`), so the UI needs no drawn icons and no words.

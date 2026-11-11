@@ -3,6 +3,7 @@
 // deposits, later sites stay hidden, a poem stone can be read, a reload keeps exactly what was delivered
 // and read, and saves a screenshot of each run. Phase 4: the journey — walk out through the open trail gate
 // to the bamboo grove, cut bamboo, reload there (place and satchel kept), and travel home by the map.
+// Phase 5: a chosen season, a seasonal find, a decoration and a building style survive a reload.
 // Needs Playwright (`npm i -D playwright` locally; preinstalled in some CI images).
 const path = require('node:path');
 const fs = require('node:fs');
@@ -149,5 +150,39 @@ async function run(name, contextOpts, drive, { needMove = true, query = '' } = {
     await page.waitForTimeout(4000);
     await page.keyboard.up('KeyS');
   }, { query: LIGHT });
-  process.exit(laptop && keyboard && phone && loopRun && journey ? 0 : 1);
+  // Phase 5: choose autumn, look at the season's find, decorate (F opens the mode; a lantern placed with the
+  // game's own checks), restyle the hall, open the book, then reload: the season setting, the find, the
+  // decoration and the style all come back.
+  const seasons = await run('seasons', { viewport: { width: 640, height: 360 } }, async (page) => {
+    const wait = (fn, t = 120000) => page.waitForFunction(fn, null, { timeout: t, polling: 200 });
+    await page.evaluate(() => { for (const [s, w, st] of [['shelter', 6, 0], ['gravel_garden', 4, 6], ['meditation_hall', 14, 10]]) window.__mb.deliver(s, w, st); window.__mb.setSeason('autumn'); });
+    await wait(() => window.__mb.season === 'autumn' && window.__mb.finds.includes('find_leaf'));
+    await page.evaluate(() => window.__mb.teleport(17.0, 7.4));
+    await wait(() => window.__mb.context === 'find:find_leaf');
+    await page.evaluate(() => window.__mb.pressContext());
+    await wait(() => window.__mb.collection.includes('find_leaf'));
+    await page.keyboard.press('KeyF');
+    await wait(() => window.__mb.decorating);
+    const why = await page.evaluate(() => window.__mb.decorate('stone_lantern', 5.0, 8.8, 0.3));
+    if (why !== null) throw new Error(`could not place a lantern: ${why}`);
+    const bad = await page.evaluate(() => window.__mb.decorate('stone_lantern', 1.6, 12));
+    if (bad !== 'path') throw new Error(`a lantern on the path should be refused, got ${bad}`);
+    await page.keyboard.press('KeyF');
+    await wait(() => !window.__mb.decorating);
+    await page.evaluate(() => { window.__mb.setStyle('meditation_hall', 'temple'); window.__mb.openBook(true); window.__mb.openBook(false); });
+    const facts = () => page.evaluate(() => ({ season: window.__mb.season, c: window.__mb.collection, d: window.__mb.decorations, st: window.__mb.styles }));
+    await page.waitForTimeout(1500);
+    const before = await facts();
+    await page.reload();
+    await wait(() => window.__mb && window.__mb.fps > 0);
+    const after = await facts();
+    console.log(`   seasons: before reload ${JSON.stringify(before)}, after ${JSON.stringify(after)}`);
+    if (JSON.stringify(before) !== JSON.stringify(after)) throw new Error('reload changed the season, finds, decorations or styles');
+    if (after.d.length !== 1 || after.st.meditation_hall !== 'temple') throw new Error('decoration or style missing');
+    await page.evaluate(() => { window.__topSpeed = 0; setInterval(() => { window.__topSpeed = Math.max(window.__topSpeed, window.__mb.speed); }, 50); });
+    await page.keyboard.down('KeyA');
+    await page.waitForTimeout(4000);
+    await page.keyboard.up('KeyA');
+  }, { query: LIGHT });
+  process.exit(laptop && keyboard && phone && loopRun && journey && seasons ? 0 : 1);
 })().catch((e) => { console.error(e); process.exit(1); });

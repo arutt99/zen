@@ -10,6 +10,8 @@ export class InputController {
   lastKind: InputKind = isTouch() ? 'touch' : 'keyboard';
   onZoom: ((dir: 1 | -1) => void) | null = null;
   onMenu: (() => void) | null = null;
+  /** Phase 5: other keys (B the book, F decorate, R turn, Q put back). */
+  onKey: ((code: string) => void) | null = null;
 
   private keys = new Set<string>();
   private contextQueued = false;
@@ -85,6 +87,7 @@ export class InputController {
     if (e.code === 'Escape') this.onMenu?.();
     if (e.code === 'Minus' || e.code === 'NumpadSubtract') this.onZoom?.(1);
     if (e.code === 'Equal' || e.code === 'NumpadAdd') this.onZoom?.(-1);
+    this.onKey?.(e.code);
   }
 
   private pointerDown(e: PointerEvent): void {

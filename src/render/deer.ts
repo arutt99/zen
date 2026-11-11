@@ -26,7 +26,7 @@ export class DeerView {
   constructor(readonly sim: Wanderer, style: CharacterStyleId, private heightAt: (x: number, z: number) => number) {
     const p = DEER[style];
     const mesh = (g: THREE.BufferGeometry) => {
-      const m = inked(new THREE.Mesh(g, Mats.std), 'figure');
+      const m = inked(new THREE.Mesh(g, Mats.figure), 'figure');
       m.castShadow = true;
       return m;
     };
