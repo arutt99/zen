@@ -389,6 +389,7 @@ Riverbank, mountain pass and further journeys · quiet residents · more rituals
 | Phone budget for Lanternfall+ | Set aside: PC first (owner, 2026-11-10). Phones need a trimmed detail level and a frame-rate check | Before release to phones (Phase 6 at the latest) |
 | Chapter 1 opening (walk in vs start at the gate) | Starts at the gate (Phase 3 default; draft text) | Owner, at the Phase 3 gate |
 | A mindfulness edition (section 13) | Noted, not planned | After the game's first complete version |
+| Tending the grounds (section 14): raking leaves and snow, picking up sticks, cleaning | Noted, not planned; open questions in 14 | Owner, before Phase 5 (seasons) at the latest |
 | Where the code lives | The `zen` repo, with the engine copied from Lanternfall | Phase 0 (alternative: a `games/moss-and-bell` folder next to Lanternfall) |
 | Shared engine with Lanternfall | Copy now, adapt freely | Revisit only if both games keep changing the same engine code |
 | When quiet residents arrive | After the first complete version | After Phase 6 |
@@ -421,6 +422,48 @@ later." Recorded here so later work doesn't close the door on it:
 - **What to keep in mind until then (no work now):** keep stillness and sitting as their own system, not
   tangled into gathering and building; keep audio easy to layer (a voice bus could join the existing
   buses); keep all words in data so guidance text could live there too.
+
+---
+
+## 14. Future idea: tending the grounds (noted 2026-11-11, not planned)
+
+The owner wants **everyday upkeep to be one of the main things you do**, not only a side ritual: raking and
+clearing leaves and snow off the paths, picking up sticks that fell from the trees, cleaning things, and generally
+tidying the monastery and its grounds. It fits pillar 4 ("everyday work is shown as care") and the plan already
+hints at it (3.5 "sweep fallen leaves", 5 "leaves to sweep" after time away). Today's plan treats it as a small
+unrewarded ritual; this idea raises it to a second loop beside gather → build.
+
+**How it could work within the rules we already have (agent's proposal, nothing decided):**
+- **Effortless hands.** Same as gathering: walk onto a leaf-covered stretch of path and the caretaker rakes on the
+  beat, one stroke per beat, clearing the ground under and just ahead of them, with a soft scratch on the
+  pentatonic scale. Walk away and it stops at once. Sticks are picked up the way units are gathered (walk over
+  them, one per beat, into the basket). Cleaning a thing (a lantern, the hall's steps, a moss-covered poem
+  stone, the bell) works like a ritual target: stand at it and it is wiped down stroke by stroke.
+- **Nothing jumps from 0 to 100% (pillar 6).** A path clears patch by patch and stays half-raked if you leave;
+  leaves gather into a visible pile that grows with every stroke.
+- **Presence over pressure (pillar 1).** Mess never harms anything: no withering, no restoration loss, no meter,
+  no "the grounds are dirty" nag. Leaves and sticks build up slowly up to a gentle cap, so coming back after a week
+  looks lived-in and autumnal, never ruined. Ignoring it costs nothing.
+- **Save facts, derive the rest.** Save only *when each path stretch was last cleared* (and which sticks were picked
+  up); how much has fallen since is derived from the real clock, the season and the place, so there are no saved
+  timers and nothing to repair.
+- **Seasons give it variety (section 5).** Petals in spring, twigs and seed pods after summer storms, maple leaves
+  in autumn, snow in winter (a snow shovel or broom instead of the rake, and cleared paths keep their snowbanks).
+- **What it could give back (owner's choice, see open questions):** stays unrewarded like the other rituals; or
+  picked-up sticks count as a little wood and leaf piles become compost that feeds flower beds; or a well-kept
+  place earns small, temporary touches (an animal comes to the cleared path, the lanterns glow warmer).
+
+**Open questions for the owner:**
+1. Is upkeep its own loop with a give-back (sticks → wood, leaves → compost/flowers), or pure unrewarded care?
+2. Does it reach inside buildings? Today there are no interiors; cleaning would be outdoors (steps, lanterns,
+   stones, the bell) unless interiors are added, which is a much larger piece of work.
+3. Does it need a tool you pick up (a rake by the shelter, a broom by the hall) or does the caretaker just do it?
+4. When: leaves and snow need calendar seasons (Phase 5); sticks, fallen leaves at today's palette and cleaning
+   could come earlier as a small slice of their own.
+
+**Things that would get expensive to change later:** the save shape for "last cleared" (cheap now, a migration
+later); how leaf and snow cover is drawn on paths, which overlaps **art decision point A7** (seasonal palettes)
+and must not be locked without the owner; and the place data format for path stretches.
 
 ---
 

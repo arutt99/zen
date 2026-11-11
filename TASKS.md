@@ -89,6 +89,9 @@ See plan section 10. Owner direction (2026-11-10): **nothing jumps from 0 to 100
   to fix up (plan 4.5). Opening text and the walk-in are drafted in Phase 3.
 - **A future mindfulness edition:** two versions, the calm world-building game and one that adds real-time
   meditations and moments of reflection with guidance (plan 13). Noted, not planned; no work until later.
+- **Tending the grounds (2026-11-11):** upkeep as one of the main things you do: raking leaves and snow off
+  paths, picking up fallen sticks, cleaning and tidying the monastery and grounds (plan 14). Noted, not
+  planned; four open questions for the owner in plan 14. Leaves and snow touch A7 (seasonal palettes).
 
 ## Phase 2: Warm the look
 See plan section 10. Owner choices before the build (2026-11-10): wildcard look = **woodblock print**; two
