@@ -25,7 +25,7 @@ import { BEAT_SECONDS, MATERIALS, NODE_KINDS, SATCHEL_CAP, type MaterialId } fro
 import { CAMERA_OPTIONS, SCALE_OPTIONS } from './data/feel';
 import { PLACE_IDS, PLACES, type Arrival, type ExitDef, type PlaceDef, type PlaceId } from './data/places';
 import { CHARACTER_STYLES, CARETAKER, type CharacterStyleId } from './data/characters';
-import { BUILDINGS, buildingCost, KIT_STYLES, KIT_STYLE_INFO, type BuildingId, type KitStyleId } from './data/buildings';
+import { BUILDINGS, buildingCost, KIT_STYLES, KIT_STYLE_INFO, type BuildingId, type KitStyleId, unitsForOldParts } from './data/buildings';
 import { LOOKS, LOOK_IDS } from './data/looks';
 import { MOMENTS } from './data/presets';
 import { clockLabel, presetAt, timeOfDay } from './core/daylight';
@@ -967,8 +967,19 @@ function boot(): void {
     },
     setCharacter(id: string) { charSel.value = id; charSel.dispatchEvent(new Event('change')); },
     setKit(id: string) { kitSel.value = id; kitSel.dispatchEvent(new Event('change')); },
-    /** Screenshots: put facts in place as if delivered (rebuilds the views; no events). */
+    /**
+     * Screenshots: put facts in place as if delivered (rebuilds the views; no events). Counts are whole
+     * parts as modelled (plan 9.6's numbers), turned into units of pieces (pacing pass, 2026-11-11).
+     */
     deliver(site: string, wood: number, stone = 0, bamboo = 0) {
+      const d = state.deposits[site];
+      const b = BUILDINGS[site as BuildingId];
+      if (!d || !b) return;
+      d.wood = unitsForOldParts(b, 'wood', wood); d.stone = unitsForOldParts(b, 'stone', stone); d.bamboo = unitsForOldParts(b, 'bamboo', bamboo);
+      rebuildFromFacts();
+    },
+    /** Screenshots: put raw units in place (pieces, not whole parts), to show a part half assembled. */
+    deliverUnits(site: string, wood: number, stone = 0, bamboo = 0) {
       const d = state.deposits[site];
       if (!d) return;
       d.wood = wood; d.stone = stone; d.bamboo = bamboo;

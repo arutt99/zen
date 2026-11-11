@@ -36,10 +36,10 @@ export interface NodeKindDef {
 }
 
 export const NODE_KINDS: Record<NodeKindId, NodeKindDef> = {
-  // 5 units, ~2.8 s of chopping; regrows in 8 + 5 x 4 = 28 s (plan: 20–40 s).
-  tree: { material: 'wood', units: 5, radius: 1.75, solidRadius: 0.42, restSeconds: 8, regrowSecondsPerUnit: 4, noteStep: 0 },
-  // 5 units of stone; regrows in 10 + 5 x 5 = 35 s.
-  boulder: { material: 'stone', units: 5, radius: 2.05, solidRadius: 0.8, restSeconds: 10, regrowSecondsPerUnit: 5, noteStep: 2 },
-  // Phase 4: a bamboo clump, one culm per unit; shoots come back quickly (bamboo grows fast): 6 + 4 x 4 = 22 s.
-  bamboo: { material: 'bamboo', units: 4, radius: 1.8, solidRadius: 0.5, restSeconds: 6, regrowSecondsPerUnit: 4, noteStep: 1 },
+  // Pacing pass (2026-11-11): 3 units (was 5), so gathering ranges over more trees; regrows in 14 + 3 x 6 = 32 s.
+  tree: { material: 'wood', units: 3, radius: 1.75, solidRadius: 0.42, restSeconds: 14, regrowSecondsPerUnit: 6, noteStep: 0 },
+  // 3 units of stone (was 5); regrows in 16 + 3 x 7 = 37 s.
+  boulder: { material: 'stone', units: 3, radius: 2.05, solidRadius: 0.8, restSeconds: 16, regrowSecondsPerUnit: 7, noteStep: 2 },
+  // Phase 4: a bamboo clump, one culm per unit (3, was 4); shoots come back quickly (bamboo grows fast): 10 + 3 x 5 = 25 s.
+  bamboo: { material: 'bamboo', units: 3, radius: 1.8, solidRadius: 0.5, restSeconds: 10, regrowSecondsPerUnit: 5, noteStep: 1 },
 };

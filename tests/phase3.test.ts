@@ -7,7 +7,7 @@ import { freshSave, parseSave } from '../src/core/save';
 import { timeOfDay } from '../src/core/daylight';
 import { ANIMALS } from '../src/data/animals';
 import { BUILDINGS, BUILDING_IDS, buildingCost } from '../src/data/buildings';
-import { MATERIALS } from '../src/data/gathering';
+import { MATERIALS, SATCHEL_CAP } from '../src/data/gathering';
 import { PLACES } from '../src/data/places';
 import { MOMENTS } from '../src/data/presets';
 import { duringTime, RITUALS } from '../src/data/rituals';
@@ -26,10 +26,15 @@ const none: Bag = { wood: 0, stone: 0, bamboo: 0 };
 
 test('the four home-valley buildings follow plan 9.6: costs, order and restoration adding up to 1', () => {
   assert.deepEqual(BUILDING_IDS, ['shelter', 'gravel_garden', 'meditation_hall', 'bell_tower', 'wind_shrine', 'tea_house']);
-  assert.deepEqual(buildingCost(BUILDINGS.shelter), { wood: 6 });
-  assert.deepEqual(buildingCost(BUILDINGS.gravel_garden), { stone: 6, wood: 4 });
-  assert.deepEqual(buildingCost(BUILDINGS.meditation_hall), { stone: 10, wood: 14 });
-  assert.deepEqual(buildingCost(BUILDINGS.bell_tower), { stone: 8, wood: 10 });
+  // Plan 9.6's part counts are the authored models; the pacing pass (2026-11-11) cuts them into pieces.
+  const modelled = (id: keyof typeof BUILDINGS) => BUILDINGS[id].authored.reduce<Record<string, number>>((c, p) => ({ ...c, [p.material]: (c[p.material] ?? 0) + 1 }), {});
+  assert.deepEqual(modelled('shelter'), { wood: 6 });
+  assert.deepEqual(modelled('gravel_garden'), { stone: 6, wood: 4 });
+  assert.deepEqual(modelled('meditation_hall'), { stone: 10, wood: 14 });
+  assert.deepEqual(modelled('bell_tower'), { stone: 8, wood: 10 });
+  // Every piece is one unit, and the satchel can carry the first building in one trip.
+  for (const id of BUILDING_IDS) assert.equal(Object.values(buildingCost(BUILDINGS[id])).reduce((a, b) => a + b, 0), BUILDINGS[id].parts.length);
+  assert.ok(BUILDINGS.shelter.parts.length <= SATCHEL_CAP);
   const all = Object.fromEntries(home.sites.map((s) => [s.id, full(s.building)]));
   assert.ok(Math.abs(restoration(home, all) - 1) < 1e-9);
 });
@@ -117,7 +122,7 @@ test('words: original drafts flagged for the owner, read once into the collectio
 
 test('save v4: collection and the opening flag, with v3 migrating', () => {
   const f = freshSave();
-  assert.equal(f.v, 5);
+  assert.equal(f.v, 6);
   assert.deepEqual(f.collection, []);
   assert.equal(f.opened, false);
   const v3 = { v: 3, at: { place: 'home_valley', x: 1, z: 2 }, satchel: {}, deposits: { shelter: { wood: 6 } }, settings: {} };

@@ -79,6 +79,8 @@ class Bot {
     const w = loop.walker;
     let wanted: string | null = null;
     let stuckFor = 0, sidestep = 0, sideSign = 1;
+    // A progress watchdog: a bot can circle in a pocket (the pond's bank, a fence corner) while moving.
+    let watchT = 0, watchD = Infinity, escapes = 0;
     let lastX = w.x, lastZ = w.z;
     const exit = leg.place.exits.find((e) => e.id === leg.leaveBy);
     let left = false;
@@ -127,6 +129,17 @@ class Bot {
 
         const moved = Math.hypot(w.x - lastX, w.z - lastZ);
         lastX = w.x; lastZ = w.z;
+        watchT += dt;
+        if (watchT > 4) {
+          if (this.pause <= 0 && d > goal.r && d > watchD - 0.5) {
+            // No real progress for 4 s: follow the obstacle for longer, switching sides every other time.
+            escapes++;
+            if (escapes % 2 === 0) sideSign = -sideSign;
+            sidestep = 1.5 + Math.min(4, escapes * 0.5);
+          } else if (d < watchD - 0.5) escapes = 0;
+          watchT = 0;
+          watchD = d;
+        }
         if (this.pause <= 0 && d > goal.r && moved < 0.3 * w.tuning.maxSpeed * dt * (relaxed ? 0.75 : 1)) {
           stuckFor += dt;
           if (stuckFor > 0.4) { sidestep = 0.7; sideSign = -sideSign; stuckFor = 0; }

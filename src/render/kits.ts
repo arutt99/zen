@@ -952,6 +952,72 @@ export function partGeo(kit: string, part: string, style: KitStyleId = 'temple')
   return g;
 }
 
+/**
+ * Pacing pass (2026-11-11): cuts a part's solid model into `n` pieces along its primitives (logs, bundles,
+ * stones, culms). Primitives are taken bottom-up (lowest first, ties in build order), so each piece rests on
+ * the ones before it, like a real build: footings, then sleepers, then logs; rafters, then thatch courses
+ * from the eave up. Each piece gets about the same number of primitives.
+ */
+export function cutPieces(geo: THREE.BufferGeometry, n: number): THREE.BufferGeometry[] {
+  const prims = (geo.userData.prims as number[] | undefined) ?? [geo.getAttribute('position').count];
+  if (n <= 1) return [geo];
+  const pos = geo.getAttribute('position') as THREE.BufferAttribute;
+  const spans: { start: number; count: number; minY: number; order: number }[] = [];
+  let start = 0;
+  prims.forEach((count, order) => {
+    let minY = Infinity;
+    for (let i = start; i < start + count; i++) minY = Math.min(minY, pos.getY(i));
+    spans.push({ start, count, minY, order });
+    start += count;
+  });
+  // Round to 2 cm so a row of logs at about the same height keeps its build order.
+  spans.sort((a, b) => Math.round(a.minY * 50) - Math.round(b.minY * 50) || a.order - b.order);
+  const k = Math.min(n, spans.length);
+  const out: THREE.BufferGeometry[] = [];
+  for (let p = 0; p < k; p++) {
+    const group = spans.slice(Math.round((p * spans.length) / k), Math.round(((p + 1) * spans.length) / k));
+    const verts = group.reduce((s, g) => s + g.count, 0);
+    const g = new THREE.BufferGeometry();
+    for (const [name, attr] of Object.entries(geo.attributes)) {
+      const a = attr as THREE.BufferAttribute;
+      const arr = new (a.array.constructor as Float32ArrayConstructor)(verts * a.itemSize);
+      let o = 0;
+      for (const sp of group) {
+        arr.set((a.array as Float32Array).subarray(sp.start * a.itemSize, (sp.start + sp.count) * a.itemSize), o);
+        o += sp.count * a.itemSize;
+      }
+      g.setAttribute(name, new THREE.BufferAttribute(arr, a.itemSize, a.normalized));
+    }
+    // The outline draws the same triangles a second time (mb.ts addInkData).
+    for (const gr of geo.groups) g.addGroup(0, verts, gr.materialIndex);
+    g.computeBoundingBox();
+    g.computeBoundingSphere();
+    out.push(g);
+  }
+  return out;
+}
+
+const pieceCache = new Map<string, PartGeo>();
+/**
+ * Piece `piece` of `pieces` of a part. The part's extras (lantern paper, a swinging bell, lights, raked
+ * patterns, the water pipe, steam) come with its last piece.
+ */
+export function pieceGeo(kit: string, part: string, style: KitStyleId, piece: number, pieces: number): PartGeo {
+  const whole = partGeo(kit, part, style);
+  if (pieces <= 1) return whole;
+  const key = `${look().id}/${style}/${kit}/${part}/${pieces}`;
+  let cut = pieceCache.get(`${key}/0`);
+  if (!cut) {
+    const geos = cutPieces(whole.solid, pieces);
+    geos.forEach((g, i) => {
+      const last = i === pieces - 1;
+      pieceCache.set(`${key}/${i}`, last ? { ...whole, solid: g } : { solid: g });
+    });
+    cut = pieceCache.get(`${key}/0`)!;
+  }
+  return pieceCache.get(`${key}/${piece}`) ?? cut;
+}
+
 /** Scaffolding: squared lumber with a ladder (temple) or poles lashed with rope (timber). */
 function scaffoldGeo(s: KitStyleId): THREE.BufferGeometry {
   const m = new MB().setMark('wood');
@@ -1000,7 +1066,10 @@ const MARKER_FRAG = /* glsl */ `
 `;
 
 interface ShownPart {
+  /** meshes[0] is the piece's solid; the rest are its extras. */
   meshes: THREE.Object3D[];
+  /** The whole part (a part cut into pieces): shown in place of its pieces once they have all settled. */
+  whole: THREE.Mesh | null;
   ghost: THREE.Mesh;
   built: boolean;
   /** Seconds left before the part starts settling (waits for the flying item to land). */
@@ -1087,11 +1156,20 @@ export class BuildingView {
     this.root.position.set(x, y - 0.05, z);
     this.root.rotation.y = rot;
     this.ghostMat = new THREE.MeshBasicMaterial({ color: 0xfff4dc, transparent: true, opacity: 0.22, depthWrite: false });
+    let whole: THREE.Mesh | null = null;
     def.parts.forEach((p, i) => {
-      const geo = partGeo(def.kit, p.id, style);
+      const geo = pieceGeo(def.kit, p.id, style, p.piece, p.pieces);
       const mesh = inked(new THREE.Mesh(geo.solid, Mats.std), 'building');
       mesh.castShadow = mesh.receiveShadow = true;
       const meshes: THREE.Object3D[] = [mesh];
+      if (p.pieces > 1 && p.piece === 0) {
+        // One merged mesh for the finished part keeps the draw count of a finished building as it was.
+        whole = inked(new THREE.Mesh(partGeo(def.kit, p.id, style).solid, Mats.std), 'building');
+        whole.castShadow = whole.receiveShadow = true;
+        whole.visible = false;
+        this.root.add(whole);
+      }
+      const partWhole = p.pieces > 1 ? whole : null;
       if (geo.glow) meshes.push(new THREE.Mesh(geo.glow, Mats.glow));
       if (geo.swing) {
         // The settle animation moves `holder`; `pivot` hangs inside it and sways.
@@ -1131,7 +1209,7 @@ export class BuildingView {
       const ghost = new THREE.Mesh(geo.solid, this.ghostMat);
       ghost.renderOrder = 4;
       this.root.add(...meshes, ghost);
-      this.parts.push({ meshes, ghost, built: !!built[i], delay: 0, t: built[i] ? 1 : 0 });
+      this.parts.push({ meshes, whole: partWhole, ghost, built: !!built[i], delay: 0, t: built[i] ? 1 : 0 });
     });
     this.scaffold = inked(new THREE.Mesh(scaffoldGeo(style), Mats.std), 'building');
     this.scaffold.castShadow = true;
@@ -1207,6 +1285,19 @@ export class BuildingView {
         mesh.scale.setScalar(shown ? 0.85 + 0.15 * Math.min(1, ease) : 1);
       }
       p.ghost.visible = !shown || p.t < 0.6;
+    }
+    // A part cut into pieces: once every piece has settled, its merged model stands in for them.
+    for (let i = 0; i < this.parts.length;) {
+      const w = this.parts[i]!.whole;
+      let j = i + 1;
+      while (j < this.parts.length && w && this.parts[j]!.whole === w) j++;
+      if (w) {
+        const run = this.parts.slice(i, j);
+        const settled = run.every((p) => p.built && p.delay <= 0 && p.t >= 1);
+        w.visible = settled;
+        if (settled) for (const p of run) p.meshes[0]!.visible = false;
+      }
+      i = j;
     }
     for (const s of this.swingers) {
       // A slow, uneven sway, as if a breeze came and went; heavy things (the bell) barely move.
