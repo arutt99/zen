@@ -31,7 +31,7 @@ export class CraneView {
 
   constructor(readonly sim: Wanderer, private heightAt: (x: number, z: number) => number) {
     const mesh = (g: THREE.BufferGeometry) => {
-      const m = inked(new THREE.Mesh(g, Mats.std), 'figure');
+      const m = inked(new THREE.Mesh(g, Mats.figure), 'figure');
       m.castShadow = true;
       return m;
     };

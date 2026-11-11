@@ -7,7 +7,7 @@ import { damp } from '../core/util';
 import type { GatherNode } from '../sim/nodes';
 import { inked, Mats } from './materials';
 import { MB } from './mb';
-import { leafCluster, leafyCrown, roots, stone } from './decor-models';
+import { leafCluster, leafyCrown, markDeciduous, roots, stone } from './decor-models';
 import { fine, look, rich } from './look';
 
 const BARK: [number, number] = [0x4a3426, 0x7a5a40];
@@ -52,7 +52,7 @@ function buildGeos() {
   if (rich()) leafyCrown(puffMB, 0, 0, 0, 1, LEAF, 3);
   else if (fine()) leafCluster(puffMB, 0, 0, 0, 1, LEAF, 3);
   else puffMB.ico(1, LEAF, { wobble: 0.12, wobbleFreq: 1.6, flat: false, puff: 0.75 }, 2);
-  const puff = puffMB.build();
+  const puff = markDeciduous(puffMB.build());
   const notch = new MB().box(0.16, 0.12, 0.1, [0xb89a6e, 0xe6d3ad], { r: [0, 0, 0.5] }).build();
   // The core rock sits 0.42 m up at 0.95 scale: its local ground is ~0.44 below its centre.
   const rock = stone(new MB(), 1, STONE, { s: [1.1, 0.78, 1], wobble: 0.12 }).build({ ground: true, groundY: -0.44 });

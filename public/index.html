@@ -91,6 +91,46 @@
   .travel .close { position: absolute; top: 10px; right: 10px; min-width: 48px; min-height: 48px; border: 0; border-radius: 14px;
     background: rgba(246,238,220,.9); font-size: 18px; color: var(--ink); }
   .travel .hint { position: absolute; left: 0; right: 0; bottom: 10px; text-align: center; font-size: 12px; opacity: .6; }
+  /* Phase 5: the collection book, decorating, the find card. */
+  .corner.b2 { right: calc(env(safe-area-inset-right) + 70px); font-size: 18px; }
+  .corner.b3 { right: calc(env(safe-area-inset-right) + 128px); font-size: 18px; }
+  .corner[hidden] { display: none; }
+  body.decorating #decor-btn { background: rgba(119,151,119,.9); color: #fff; }
+  .find-pic { width: 96px; height: 96px; display: block; margin: 0 auto; }
+  .find-season { font-size: 22px; opacity: .75; margin-top: 2px; }
+  .tray { position: absolute; left: 50%; transform: translateX(-50%); bottom: calc(env(safe-area-inset-bottom) + 54px); display: none;
+    gap: 6px; padding: 6px; border-radius: 18px; background: rgba(242,228,200,.88); pointer-events: auto; max-width: calc(100vw - 220px); overflow-x: auto; touch-action: pan-x; }
+  body.decorating .tray { display: flex; }
+  .tray .deco { flex: 0 0 auto; width: 56px; height: 56px; border: 0; border-radius: 14px; background: rgba(255,250,240,.7); padding: 2px; }
+  .tray .deco img { width: 100%; height: 100%; }
+  .tray .deco.pick { outline: 3px solid #779777; background: #fffaf0; }
+  .tray .deco.done { font-size: 22px; color: var(--ink); background: rgba(119,151,119,.35); }
+  .rot { position: absolute; right: calc(env(safe-area-inset-right) + 130px); bottom: calc(env(safe-area-inset-bottom) + 40px); min-width: 64px; min-height: 64px;
+    border-radius: 50%; border: 0; background: rgba(242,228,200,.9); color: var(--ink); font-size: 26px; pointer-events: auto; }
+  .rot[hidden] { display: none; }
+  .book { position: fixed; inset: 0; display: none; align-items: center; justify-content: center; background: rgba(74,59,44,.35); }
+  .book.show { display: flex; }
+  .book .sheet { position: relative; width: min(860px, calc(100vw - 32px)); max-height: calc(100vh - 32px); overflow-y: auto; box-sizing: border-box;
+    background: #f6eedc; border-radius: 18px; box-shadow: 0 10px 40px rgba(74,59,44,.35); padding: 18px 22px; touch-action: pan-y; }
+  .book h3 { margin: 6px 0 8px; font-size: 20px; text-align: center; opacity: .55; font-weight: 400; }
+  .book .pages { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 8px; position: static; transform: none; opacity: 1;
+    background: none; box-shadow: none; padding: 0; max-width: none; text-align: left; font-size: 12px; line-height: 1.4; }
+  .book .page { background: #fffaf0; border-radius: 10px; padding: 8px 10px; min-height: 48px; box-shadow: 0 1px 3px rgba(74,59,44,.12); }
+  .book .page.poem { font-style: italic; }
+  .book .page .from { opacity: .6; margin-top: 4px; font-style: normal; }
+  .book .page.blank { background: rgba(255,250,240,.35); box-shadow: inset 0 0 0 1px rgba(132,107,80,.15); }
+  .book .friends { display: flex; gap: 14px; justify-content: center; }
+  .book .friend { width: 84px; height: 64px; color: #846b50; }
+  .book .friend.blank { color: rgba(132,107,80,.15); }
+  .book .seasons { display: grid; grid-template-columns: auto repeat(4, 1fr); gap: 6px; align-items: center; }
+  .book .seasons .glyph { text-align: center; font-size: 22px; opacity: .55; }
+  .book .seasons .glyph.now { opacity: 1; }
+  .book .seasons .place { font-size: 13px; opacity: .7; padding-right: 6px; }
+  .book .seasons .cell { display: flex; justify-content: center; min-height: 64px; background: rgba(255,250,240,.5); border-radius: 10px; }
+  .book .seasons img { width: 64px; height: 64px; }
+  .book .seasons img.missing { filter: brightness(0); opacity: .12; }
+  .book .close { position: absolute; top: 10px; right: 10px; min-width: 48px; min-height: 48px; border: 0; border-radius: 14px;
+    background: rgba(242,228,200,.9); font-size: 18px; color: var(--ink); }
   #boot-error { position: fixed; inset: 0; display: none; padding: 24px; background: var(--paper); white-space: pre-wrap; }
 </style>
 </head>
@@ -107,6 +147,10 @@
   <div id="intro"></div>
   <div class="words" id="words" aria-live="polite"><div id="words-lines"></div><div class="from" id="words-from"></div><div class="tag" id="words-tag">PLACEHOLDER</div></div>
   <button class="corner" id="menu-btn" aria-label="Menu">☰</button>
+  <button class="corner b2" id="book-btn" aria-label="Collection book"><svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path d="M3 5c3-1 6-1 9 1 3-2 6-2 9-1v14c-3-1-6-1-9 1-3-2-6-2-9-1z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M12 6v14" stroke="currentColor" stroke-width="1.6"/></svg></button>
+  <button class="corner b3" id="decor-btn" aria-label="Decorate" hidden><svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path d="M12 21v-7M12 14c-4 0-6-3-6-6 3 0 6 2 6 6zM12 14c4 0 6-3 6-7-3 0-6 3-6 7z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M7 21h10" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></button>
+  <div class="tray" id="decor-tray"></div>
+  <button class="rot" id="decor-rot" aria-label="Turn" hidden>⟳</button>
   <button class="context" id="context-btn">Sit</button>
   <div class="stick" id="stick"><div class="knob" id="knob"></div></div>
   <div id="debug"></div>
@@ -123,6 +167,11 @@
       <label>Caretaker <select id="character"></select></label>
       <label>Building kit <select id="kit"></select></label>
     </div>
+    <label>Season <select id="season-mode"></select></label>
+    <p class="note">Now: <span id="season-now"></span></p>
+    <label>Hemisphere <select id="hemisphere"><option value="north">Northern</option><option value="south">Southern</option></select></label>
+    <label>Season palette <select id="palette"></select></label>
+    <p class="note"><span id="palette-note"></span> (A7 trial: not decided yet)</p>
     <label>Time <select id="time-mode"><option value="clock">Follow my clock</option><option value="day">Always day</option><option value="fixed">Choose</option></select></label>
     <label class="range"><input type="range" id="time-at" min="0" max="999" step="1"><span id="time-label"></span></label>
     <button id="menu-close">Close</button>
@@ -142,6 +191,16 @@
     <div class="pins" id="travel-pins"></div>
     <button class="close" id="travel-close" aria-label="Close map">✕</button>
     <div class="hint">Choose a place to travel there</div>
+  </div>
+</div>
+<div class="book" id="book" role="dialog" aria-label="Collection book">
+  <div class="sheet">
+    <div class="seasons" id="book-seasons"></div>
+    <h3>♡</h3>
+    <div class="friends" id="book-friends"></div>
+    <h3>✎</h3>
+    <div class="pages" id="book-words"></div>
+    <button class="close" id="book-close" aria-label="Close book">✕</button>
   </div>
 </div>
 <div id="fade"></div>

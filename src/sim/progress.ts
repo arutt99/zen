@@ -5,6 +5,7 @@ import type { PlaceDef } from '../data/places';
 import { clamp } from '../core/util';
 import { ANIMALS, type AnimalDef } from '../data/animals';
 import type { Bag } from './state';
+import { DECORATIONS, type DecorationDef } from '../data/decorations';
 
 /** Counts per material where a missing material means none (older tests and saves name only some). */
 export type Counts = Partial<Bag>;
@@ -124,4 +125,17 @@ export function mistAmount(place: PlaceDef, level: number): number {
 export function animalsPresent(place: PlaceDef, deposits: Record<string, Counts>): AnimalDef[] {
   const level = restoration(place, deposits);
   return Object.values(ANIMALS).filter((a) => a.place === place.id && level >= a.minRestoration - 1e-9);
+}
+
+/** Phase 5: decorations offered for placing — those whose building is complete (plan 10: from buildings and shrines). */
+export function decorationsOffered(done: ReadonlySet<BuildingId>): DecorationDef[] {
+  return Object.values(DECORATIONS).filter((d) => done.has(d.from));
+}
+
+/**
+ * Phase 5, the collection book: animal friends met so far, derived from the facts (every place's
+ * restoration), not saved. An animal counts once its place has healed enough for it to arrive.
+ */
+export function animalsMet(places: readonly PlaceDef[], deposits: Record<string, Counts>): AnimalDef[] {
+  return places.flatMap((p) => animalsPresent(p, deposits));
 }

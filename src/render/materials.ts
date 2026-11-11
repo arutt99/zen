@@ -8,6 +8,7 @@ import * as THREE from 'three';
 import type { OutlineClass } from '../data/looks';
 import { f, look, outlined, rich, v3 } from './look';
 import { makeRng } from '../core/util';
+import type { SeasonLook } from '../data/seasons';
 
 export const shared = {
   uTime: { value: 0 },
@@ -23,7 +24,66 @@ export const shared = {
   uFocus: { value: new THREE.Vector4(0, 0, 0, 0) },
   /** Lanternfall+: up to LAMPS lanterns that light the ground and things near them at night (xyz, w = strength). */
   uLamps: { value: Array.from({ length: 8 }, () => new THREE.Vector4(0, 0, 0, 0)) },
+  // Phase 5, seasons (src/data/seasons.ts; set by applySeason): three colors deciduous crowns move toward
+  // (one per tree), how far; an evergreen tint and how far; snow on upward faces; ground cover speckles.
+  uLeafA: { value: new THREE.Color(0x6fa048) },
+  uLeafB: { value: new THREE.Color(0x7fb050) },
+  uLeafC: { value: new THREE.Color(0x8abf5a) },
+  uLeafMix: { value: 0 },
+  uEver: { value: new THREE.Color(0x3f6e48) },
+  uEverMix: { value: 0 },
+  uSnow: { value: 0 },
+  uCover: { value: new THREE.Vector4(1, 1, 1, 0) },
+  uCover2: { value: new THREE.Color(0xffffff) },
 };
+
+/** Sets the season's shared shader values (live: no rebuild needed for crowns, snow and ground cover). */
+export function applySeason(s: SeasonLook): void {
+  shared.uLeafA.value.set(s.leaves[0]);
+  shared.uLeafB.value.set(s.leaves[1]);
+  shared.uLeafC.value.set(s.leaves[2]);
+  shared.uLeafMix.value = s.leafMix;
+  shared.uEver.value.set(s.evergreen);
+  shared.uEverMix.value = s.evergreenMix;
+  shared.uSnow.value = s.snow;
+  const c = new THREE.Color(s.cover[0]);
+  shared.uCover.value.set(c.r, c.g, c.b, s.coverAmount);
+  shared.uCover2.value.set(s.cover[1]);
+}
+
+/**
+ * Seasonal crowns (foliage only): deciduous crowns (geometry attribute aSeason = 1) move toward one of three
+ * season colors, picked per tree from where it stands; evergreens (no attribute, 0) toward one tint. The
+ * crown's own light and dark gradient is kept by matching brightness.
+ */
+const SEASON_LEAF_GLSL = /* glsl */ `
+  varying vec2 vSeason;
+  uniform vec3 uLeafA, uLeafB, uLeafC, uEver;
+  uniform float uLeafMix, uEverMix;
+  vec3 seasonLeaf(vec3 c) {
+    bool decid = vSeason.x > 0.5;
+    float amt = decid ? uLeafMix : uEverMix;
+    if (amt <= 0.0) return c;
+    float h = vSeason.y;
+    vec3 tgt = decid ? (h < 0.34 ? uLeafA : (h < 0.67 ? uLeafB : uLeafC)) : uEver;
+    float L = dot(c, vec3(0.2126, 0.7152, 0.0722));
+    float Lt = max(dot(tgt, vec3(0.2126, 0.7152, 0.0722)), 0.02);
+    return mix(c, tgt * clamp(L / Lt, 0.6, 1.45), amt);
+  }
+`;
+
+/** Snow on faces that look up (roofs, rocks, crowns, lanterns), broken up by the brush so it lies in drifts. */
+const SNOW_GLSL = /* glsl */ `
+  uniform float uSnow;
+  vec3 snowOn(vec3 c, vec3 nView, vec3 p) {
+    if (uSnow <= 0.0) return c;
+    vec3 wN = normalize((vec4(nView, 0.0) * viewMatrix).xyz);
+    float sn = texture2D(uBrush, p.xz * 0.9 + p.y * 0.21).r;
+    float lo = 0.7 - uSnow * 0.38;
+    float k = smoothstep(lo, lo + 0.06, wN.y + (sn - 0.5) * 0.5);
+    return mix(c, vec3(0.86, 0.9, 0.97), k * min(1.0, uSnow * 1.15));
+  }
+`;
 
 /** How many lantern lights the shaders read (Lanternfall+). */
 export const LAMPS = 8;
@@ -158,6 +218,8 @@ export interface PaintOpts {
   fade?: boolean;
   /** Draw inked wood grain and stone cracks from the geometry's `aMark` (Lanternfall+ only). */
   marks?: boolean;
+  /** Phase 5: snow settles on it in winter (default on; off for the caretaker and animals). */
+  snow?: boolean;
 }
 
 /** The canopy fade: dithered see-through where the fragment sits near the camera→caretaker line. */
@@ -298,7 +360,13 @@ export function paint<T extends THREE.Material>(mat: T, opts: PaintOpts = {}): T
   const hasNormal = !(mat instanceof THREE.MeshLambertMaterial);
   const marks = rich() && !!opts.marks;
   const lamps = rich();
+  const snow = opts.snow !== false && hasNormal;
+  // Seasonal crowns: foliage is the material that fades (Mats.stdFoliage).
+  const leaf = fade;
   mat.onBeforeCompile = (s) => {
+    s.uniforms.uLeafA = shared.uLeafA; s.uniforms.uLeafB = shared.uLeafB; s.uniforms.uLeafC = shared.uLeafC;
+    s.uniforms.uLeafMix = shared.uLeafMix; s.uniforms.uEver = shared.uEver; s.uniforms.uEverMix = shared.uEverMix;
+    s.uniforms.uSnow = shared.uSnow;
     s.uniforms.uLamps = shared.uLamps;
     s.uniforms.uGlow = shared.uGlow;
     s.uniforms.uTime = shared.uTime;
@@ -310,10 +378,19 @@ export function paint<T extends THREE.Material>(mat: T, opts: PaintOpts = {}): T
     s.uniforms.uWind = { value: wind };
     s.uniforms.uRimAmt = { value: rim };
     s.uniforms.uBrushAmt = { value: brush };
-    s.vertexShader = PAINT_VERT_HEAD + (marks ? 'attribute vec4 aMark;\nvarying vec4 vMark;\nvarying vec3 vLocal;\n' : '') + s.vertexShader
+    s.vertexShader = PAINT_VERT_HEAD + (marks ? 'attribute vec4 aMark;\nvarying vec4 vMark;\nvarying vec3 vLocal;\n' : '') + (leaf ? 'attribute float aSeason;\nvarying vec2 vSeason;\n' : '') + s.vertexShader
       .replace('#include <begin_vertex>', /* glsl */ `
         #include <begin_vertex>
         ${marks ? 'vMark = aMark; vLocal = position;' : ''}
+        ${leaf ? /* glsl */ `
+        {
+          #ifdef USE_INSTANCING
+            vec3 seasonBase = (modelMatrix * vec4(instanceMatrix[3].xyz, 1.0)).xyz;
+          #else
+            vec3 seasonBase = modelMatrix[3].xyz;
+          #endif
+          vSeason = vec2(aSeason, fract(sin(dot(floor(seasonBase.xz * 0.5), vec2(12.9898, 78.233))) * 43758.5453));
+        }` : ''}
         ${wind > 0 ? /* glsl */ `
         #ifdef USE_INSTANCING
           vec3 windBase = instanceMatrix[3].xyz;
@@ -334,7 +411,7 @@ export function paint<T extends THREE.Material>(mat: T, opts: PaintOpts = {}): T
         #endif
         vPWorld = (modelMatrix * pWorld).xyz;
       `);
-    s.fragmentShader = PAINT_FRAG_HEAD + (fade ? FADE_GLSL : '') + (marks ? MARK_GLSL : '') + (lamps ? LAMP_GLSL : '') + celPatch(s.fragmentShader)
+    s.fragmentShader = PAINT_FRAG_HEAD + (fade ? FADE_GLSL : '') + (marks ? MARK_GLSL : '') + (lamps ? LAMP_GLSL : '') + (leaf ? SEASON_LEAF_GLSL : '') + (snow ? SNOW_GLSL : '') + celPatch(s.fragmentShader)
       .replace('#include <clipping_planes_fragment>', /* glsl */ `
         #include <clipping_planes_fragment>
         ${fade ? 'canopyFade(vPWorld);' : ''}
@@ -349,11 +426,13 @@ export function paint<T extends THREE.Material>(mat: T, opts: PaintOpts = {}): T
           diffuseColor.rgb *= 1.0 + bm * 0.62 * uBrushAmt;
           diffuseColor.rgb += bm * vec3(0.05, 0.015, -0.045) * uBrushAmt;
         }
+        ${leaf ? 'diffuseColor.rgb = seasonLeaf(diffuseColor.rgb);' : ''}
         ${marks ? 'diffuseColor.rgb *= 1.0 - inkMarks();' : ''}
         ${albedoGlsl('diffuseColor.rgb')}
       `)
       .replace('#include <emissivemap_fragment>', /* glsl */ `
         #include <emissivemap_fragment>
+        ${snow ? 'diffuseColor.rgb = snowOn(diffuseColor.rgb, normal, vPWorld);' : ''}
         ${lamps ? 'totalEmissiveRadiance += lampLight(vPWorld, diffuseColor.rgb);' : ''}
         ${hasNormal ? /* glsl */ `
         {
@@ -363,13 +442,15 @@ export function paint<T extends THREE.Material>(mat: T, opts: PaintOpts = {}): T
         ` : ''}
       `);
   };
-  mat.customProgramCacheKey = () => `paint-${L.id}-${wind}-${rim}-${brush}-${fade}-${marks}-${mat.type}`;
+  mat.customProgramCacheKey = () => `paint-${L.id}-${wind}-${rim}-${brush}-${fade}-${marks}-${snow}-${mat.type}`;
   return mat;
 }
 
 /** Shared materials so that everything batches onto the same programs. */
 export const Mats = {
   std: null as unknown as THREE.MeshStandardMaterial,
+  /** The caretaker and animals: like `std`, but snow never settles on them. */
+  figure: null as unknown as THREE.MeshStandardMaterial,
   stdFoliage: null as unknown as THREE.MeshStandardMaterial,
   glow: null as unknown as THREE.MeshBasicMaterial,
   metal: null as unknown as THREE.MeshStandardMaterial,
@@ -382,6 +463,7 @@ export function initMaterials() {
   const L = look();
   inkShared.uWidth.value = L.outline.width;
   Mats.std = paint(new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.82, metalness: 0.04 }), { marks: true });
+  Mats.figure = paint(new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.82, metalness: 0.04 }), { marks: true, snow: false });
   Mats.stdFoliage = paint(new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.9, metalness: 0 }), { wind: 0.0042, rim: 1.3, fade: true });
   Mats.metal = paint(new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.42, metalness: 0.72 }), { brush: 0.5 });
   Mats.glow = new THREE.MeshBasicMaterial({ vertexColors: true, toneMapped: true });

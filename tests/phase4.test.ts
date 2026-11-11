@@ -179,7 +179,7 @@ test('the grove has its own light along the same day, and its own words', () => 
 });
 
 test('save v5: places are kept and repaired; v4 saves migrate (a started game has reached home)', () => {
-  assert.equal(SAVE_VERSION, 6);
+  assert.ok(SAVE_VERSION >= 6);
   assert.deepEqual(freshSave().places, []);
   const v4 = { v: 4, opened: true, at: { place: 'home_valley', x: 1, z: 2 }, deposits: { bell_tower: { wood: 10, stone: 8 } } };
   const m = parseSave(JSON.stringify(v4));

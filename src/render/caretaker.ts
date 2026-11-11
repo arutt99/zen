@@ -33,7 +33,7 @@ class BasketItems {
   private scl = new THREE.Matrix4();
 
   constructor(geo: THREE.BufferGeometry, place: (i: number) => THREE.Matrix4) {
-    this.mesh = inked(new THREE.InstancedMesh(geo, Mats.std, SATCHEL_CAP), 'figure');
+    this.mesh = inked(new THREE.InstancedMesh(geo, Mats.figure, SATCHEL_CAP), 'figure');
     this.mesh.castShadow = true;
     this.mesh.frustumCulled = false;
     for (let i = 0; i < SATCHEL_CAP; i++) this.slots.push({ s: 0, m: place(i) });
@@ -55,7 +55,7 @@ class BasketItems {
 }
 
 function figureMesh(geo: THREE.BufferGeometry, outline = true): THREE.Mesh {
-  const m = outline ? inked(new THREE.Mesh(geo, Mats.std), 'figure') : new THREE.Mesh(geo, Mats.std);
+  const m = outline ? inked(new THREE.Mesh(geo, Mats.figure), 'figure') : new THREE.Mesh(geo, Mats.figure);
   m.castShadow = true;
   return m;
 }

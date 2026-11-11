@@ -538,7 +538,102 @@ const builders: Record<string, () => DecorGeo> = {
     l.ico(0.18, [0x3a6a30, 0x5a8a40], { p: [0, 0.08, 0], s: [1.2, 0.5, 1.2], flat: false, puff: 0.5 }, 1);
     return { solid: new MB().sphere(0.01, 0, {}, 3, 2).build(), leaf: l.build({ ground: true }) };
   },
+  // Phase 5: seasonal finds (src/data/finds.ts). Small things, drawn a little larger than life so they read
+  // from the camera, each with a soft glint above it.
+  find_blossom() {
+    // A fallen cherry sprig: a forked twig with clusters of five-petal blossoms.
+    const m = new MB();
+    m.cyl(0.025, 0.035, 0.7, [0x5a3a2a, 0x7a5040], { p: [0, 0.05, 0], r: [0, 0, Math.PI / 2], mark: 'bark' }, 5);
+    m.cyl(0.018, 0.022, 0.35, [0x5a3a2a, 0x7a5040], { p: [0.12, 0.05, 0.12], r: [0, -0.8, Math.PI / 2], mark: 'bark' }, 5);
+    for (const [x, z] of [[-0.3, 0], [-0.1, 0.06], [0.12, -0.04], [0.28, 0.02], [0.2, 0.22]] as const) {
+      for (let i = 0; i < 5; i++) {
+        const a = (i / 5) * Math.PI * 2;
+        m.sphere(0.055, [0xf2a6ba, 0xfde4ea], { p: [x + Math.cos(a) * 0.05, 0.1, z + Math.sin(a) * 0.05], s: [1, 0.35, 1] }, 6, 4);
+      }
+      m.sphere(0.022, 0xf0d070, { p: [x, 0.12, z] }, 5, 3);
+    }
+    return { solid: m.build({ ground: true }), glow: glint(), ink: 'nature' };
+  },
+  find_shell() {
+    // A cicada's empty shell on a little stone: amber, ribbed, with its legs still holding on.
+    const m = new MB();
+    stone(m, 0.32, [0x7a786a, 0xa8a492], { p: [0, 0.12, 0], s: [1.2, 0.55, 1] });
+    m.sphere(0.12, [0xa86a2a, 0xe0a84a], { p: [0, 0.34, 0], s: [0.85, 0.75, 1.6] }, 10, 8);
+    for (let i = 0; i < 4; i++) m.torus(0.1 - i * 0.01, 0.012, 0x8a5420, { p: [0, 0.34, -0.06 + i * 0.06], s: [0.85, 0.75, 1] }, 5, 12);
+    m.sphere(0.07, [0xb07030, 0xe8b050], { p: [0, 0.36, 0.2], s: [1.2, 0.8, 0.9] }, 8, 6);
+    for (const sx of [-1, 1]) for (const z of [-0.08, 0.02, 0.12]) m.cyl(0.01, 0.01, 0.14, 0x8a5420, { p: [sx * 0.11, 0.27, z], r: [0, 0, sx * 0.9] }, 4);
+    return { solid: m.build({ ground: true }), glow: glint(0.75), ink: 'nature' };
+  },
+  find_leaf() {
+    // One red maple leaf, seven-pointed, lying on the grass.
+    const m = new MB();
+    for (let i = 0; i < 7; i++) {
+      const a = -Math.PI / 2 + (i - 3) * 0.48;
+      const len = 0.42 - Math.abs(i - 3) * 0.06;
+      // Each lobe is a cone laid flat and pointed outward.
+      m.cone(0.09, len, [0xb02818, 0xf05a2a], { p: [Math.cos(a) * len * 0.5, 0.04, Math.sin(a) * len * 0.5], r: [0, -a, -Math.PI / 2], s: [0.2, 1, 1] }, 5);
+    }
+    m.cyl(0.012, 0.012, 0.3, 0x8a3a1a, { p: [0, 0.03, 0.15], r: [Math.PI / 2, 0, 0] }, 4);
+    return { solid: m.build({ ground: true }), glow: glint(0.5), ink: 'nature' };
+  },
+  find_camellia() {
+    // A red camellia fallen whole onto the snow, with two dark glossy leaves.
+    const m = new MB();
+    for (const [x, z, r] of [[-0.18, 0.1, 0.6], [0.2, -0.05, -0.8]] as const) {
+      m.sphere(0.16, [0x1f4a2a, 0x3a6a3a], { p: [x, 0.03, z], r: [0, r, 0], s: [0.55, 0.12, 1.2] }, 8, 5);
+    }
+    for (let i = 0; i < 6; i++) {
+      const a = (i / 6) * Math.PI * 2;
+      m.sphere(0.11, [0xa01828, 0xe03040], { p: [Math.cos(a) * 0.08, 0.12, Math.sin(a) * 0.08], r: [0, -a, 0.5], s: [1, 0.45, 0.8] }, 8, 5);
+    }
+    m.cyl(0.05, 0.06, 0.08, [0xe8b030, 0xf8e060], { p: [0, 0.17, 0] }, 8);
+    return { solid: m.build({ ground: true }), glow: glint(0.6), ink: 'nature' };
+  },
+  find_shoot() {
+    // A bamboo shoot pushing up through the litter: a fat cone of overlapping brown sheaths, green at the tip.
+    const m = new MB();
+    for (let i = 0; i < 5; i++) {
+      const r = 0.16 - i * 0.025, y = 0.08 + i * 0.12;
+      m.cone(r, 0.32, [0x7a5a30, i > 2 ? 0x9aae5c : 0xb08a50], { p: [0, y, 0], r: [0.08 * (i % 2 ? 1 : -1), i * 0.9, 0] }, 7);
+    }
+    m.ico(0.3, [0x8a7a3a, 0xb8a058], { s: [1.2, 0.12, 1.1], flat: false, puff: 0.4 }, 1);
+    return { solid: m.build({ ground: true }), glow: glint(0.95), ink: 'nature' };
+  },
+  find_feather() {
+    // A crane's white feather at the pool's edge, its tip dipped in black.
+    const m = new MB();
+    m.cyl(0.008, 0.012, 0.6, 0xd8d2c4, { p: [0, 0.03, 0], r: [Math.PI / 2, 0, 0] }, 4);
+    m.sphere(0.12, [0xe8e6e0, 0xffffff], { p: [0, 0.035, -0.04], s: [0.6, 0.06, 2.0] }, 8, 5);
+    m.sphere(0.06, [0x2a2a2e, 0x4a4a50], { p: [0, 0.04, -0.26], s: [0.9, 0.08, 1.4] }, 6, 4);
+    return { solid: m.build({ ground: true }), glow: glint(0.45), ink: 'nature' };
+  },
+  find_chestnut() {
+    // A split chestnut burr with two glossy nuts showing.
+    const m = new MB();
+    m.sphere(0.2, [0x6a7a2a, 0x9aa84a], { p: [0, 0.14, 0], s: [1, 0.75, 1] }, 10, 8);
+    for (let i = 0; i < 26; i++) {
+      const a = i * 2.39, y = 0.08 + (i % 5) * 0.035;
+      m.cone(0.012, 0.12, 0x8a9a3a, { p: [Math.cos(a) * 0.19, y + 0.02, Math.sin(a) * 0.19], r: [Math.sin(a) * 1.3, 0, -Math.cos(a) * 1.3] }, 3);
+    }
+    for (const sx of [-1, 1]) m.sphere(0.09, [0x5a2a14, 0x8a4a24], { p: [sx * 0.07, 0.24, 0.04], s: [0.9, 1, 0.8] }, 8, 6);
+    return { solid: m.build({ ground: true }), glow: glint(0.6), ink: 'nature' };
+  },
+  find_pinecone() {
+    // A pine cone in the snow, its scales in spiralling rows.
+    const m = new MB();
+    for (let i = 0; i < 30; i++) {
+      const t = i / 30, a = i * 2.39, r = 0.13 * Math.sin(Math.PI * (0.15 + t * 0.85)), y = 0.04 + t * 0.4;
+      m.box(0.08, 0.03, 0.06, [0x6a4428, 0x9a6a3a], { p: [Math.cos(a) * r, y, Math.sin(a) * r], r: [0, -a, 0.5] });
+    }
+    m.cyl(0.05, 0.03, 0.42, 0x5a3a20, { p: [0, 0.22, 0] }, 6);
+    return { solid: m.build({ ground: true }), glow: glint(0.7), ink: 'nature' };
+  },
 };
+
+/** A soft glint hovering over a seasonal find, so it can be spotted from the path. */
+function glint(y = 0.55): THREE.BufferGeometry {
+  return new MB().sphere(0.05, [0xfff6d0, 0xffffff], { p: [0, y + 0.35, 0], gain: 1.8 }, 6, 4).build({ off: true });
+}
 
 /**
  * The Painted+ stone lantern: a stepped hexagonal base, a turned post, a platform, a firebox with
@@ -579,6 +674,16 @@ function fineLantern(): DecorGeo {
   return { solid: m.build({ ground: true, occluders: [leaf] }), leaf, glow: g.build({ off: true }), ink: 'building' };
 }
 
+/** Crowns that change with the seasons (Phase 5); everything else is evergreen (pines, bamboo, moss). */
+export const DECIDUOUS = new Set(['oak', 'birch', 'cherry', 'maple', 'willow', 'bush']);
+
+/** Marks a leaf geometry as deciduous for the seasonal crown shader (attribute aSeason = 1). */
+export function markDeciduous(g: THREE.BufferGeometry): THREE.BufferGeometry {
+  const n = g.getAttribute('position').count;
+  g.setAttribute('aSeason', new THREE.Float32BufferAttribute(new Float32Array(n).fill(1), 1));
+  return g;
+}
+
 const cache = new Map<string, DecorGeo>();
 export function decorGeo(kind: string): DecorGeo {
   // Keyed by look: Painted+ builds other models and bakes occlusion into them.
@@ -586,6 +691,7 @@ export function decorGeo(kind: string): DecorGeo {
   let g = cache.get(key);
   if (!g) {
     g = builders[kind]();
+    if (g.leaf && DECIDUOUS.has(kind)) markDeciduous(g.leaf);
     cache.set(key, g);
   }
   return g;

@@ -21,6 +21,7 @@ import type { QualitySettings as Quality } from '../data/quality';
 import { decorGeo, stone as stoneShape } from './decor-models';
 import type { OutlineClass } from '../data/looks';
 import { inkRef, lightLevel } from '../core/daylight';
+import { DEFAULT_PALETTE, seasonLook, type SeasonLook } from '../data/seasons';
 
 const colorOf = (hex: number) => new THREE.Color(hex);
 const LIGHT_SHAFTS = false as boolean;
@@ -42,6 +43,7 @@ const TERRAIN_FRAG_HEAD = /* glsl */ `
   uniform sampler2D uContact;
   uniform float uSiteShade;
   uniform float uHeal;
+  uniform vec4 uCover; uniform vec3 uCover2;
 
   vec2 hash22(vec2 p) {
     vec3 a = fract(p.xyx * vec3(123.34, 234.34, 345.65));
@@ -265,7 +267,7 @@ export class Stage {
   sun: THREE.DirectionalLight;
   private disposables: { dispose(): void }[] = [];
   private islets: { obj: THREE.Object3D; y: number; phase: number }[] = [];
-  private ambientMats: { mat: THREE.ShaderMaterial; key: 'pollen' | 'fireflies'; alpha: number }[] = [];
+  private ambientMats: { mat: THREE.ShaderMaterial; key: 'pollen' | 'fireflies' | 'fall'; alpha: number }[] = [];
   private hemi!: THREE.HemisphereLight;
   private skyU!: Record<string, THREE.IUniform>;
   private cloudU: Record<string, THREE.IUniform>[] = [];
@@ -277,8 +279,12 @@ export class Stage {
   private fieldTex!: THREE.DataTexture;
   private waterFog?: THREE.IUniform<number>;
 
-  constructor(public world: IslandWorld, preset: Biome, public q: Quality, pixelRatio: number) {
+  /** Phase 5: the season's look (falling petals, leaves or snow; butterflies; drifting leaf colors). */
+  readonly season: SeasonLook;
+
+  constructor(public world: IslandWorld, preset: Biome, public q: Quality, pixelRatio: number, season?: SeasonLook) {
     this.biome = preset;
+    this.season = season ?? seasonLook(DEFAULT_PALETTE, 'spring');
     const b = this.biome;
     this.scene.fog = new THREE.FogExp2(b.fog, b.fogDensity * look().haze.density);
     this.scene.background = null;
@@ -360,7 +366,7 @@ export class Stage {
       (w.uFoam!.value as THREE.Color).set(0xffffff).lerp(colorOf(p.horizon), 0.2).multiplyScalar(0.5 + 0.5 * shared.uLight.value);
     }
     for (const a of this.ambientMats) {
-      a.mat.uniforms.uAlpha!.value = a.alpha * (a.key === 'pollen' ? p.pollen : p.fireflies);
+      a.mat.uniforms.uAlpha!.value = a.alpha * (a.key === 'pollen' ? p.pollen : a.key === 'fireflies' ? p.fireflies : 1);
     }
     if (this.envU) {
       (this.envU.a!.value as THREE.Color).set(p.zenith);
@@ -566,6 +572,8 @@ export class Stage {
       uContact: { value: this.contactTex },
       uSiteShade: this.siteShade,
       uHeal: this.heal,
+      uCover: shared.uCover,
+      uCover2: shared.uCover2,
     };
     this.uniforms = u;
     const mat = new THREE.MeshStandardMaterial({ roughness: 0.93, metalness: 0 });
@@ -602,6 +610,17 @@ export class Stage {
             float tired = (1.0 - uHeal) * smoothstep(0.38, 0.62, n2 * 0.6 + n3 * 0.4);
             col = mix(col, col * vec3(1.06, 0.92, 0.66) + vec3(0.03, 0.02, 0.0), tired * 0.75);
           }
+          // Phase 5: ground cover for the season (petals, fallen leaves, snow drifts): crisp little speckles
+          // that gather in clumps, a little on the path too.
+          float coverK = 0.0;
+          if (uCover.w > 0.0) {
+            float c1 = texture2D(uBrush, vPWorld.xz * 0.93 + 0.17).r;
+            float c2 = texture2D(uBrush, vPWorld.xz * 2.4 + 0.41).r;
+            float clump = smoothstep(0.32, 0.62, n1 * 0.6 + n2 * 0.4);
+            float cv = 0.5 + (c1 * 0.55 + c2 * 0.45 - 0.5) * 2.4;
+            float th = 0.8 - uCover.w * 0.34 * (0.4 + clump);
+            coverK = smoothstep(th, th + 0.02, cv);
+          }
           // Cliffs and steep slopes, with layered strata.
           float slope = 1.0 - clamp(vPNormal.y, 0.0, 1.0);
           float rock = smoothstep(0.2, 0.46, slope + (n2 - 0.5) * 0.14);
@@ -633,6 +652,7 @@ export class Stage {
           roadCol *= 0.92 + 0.26 * (1.0 - smoothstep(0.0, edge * 0.8, roadD));
           ` : ''}
           col = mix(col, roadCol, roadMask);
+          col = mix(col, mix(uCover.rgb, uCover2, step(0.5, texture2D(uBrush, vPWorld.xz * 3.1).r)), coverK * (1.0 - rock) * (1.0 - roadMask * 0.6));
           ${inkGround ? /* glsl */ `
           float inkEdge = smoothstep(edge - 0.2, edge - 0.08, roadD) * (1.0 - smoothstep(edge + 0.02, edge + 0.14, roadD));
           col = mix(col, vec3(0.12, 0.06, 0.035), inkEdge * ${f(G.pathInk)});
@@ -897,7 +917,7 @@ export class Stage {
     }
 
     // Flowers, in drifts.
-    const flowerCount = Math.floor(Math.min(1400, this.q.grass * 0.05 + 240) * Math.min(1, b.grassDensity + 0.25) * Math.max(area, 0.35));
+    const flowerCount = Math.floor(Math.min(1400, this.q.grass * 0.05 + 240) * Math.min(1, b.grassDensity + 0.25) * Math.max(area, 0.35) * (b.flowerDensity ?? 1));
     const fb = new MB();
     fb.cyl(0.012, 0.016, 0.34, 0x4f7a32, { p: [0, 0.17, 0] }, 4);
     const fbHead = new MB();
@@ -1125,11 +1145,14 @@ export class Stage {
     // Two layers that cross-fade with the time of day: pollen by day, fireflies at night.
     const world = this.world;
     type Cfg = { n: number; vel: [number, number, number]; wobble: number; pulse: number; size: number; color: number; gain: number; alpha: number; h: number; additive: boolean };
-    const cfgs: Record<'pollen' | 'fireflies', Cfg> = {
+    const fall = this.season.fall;
+    const cfgs: Record<'pollen' | 'fireflies' | 'fall', Cfg> = {
       pollen: { n: 120, vel: [0.35, 0.03, 0.14], wobble: 1.4, pulse: 0, size: 1.9, color: 0xffeeb8, gain: 1.5, alpha: 0.7, h: 10, additive: true },
       fireflies: { n: 260, vel: [0.1, 0.04, 0.06], wobble: 2.6, pulse: 1.4, size: 3.4, color: 0xd8ff9c, gain: 3.4, alpha: 0.95, h: 5, additive: true },
+      // Phase 5: the season's falling things (petals, leaves, snow), drifting down and across.
+      fall: { n: Math.round(340 * fall.amount), vel: [0.25 * fall.speed, -1.4 * fall.speed, 0.12 * fall.speed], wobble: 1.1, pulse: 0, size: fall.size, color: fall.color, gain: 1, alpha: 0.9, h: 14, additive: false },
     };
-    (['pollen', 'fireflies'] as const).forEach((key, li) => {
+    (fall.amount > 0 ? ['pollen', 'fireflies', 'fall'] as const : ['pollen', 'fireflies'] as const).forEach((key, li) => {
       const c = cfgs[key];
       const rng = makeRng(world.seed + 3 + li * 101);
       const n = Math.floor(c.n * look().ambient * this.q.ambient * Math.max((world.extW * world.extH) / LANTERNFALL_AREA, 0.4));
@@ -1231,7 +1254,7 @@ export class Stage {
       const mesh = this.instanced(g.geo, Mats.std, list.mats, list.tints.map((t) => new THREE.Color(t, t, t)), g.shadow, g.ink);
       mesh.castShadow = g.shadow;
     }
-    this.life = new Life(this.world);
+    this.life = new Life(this.world, this.season.snow > 0.3 ? null : this.season.drift, this.season.butterflies);
     this.scene.add(this.life.group);
     this.disposables.push(this.life);
     const lamps = staticLamps(this.world).slice(0, LAMPS);

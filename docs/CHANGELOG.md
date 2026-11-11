@@ -1,5 +1,29 @@
 # Changelog
 
+## Phase 5: Seasons, collections, decorating (2026-11-11) — stopped at art decision point A7
+- **Seasons from the calendar** (`src/core/clock.ts`): meteorological seasons, Northern or Southern hemisphere,
+  or a chosen season (Settings → Season). Re-checked every half minute while playing.
+- **What a season looks like** (`src/data/seasons.ts`, `src/core/seasonal.ts`): ground, grass, flowers, path,
+  water, fog, far peaks and grade move toward the season; deciduous crowns (oak, birch, cherry, maple, willow,
+  bush, gather trees) take one of three season colors per tree, evergreens a tint; snow settles on everything
+  that faces up (not on the caretaker or animals); ground cover speckles (petals, fallen leaves, snow);
+  petals, leaves or snow fall through the air; butterflies thin out and drifting leaves change color.
+- **A7 is not decided:** three candidate palettes (**Classic**, **Gentle**, **Bold**) switch live in Settings →
+  Season palette. Screenshots of all of them, both places, four seasons: `docs/phase5/README.md`.
+- **Seasonal ambience:** fuller dawn chorus in spring, loud summer nights, windier autumn with wind chimes at
+  home, hushed winter (no crickets, few birds, the stream half under ice).
+- **Seasonal finds** (8: one per place per season): a cherry sprig, a cicada shell, a red maple leaf, a
+  camellia; a bamboo shoot, a crane feather, a chestnut burr, a pine cone. Walk up and Look; a wordless card.
+- **The collection book** (book button or B): finds by place and season, animal friends met (derived), and
+  every poem and note found. Pictures are the game's own models rendered into thumbnails.
+- **Decorating v1** (sprout button or F, at home): 14 decorations offered by completed buildings and the
+  wind shrine; place, turn and remove; allowed ground only, with room, off the path, never in front of a site,
+  tree, seat or poem; a flood fill refuses anything that would cut off a tree, site, seat, find or way out.
+- **Building styles:** in decorate mode, walk up to any revealed building and change its style
+  (timber ↔ temple), free and changeable at any time, even before it is built.
+- **Save v7** (v6 migrates): season, hemisphere, palette, decorations and styles.
+- Tests 87 → 98 (`tests/phase5.test.ts`); the smoke test adds a seasons run.
+
 ## Pacing pass after the Phase 4 gate (2026-11-11)
 - Owner: "way too quick" (the whole journey in 1:30). **Building parts are cut into pieces**: each modelled part
   takes 1–8 units, and every unit lands one piece, bottom-up (footings, then sleepers, then logs; rafters, then

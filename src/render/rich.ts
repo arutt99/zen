@@ -192,7 +192,11 @@ export class Life {
   private V = new THREE.Vector3();
   private S = new THREE.Vector3(1, 1, 1);
 
-  constructor(private world: IslandWorld) {
+  /**
+   * `drift`: leaf colors for the season (empty keeps each tree's own; null = no drifting leaves, as in deep
+   * winter); `butterflies`: 0..1 for the season.
+   */
+  constructor(private world: IslandWorld, drift: readonly number[] | null = [], private butterflyK = 1) {
     const rng = makeRng(world.seed * 53 + 11);
     // Butterflies: a body and two wings that flap, each circling its own patch of meadow.
     const colors = [0xfaf3e4, 0xf3d36a, 0xa8c8ec, 0xf0a060, 0xfaf3e4, 0xe8b8d8];
@@ -229,7 +233,7 @@ export class Life {
       this.sources.push({ x: b.x, y: world.height(b.x, b.z) + (bb.min.y + (bb.max.y - bb.min.y) * 0.4) * b.scale, z: b.z, r: (bb.max.x - bb.min.x) * 0.38 * b.scale, ground: world.height(b.x, b.z) });
     }
     const leafGeo = new MB().box(0.09, 0.006, 0.055, [0xffffff, 0xffffff], {}).build({ off: true });
-    const n = Math.min(90, this.sources.length * 6);
+    const n = drift ? Math.min(90, this.sources.length * 6) : 0;
     this.leafMesh = new THREE.InstancedMesh(leafGeo, Mats.std, Math.max(1, n));
     this.leafMesh.count = n;
     this.leafMesh.frustumCulled = false;
@@ -240,7 +244,7 @@ export class Life {
       const l: Leaf = { x: 0, y: 0, z: 0, vy: 0, spin: 0, phase: rng() * 100, src, ground: 0 };
       this.respawn(l, rng, true);
       this.leaves.push(l);
-      this.leafMesh.setColorAt(i, col.set(LEAF_COLORS[kinds[src] ?? 'node'] ?? 0x8bbd55));
+      this.leafMesh.setColorAt(i, col.set(drift?.length ? drift[i % drift.length]! : LEAF_COLORS[kinds[src] ?? 'node'] ?? 0x8bbd55));
     }
     if (n > 0) this.group.add(this.leafMesh);
     this.rng = rng;
@@ -297,7 +301,7 @@ export class Life {
       const flap = Math.sin(time * b.flap + b.phase) * 0.9;
       b.wingL.rotation.z = flap;
       b.wingR.rotation.z = -flap;
-      b.obj.visible = day > 0.15;
+      b.obj.visible = day > 0.15 && (this.butterflies.indexOf(b) + 0.5) / this.butterflies.length < this.butterflyK;
       b.obj.scale.setScalar(clamp((day - 0.15) * 3));
     }
     for (let i = 0; i < this.leaves.length; i++) {

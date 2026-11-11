@@ -1,7 +1,7 @@
 # Moss & Bell
 
 A calm, open-ended caretaking game: restore an overgrown mountain valley one branch and stone at a
-time, watch it heal, follow a trail to a bamboo grove, and sit still when you want to. Phone and PC are equals, in the browser.
+time, watch it heal, follow a trail to a bamboo grove, decorate home through the seasons, and sit still when you want to. Phone and PC are equals, in the browser.
 
 - **The plan:** [`Moss_and_Bell_Plan_v2.md`](Moss_and_Bell_Plan_v2.md) (v1 kept for reference)
 - **Current phase and checklist:** [`TASKS.md`](TASKS.md)
@@ -34,7 +34,7 @@ repo Settings → Pages → Build and deployment → Source: **GitHub Actions**.
 npm run typecheck  # strict TypeScript
 npm test           # headless unit tests (sim, save, data), node:test
 npm run smoke      # browser smoke test at phone and laptop sizes (needs Playwright installed)
-npm run shots      # phase screenshot set into docs/phase4 (needs Playwright; slow with software GL)
+npm run shots      # phase screenshot set into docs/phase5 (needs Playwright; slow with software GL)
 ```
 
 CI (`.github/workflows/ci.yml`) runs typecheck, tests and build on every push and keeps the built
@@ -49,7 +49,9 @@ file as a downloadable artifact.
 | Travel | Walk out along a trail; or the map board (once a second place is found) | Same; on the map ←/→ and E |
 | Context action (sit, read, ring, rake, light, tea, map) | The round button that appears when useful | E / Space / Enter / gamepad A |
 | Zoom (two presets) | Pinch | Mouse wheel, `-`/`=`, bumpers |
-| Menu (quality, sound, time of day; `?trial` shows the old art trial) | ☰ button | Esc / Start |
+| Collection book (finds, friends, poems and notes) | Book button | B |
+| Decorate at home (place, turn, remove; a building's style) | Sprout button, then the tray; ⟳ turns | F, then E place/remove/style, R turn, Q put back |
+| Menu (quality, sound, season, hemisphere, season palette (A7 trial), time of day; `?trial` shows the old art trial) | ☰ button | Esc / Start |
 
 ## Engine
 
@@ -61,15 +63,16 @@ adapted; Lanternfall itself is untouched. `TASKS.md` lists which file came from 
 ```
 src/
   main.ts          boot, game loop, HUD wiring
-  core/            save (versioned, corrupt-safe), clock + time-of-day blending, seeded random + noise, frame pacing
+  core/            save (versioned, corrupt-safe), clock (seasons) + time-of-day blending, seasonal presets, seeded random + noise, frame pacing
   data/            places (layout, exits and arrivals, map board, sit spots, words, restoration props), buildings (+ kit styles), gathering
                    balance, feel, look presets, time-of-day presets and day cycles, characters, animals,
-                   rituals, words (opening, poems, notes), quality tiers, data validation
+                   rituals, words (opening, poems, notes), seasons (palettes on trial, A7), seasonal finds,
+                   decorations, quality tiers, data validation
                    (all tunable numbers live here)
   sim/             headless rules (no three.js): state (facts), progress (derived), core loop (beat,
-                   gather, deposit, regrowth, exits), gather nodes, animal wandering, pacing and journey bots, island geometry,
+                   gather, deposit, regrowth, exits), decorating rules, gather nodes, animal wandering, pacing and journey bots, island geometry,
                    proximity, walker
-  render/          engine + post chain, active look, painterly materials, model builder, decor (Zen kit),
+  render/          engine + post chain, active look, painterly materials, model builder, decor (Zen kit, seasonal finds), seasonal crowns + snow + ground cover, thumbnails,
                    stage, camera, caretaker, deer, gather nodes, building kits (shelter, garden, hall, bell
                    tower, wind shrine, tea house), restoration layer, crane, mist, effects, particles
   audio/           synth kit, audio engine (buses, sound bank, ambience loops), sound recipes, ambience mix

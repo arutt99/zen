@@ -11,6 +11,9 @@ import { CARETAKER, CHARACTER_STYLES, CARETAKER_HEIGHT, caretakerHeight } from '
 import { LOOKS, LOOK_IDS } from './looks';
 import { DAY_CYCLES, PRESETS } from './presets';
 import { QUALITY, QUALITY_TIERS } from './quality';
+import { DEFAULT_PALETTE, PALETTE_IDS, PALETTES, SEASON_IDS } from './seasons';
+import { FINDS } from './finds';
+import { DECORATE, DECORATIONS } from './decorations';
 
 /** Decor kinds the renderer knows (src/render/decor-models.ts). Kept here so sim/tests need no three.js. */
 export const DECOR_KINDS = [
@@ -21,6 +24,8 @@ export const DECOR_KINDS = [
   'old_gate', 'bramble', 'tall_weeds', 'flower_bed', 'iris', 'path_lantern', 'trail_gate_shut', 'trail_gate_open', 'poem_stone', 'note_post',
   // Phase 4: the travel map board, bamboo fences, fallen culms (grove overgrowth) and ferns.
   'map_board', 'fence_bamboo', 'fallen_bamboo', 'fern',
+  // Phase 5: seasonal finds.
+  'find_blossom', 'find_shell', 'find_leaf', 'find_camellia', 'find_shoot', 'find_feather', 'find_chestnut', 'find_pinecone',
 ] as const;
 
 const isColor = (n: unknown) => typeof n === 'number' && Number.isInteger(n) && n >= 0 && n <= 0xffffff;
@@ -212,5 +217,36 @@ export function validateData(): string[] {
     if (w.lines.length === 0 || w.lines.some((l) => !l.trim())) problems.push(`words ${key}: needs non-empty lines`);
     if (w.kind === 'poem' && w.lines.length !== 3) problems.push(`words ${key}: a poem has three lines`);
   }
+  // Phase 5: seasonal palettes (A7 candidates), finds and decorations.
+  if (!PALETTES[DEFAULT_PALETTE]) problems.push(`seasons: unknown default palette "${DEFAULT_PALETTE}"`);
+  for (const pid of PALETTE_IDS) {
+    const pal = PALETTES[pid];
+    if (!pal) { problems.push(`seasons: palette "${pid}" is missing`); continue; }
+    for (const sid of SEASON_IDS) {
+      const sl = pal.seasons[sid];
+      if (!sl) { problems.push(`seasons: palette ${pid} has no ${sid}`); continue; }
+      const cols = [...sl.ground, ...sl.grass, ...sl.flowers, sl.path, ...sl.water, sl.fog, sl.peak, ...sl.leaves, sl.evergreen, ...sl.cover, sl.fall.color, ...sl.drift];
+      if (!cols.every(isColor)) problems.push(`seasons: palette ${pid} ${sid} has a bad color`);
+      const unit = [sl.groundMix, sl.grassMix, sl.pathMix, sl.waterMix, sl.fogMix, sl.leafMix, sl.evergreenMix, sl.snow, sl.coverAmount, sl.fall.amount, sl.butterflies];
+      if (!unit.every((v) => v >= 0 && v <= 1)) problems.push(`seasons: palette ${pid} ${sid} has an amount outside 0..1`);
+      if (!(sl.grassDensity > 0) || !(sl.flowerDensity >= 0) || !(sl.sat > 0)) problems.push(`seasons: palette ${pid} ${sid} has a bad density or saturation`);
+    }
+  }
+  for (const [id, fd] of Object.entries(FINDS)) {
+    if (fd.id !== id) problems.push(`find ${id}: id "${fd.id}" does not match its key`);
+    const pl = PLACES[fd.place];
+    if (!pl) { problems.push(`find ${id}: unknown place "${fd.place}"`); continue; }
+    if (!(SEASON_IDS as readonly string[]).includes(fd.season)) problems.push(`find ${id}: unknown season "${fd.season}"`);
+    if (!kinds.has(fd.kind)) problems.push(`find ${id}: unknown kind "${fd.kind}"`);
+    if (Math.abs(fd.x) > pl.halfW - 1 || Math.abs(fd.z) > pl.halfH - 1) problems.push(`find ${id}: outside the valley floor`);
+    if (WORDS[id]) problems.push(`find ${id}: shares an id with a word`);
+  }
+  for (const [id, d] of Object.entries(DECORATIONS)) {
+    if (d.id !== id) problems.push(`decoration ${id}: id "${d.id}" does not match its key`);
+    if (!kinds.has(d.kind)) problems.push(`decoration ${id}: unknown kind "${d.kind}"`);
+    if (!BUILDINGS[d.from]) problems.push(`decoration ${id}: unknown building "${d.from}"`);
+    if (!(d.room > 0) || !(d.solid >= 0) || d.solid > d.room) problems.push(`decoration ${id}: room must be positive and at least its solid radius`);
+  }
+  for (const pid of Object.keys(DECORATE)) if (!PLACES[pid as keyof typeof PLACES]) problems.push(`decorate: unknown place "${pid}"`);
   return problems;
 }
