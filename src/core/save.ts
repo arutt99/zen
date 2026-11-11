@@ -2,8 +2,10 @@
 // Corrupt or unknown data falls back to a fresh save instead of crashing.
 
 import type { QualityTier } from '../data/quality';
+import { BUILDINGS, unitsForOldParts, type BuildingId } from '../data/buildings';
+import { MATERIALS } from '../data/gathering';
 
-export const SAVE_VERSION = 5;
+export const SAVE_VERSION = 6;
 export const SAVE_KEY = 'moss-and-bell/save';
 
 export interface SaveSettings {
@@ -71,6 +73,20 @@ const migrations: Record<number, (old: Record<string, unknown>) => Record<string
   3: (old) => ({ ...old, v: 4, collection: [], opened: true }),
   // v4 (Phase 3) had only the home valley: anyone who had started had reached it.
   4: (old) => ({ ...old, v: 5, places: old.opened === true ? ['home_valley'] : [] }),
+  // v5 (Phase 4) counted one unit per part. The pacing pass cut parts into pieces: what was built stays
+  // built (and whole), so each old count becomes the units of the parts it had built.
+  5: (old) => {
+    const deposits: Record<string, Counts> = {};
+    for (const [site, c] of Object.entries(isObj(old.deposits) ? old.deposits : {})) {
+      const b = BUILDINGS[site as BuildingId];
+      const was = counts(c);
+      if (!b) { deposits[site] = was; continue; }
+      const now: Counts = {};
+      for (const m of MATERIALS) if (was[m]) now[m] = unitsForOldParts(b, m, was[m]);
+      deposits[site] = now;
+    }
+    return { ...old, v: 6, deposits };
+  },
 };
 
 const isNum = (n: unknown): n is number => typeof n === 'number' && Number.isFinite(n);

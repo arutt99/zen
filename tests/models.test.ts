@@ -17,7 +17,7 @@ import { CHARACTER_STYLES } from '../src/data/characters';
 import { LOOK_IDS } from '../src/data/looks';
 import { CaretakerView } from '../src/render/caretaker';
 import { useLook } from '../src/render/look';
-import { KIT_PARTS, partGeo } from '../src/render/kits';
+import { cutPieces, KIT_PARTS, partGeo, pieceGeo } from '../src/render/kits';
 import { TreeView, BoulderView } from '../src/render/nodes';
 import { GatherNode } from '../src/sim/nodes';
 import { initMaterials } from '../src/render/materials';
@@ -77,5 +77,26 @@ test('node views lose a visible piece with every unit and come back as they regr
     n.update(1000);
     for (let i = 0; i < 600; i++) v.update(1 / 60, i / 60);
     assert.equal(shown(), counts[0], `${kind} grows back to full`);
+  }
+});
+
+test('pacing pass: every part cuts into its pieces in every look and style, and the pieces add up to the part', () => {
+  for (const l of LOOK_IDS) {
+    useLook(l);
+    for (const b of Object.values(BUILDINGS)) for (const style of KIT_STYLES) for (const p of b.authored) {
+      const n = p.pieces ?? 1;
+      const whole = partGeo(b.kit, p.id, style);
+      const cut = cutPieces(whole.solid, n);
+      assert.equal(cut.length, n, `${l}/${style}/${b.id}/${p.id}: ${n} pieces wanted, ${cut.length} possible`);
+      const sum = cut.reduce((s, g) => s + g.getAttribute('position').count, 0);
+      if (n > 1) assert.equal(sum, whole.solid.getAttribute('position').count, `${b.id}/${p.id}`);
+      // Bottom-up: no piece starts below the one before it by more than a hair.
+      for (let i = 1; i < cut.length; i++) assert.ok(cut[i]!.boundingBox!.min.y >= cut[i - 1]!.boundingBox!.min.y - 0.02, `${b.id}/${p.id} piece ${i}`);
+      // The last piece carries the part's extras (lantern, bell, water pipe, steam).
+      const last = pieceGeo(b.kit, p.id, style, n - 1, n);
+      assert.equal(!!last.swing, !!whole.swing);
+      assert.equal(!!last.rocker, !!whole.rocker);
+      assert.equal(!!last.patterns, !!whole.patterns);
+    }
   }
 });

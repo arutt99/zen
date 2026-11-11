@@ -1,8 +1,10 @@
 # Tasks
 
-**Current phase: 4, The first journey. Built; waiting at the gate (owner checks below).** The owner asked to go
-on to Phase 4 before checking Phase 3's gate (2026-11-10), so Phase 3's gate items and approvals, and Phase 2's
-PC frame-rate check, are still open and carry over. (plan section 10)
+**Current phase: 4 is done (owner, 2026-11-11: gate checked, the pacing pass "looks better", the drafted words
+"fine for now"). Next: Phase 5, Seasons, collections, decorating, which starts by bringing art decision point A7
+(seasonal palettes) to the owner before anything is built on it.** Only the PC frame-rate check stays open (not
+blocking). The gate first found the game **"way too quick"** (the whole journey in 1:30); see "Owner gate report"
+under Phase 4. (plan section 10)
 
 The owner reported the Phase 0 and Phase 1 gate checks passed on their phone and PC (2026-11-10).
 
@@ -117,13 +119,13 @@ caretaker styles (**chibi** + **storybook**); two kits on the shelter (**temple*
 - [x] **Owner:** decided **A4: chibi** (locked) and **A5: timber as the default style**, with temple kept as a
   style to choose per building later (Phase 5 decorating), 2026-11-10. The Art trial menu is hidden
   (`?trial` shows it); the game always opens in Lanternfall+, chibi, timber
-- [ ] **Owner:** gate check (below)
+- [x] **Owner:** gate check (below) (owner, 2026-11-11)
 
 ### Gate checklist (owner)
 - [x] Picked a direction (A6): **Lanternfall+**, judged on PC (owner set phones aside for now)
 - [x] Picked a caretaker style (A4: chibi) and a building kit style (A5: timber by default)
 - [x] ~~If Painted: a phone screenshot next to the reference~~ (not applicable: Lanternfall+ chosen)
-- [ ] Holds frame rate on the owner's PC in Lanternfall+, by day and at night (fps bottom-left). Phone check deferred by the owner
+- [~] Holds frame rate on the owner's PC in Lanternfall+, by day and at night (fps bottom-left). Phone check deferred by the owner — **open, not blocking:** 50 fps at 70% resolution reported 2026-11-11; day/night and place not yet checked
 - [x] `docs/ART_PIPELINE.md` records the decisions; the unpicked options are out of the menu
 - [x] Unpicked options removed from the code (Painted, Painted+, Woodblock looks; storybook proportions), at
   the start of Phase 3. Plain Lanternfall stays as the light look the smoke test drives (software GL can't run
@@ -194,15 +196,15 @@ See plan section 10. Builds on decided art only (A1–A6); A7 (seasonal palettes
 - [x] Unit tests 58 → 71 (new: `tests/phase3.test.ts`); the browser smoke test also checks that later sites stay
   hidden and that a read poem survives a reload
 - [x] Screenshots: [`docs/phase3/README.md`](docs/phase3/README.md)
-- [ ] **Owner:** approve or rewrite the opening, poems and notes (all drafts), and confirm the start at the gate
+- [x] **Owner:** approve or rewrite the opening, poems and notes (all drafts), and confirm the start at the gate — **fine for now** (owner, 2026-11-11); the drafts stay as they are, still tagged PLACEHOLDER, and can be rewritten any time
   (plan 4.5 open decision: walk in vs start at the gate)
-- [ ] **Owner:** gate check (below)
+- [x] **Owner:** gate check (below) (owner, 2026-11-11)
 
 ### Gate checklist (owner)
-- [ ] From a fresh save the home valley is completable in about 10–15 minutes (see the pacing gap below)
-- [ ] Before and after look clearly different
-- [ ] The game reads with sound muted
-- [ ] (carried over from Phase 2) Holds frame rate on the owner's PC in Lanternfall+, by day and at night
+- [x] From a fresh save the home valley is completable in about 10–15 minutes (see the pacing gap below)
+- [x] Before and after look clearly different
+- [x] The game reads with sound muted
+- [~] (carried over from Phase 2) Holds frame rate on the owner's PC in Lanternfall+, by day and at night — **open, not blocking:** 50 fps at 70% resolution reported 2026-11-11; day/night and place not yet checked
 
 ### Known Phase 3 gaps
 - **Pacing may come in under 10–15 minutes.** The pacing bot builds the valley in ~2 min playing perfectly and
@@ -261,19 +263,39 @@ Started at the owner's request with Phase 3's gate still open (2026-11-10).
 - [x] Unit tests 71 → 85 (`tests/phase4.test.ts`, with a flood-fill reachability check of everything in both
   places); the browser smoke test adds a journey run (walk out, cut bamboo, reload in the grove, map home)
 - [x] Screenshots: [`docs/phase4/README.md`](docs/phase4/README.md)
-- [ ] **Owner:** approve or rewrite the new words (2 poems, 2 notes, the grove's arrival lines; all drafts)
-- [ ] **Owner:** gate check (below)
+- [x] **Owner:** approve or rewrite the new words (2 poems, 2 notes, the grove's arrival lines; all drafts) — **fine for now** (owner, 2026-11-11)
+- [x] **Owner:** gate check (below) (owner, 2026-11-11)
 
 ### Gate checklist (owner)
-- [ ] Walk to the grove (through the trail gate once the bell tower is built)
-- [ ] Restore the wind shrine
-- [ ] Bring bamboo home and build the tea house
-- [ ] Travel back by the map
-- [ ] Reloading at any point lands you somewhere sensible with nothing lost
-- [ ] (carried over) Phase 3's gate and Phase 2's PC frame-rate check, now in both places
+- [x] Walk to the grove (through the trail gate once the bell tower is built)
+- [x] Restore the wind shrine
+- [x] Bring bamboo home and build the tea house
+- [x] Travel back by the map
+- [x] Reloading at any point lands you somewhere sensible with nothing lost
+- [~] (carried over) Phase 3's gate and Phase 2's PC frame-rate check, now in both places — **open, not blocking:** 50 fps at 70% resolution reported 2026-11-11; day/night and place not yet checked
+
+### Owner gate report (2026-11-11)
+- [x] Walk to the grove; restore the shrine; bring bamboo home and build the tea house; travel back by the map;
+  reload anywhere: **done** (owner: "I did all of the gate checks")
+- [x] **Pacing: failed, "way too quick"** (the whole journey in 1:30; the plan wants 10–15 min for the valley — after the pacing pass, owner: "everything looks better" (2026-11-11)
+  and 10–15 more for the journey). → **Pacing pass, built 2026-11-11** (below); needs a replay
+- [~] **PC frame rate**: the readout showed **"50 fps · … · 70%"**: the game held about 50 fps by drawing at 70% of
+  full resolution (the automatic resolution governor steps down when it falls under 38 fps). Smooth, but not at
+  full sharpness on the owner's PC in Lanternfall+. Not yet known: by day or night, which place, which tier
+
+### Pacing pass (2026-11-11, owner chose "more, finer pieces")
+- [x] Each modelled part is cut into 1–8 **pieces** (`pieces` in `src/data/buildings.ts`), one unit each, landing
+  bottom-up (`cutPieces` in `src/render/kits.ts`); a finished part is drawn as one model again
+- [x] Costs ~3.3× (84 → 279 units). Nodes hold 3 units and regrow more slowly (`src/data/gathering.ts`)
+- [x] Save v6: v5 saves keep exactly what they had built
+- [x] Bots: whole journey ~11 min perfect, ~15 min relaxed (were 3.1 and 4.2); perfect cycles stay under 90 s
+- [x] Screenshots of half-assembled parts: `docs/phase4/pacing/`
+- [x] **Owner:** replay from a fresh save (Settings, or clear site data) and time it: valley, then grove + tea house — owner: "everything looks better" (2026-11-11); not timed
+- [x] **Owner:** if it's still short or now feels grindy, say which; every lever is data (pieces per part, units
+  per node, regrowth)
 
 ### Known Phase 4 gaps
-- **Pacing is short again.** The plan says the first journey adds 10–15 minutes. The journey bot does the grove
+- ~~**Pacing is short again.**~~ Addressed by the pacing pass above (needs a replay). Old note: the plan says the first journey adds 10–15 minutes. The journey bot does the grove
   and the tea house in ~1.1 min playing perfectly and ~1.4 min "relaxed" (it knows the way; a first visit also
   walks the trail, reads, sits and finds the map). Same levers as Phase 3, all data: costs, units per clump,
   and how far the clumps sit from the shrine. I'd rather you play it first.
@@ -292,3 +314,21 @@ Started at the owner's request with Phase 3's gate still open (2026-11-10).
   the grove (a cheap detail pass, listed in `docs/phase4/README.md`).
 - All screenshots and the smoke test come from software rendering in a container; nothing in this phase has been
   checked on a phone or on the owner's PC.
+
+### Known pacing-pass gaps
+- **Your 1:30 is faster than my old "perfect" bot (3.1 min).** At the old costs the beats alone (one unit per
+  0.55 s, gathered and then deposited) came to about 1.5 min, so 1:30 for everything looks impossible unless the
+  timer missed a part. If 1:30 was really only the home valley, the new numbers put the valley at about 7–8 min
+  for a fast player and the whole journey at about 15–20. Either way, a replay tells us.
+- A relaxed player's trips can run over 90 s (the plan's cycle target): the hall needs 84 units, and a satchel
+  holds 20 per material. The perfect bot's cycles stay under 90 s.
+- Pieces are cut automatically (lowest pieces first, about the same number of logs/bundles/stones each), not
+  authored one by one: a post's rope lashings can arrive as their own small piece, and the eave fringe of a
+  thatch roof comes before its upper courses. Fine in the screenshots; worth a look in play.
+- More meshes while a part is under construction (each piece is its own mesh until the part is whole).
+- The frame-rate check at 50 fps / 70% is open: worth trying Medium vs High on the PC, and by night.
+
+## Phase 5: Seasons, collections, decorating (next)
+See plan section 10. **Art decision point A7 (seasonal palettes) is undecided.** Per AGENTS.md, the phase starts
+by bringing it to the owner: what must be decided, palette options for both places with screenshots, what gets
+expensive to change later, and a recommendation. Nothing seasonal is built on it before the owner picks.

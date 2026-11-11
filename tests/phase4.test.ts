@@ -6,7 +6,7 @@ import assert from 'node:assert/strict';
 import { freshSave, parseSave, SAVE_VERSION } from '../src/core/save';
 import { ANIMALS } from '../src/data/animals';
 import { BUILDINGS, buildingCost } from '../src/data/buildings';
-import { MATERIALS, NODE_KINDS } from '../src/data/gathering';
+import { MATERIALS, NODE_KINDS, SATCHEL_CAP } from '../src/data/gathering';
 import { PLACE_IDS, PLACES } from '../src/data/places';
 import { DAY_CYCLES, PRESETS } from '../src/data/presets';
 import { RITUALS } from '../src/data/rituals';
@@ -15,7 +15,7 @@ import { validateData } from '../src/data/validate';
 import { IslandWorld } from '../src/sim/island';
 import { CoreLoop, type GroundQuery } from '../src/sim/loop';
 import { runJourneyBot } from '../src/sim/pacing-bot';
-import { animalsPresent, completedAll, exitOpen, growthShown, mapUnlocked, restoration, siteOpen } from '../src/sim/progress';
+import { animalsPresent, completedAll, isComplete, partsBuilt, exitOpen, growthShown, mapUnlocked, restoration, siteOpen } from '../src/sim/progress';
 import { GameState } from '../src/sim/state';
 import { reachFrom } from './helpers/reach';
 
@@ -30,12 +30,15 @@ test('data is valid with the grove in it', () => {
   assert.deepEqual(PLACE_IDS, ['home_valley', 'bamboo_grove']);
 });
 
-test('bamboo is a material that only grows in the grove; the plan 9.6 tea house costs 6 wood, 8 bamboo', () => {
+test('bamboo is a material that only grows in the grove; the plan 9.6 tea house costs 6 wood, 8 bamboo parts (cut into pieces), one satchel of bamboo', () => {
   assert.ok(MATERIALS.includes('bamboo'));
   assert.equal(NODE_KINDS.bamboo.material, 'bamboo');
   assert.ok(grove.nodes.some((n) => n.kind === 'bamboo'));
   assert.ok(!home.nodes.some((n) => n.kind === 'bamboo'));
-  assert.deepEqual(buildingCost(BUILDINGS.tea_house), { wood: 6, bamboo: 8 });
+  assert.deepEqual(BUILDINGS.tea_house.authored.filter((p) => p.material === 'bamboo').length, 8);
+  assert.deepEqual(BUILDINGS.tea_house.authored.filter((p) => p.material === 'wood').length, 6);
+  // Bamboo comes from another place: the tea house never needs more than one satchel of it.
+  assert.ok(buildingCost(BUILDINGS.tea_house).bamboo! <= SATCHEL_CAP);
   assert.equal(BUILDINGS.tea_house.place, 'home_valley');
   assert.equal(BUILDINGS.wind_shrine.place, 'bamboo_grove');
   // Everything the shrine needs grows in the grove.
@@ -176,7 +179,7 @@ test('the grove has its own light along the same day, and its own words', () => 
 });
 
 test('save v5: places are kept and repaired; v4 saves migrate (a started game has reached home)', () => {
-  assert.equal(SAVE_VERSION, 5);
+  assert.equal(SAVE_VERSION, 6);
   assert.deepEqual(freshSave().places, []);
   const v4 = { v: 4, opened: true, at: { place: 'home_valley', x: 1, z: 2 }, deposits: { bell_tower: { wood: 10, stone: 8 } } };
   const m = parseSave(JSON.stringify(v4));
@@ -199,4 +202,26 @@ test('journey bot: home valley → trail → wind shrine + bamboo → back → t
   const fmt = (r: typeof perfect) => `home ${(r.legs.home / 60).toFixed(1)} min, grove leg ${((r.legs.grove - r.legs.home) / 60).toFixed(1)} min, tea house leg ${((r.legs.teaHouse - r.legs.grove) / 60).toFixed(1)} min`;
   console.log(`   journey bot, perfect: ${fmt(perfect)}`);
   console.log(`   journey bot, relaxed: ${fmt(relaxed)}`);
+  // Pacing pass (2026-11-11): the plan's 20–30 minutes is for a first visit; a relaxed bot that knows the way
+  // should land somewhat under it, and a perfect one well under, but neither in a couple of minutes.
+  assert.ok(perfect.legs.teaHouse > 8 * 60, `perfect journey ${(perfect.legs.teaHouse / 60).toFixed(1)} min`);
+  assert.ok(relaxed.legs.teaHouse > 11 * 60 && relaxed.legs.teaHouse < 30 * 60, `relaxed journey ${(relaxed.legs.teaHouse / 60).toFixed(1)} min`);
+});
+
+test('save v6: a v5 save keeps exactly the parts it had built, now counted in pieces (pacing pass)', () => {
+  const v5 = { v: 5, places: ['home_valley', 'bamboo_grove'], opened: true, at: { place: 'home_valley', x: 1, z: 2 },
+    deposits: { shelter: { wood: 6 }, gravel_garden: { wood: 2, stone: 3 }, wind_shrine: { stone: 4, bamboo: 8 }, mystery: { wood: 2 } } };
+  const { data, recovered } = parseSave(JSON.stringify(v5));
+  assert.equal(recovered, null);
+  const st = new GameState([home, grove], data);
+  assert.ok(isComplete(BUILDINGS.shelter, st.deposits.shelter!), 'a finished shelter stays finished');
+  assert.ok(isComplete(BUILDINGS.wind_shrine, st.deposits.wind_shrine!), 'a restored shrine stays restored');
+  // The garden had its first 2 wood and 3 stone parts: those parts are whole, nothing after them.
+  const built = partsBuilt(BUILDINGS.gravel_garden, st.deposits.gravel_garden!);
+  const whole = new Set(BUILDINGS.gravel_garden.parts.filter((_, i) => built[i]).map((p) => p.id));
+  const authored = BUILDINGS.gravel_garden.authored;
+  const expect = new Set([...authored.filter((p) => p.material === 'wood').slice(0, 2), ...authored.filter((p) => p.material === 'stone').slice(0, 3)].map((p) => p.id));
+  assert.deepEqual([...whole].sort(), [...expect].sort());
+  BUILDINGS.gravel_garden.parts.forEach((p, i) => { if (expect.has(p.id)) assert.ok(built[i], `${p.id} piece ${p.piece}`); });
+  assert.deepEqual(data.deposits.mystery, { wood: 2 }, 'unknown sites pass through (sim/state drops them on load)');
 });

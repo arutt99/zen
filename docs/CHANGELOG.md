@@ -1,5 +1,18 @@
 # Changelog
 
+## Pacing pass after the Phase 4 gate (2026-11-11)
+- Owner: "way too quick" (the whole journey in 1:30). **Building parts are cut into pieces**: each modelled part
+  takes 1–8 units, and every unit lands one piece, bottom-up (footings, then sleepers, then logs; rafters, then
+  thatch from the eave up), so nothing jumps from 0 to 100%. Once a part's pieces have all settled, it is drawn
+  as one model again, so a finished building costs no more to draw than before.
+- About 3.3× the units in all (84 → 279). Trees, boulders and bamboo clumps hold 3 units (were 5, 5, 4) and
+  regrow more slowly, so gathering ranges further. The tea house needs at most one satchel of bamboo.
+- Bots: perfect 3.1 → ~11 min for the whole journey, relaxed 4.2 → ~15 min. The relaxed bot's walking got a
+  progress watchdog (it could circle in a pocket by the pond).
+- **Save v6**: a v5 save keeps exactly what it had built (old part counts become the units of those parts).
+- Tests 85 → 87: pieces in every look and style, bottom-up, extras on the last piece; v5 → v6 migration;
+  pacing floors. New screenshots of half-assembled parts in `docs/phase4/pacing/`.
+
 ## Phase 4: The first journey (2026-11-10)
 - **Places you travel between:** the game now builds one place at a time and fades between them; facts, the
   caretaker, camera, HUD and settings carry over. Travel saves on both sides.

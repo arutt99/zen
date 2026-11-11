@@ -310,6 +310,13 @@ Rule of thumb: about 5 units per tree and 4–6 per boulder, about 3 s per node,
 
 The home valley alone takes about 10–15 minutes including walking and sitting, and the first journey adds 10–15. Pacing is meant to feel unhurried, not long.
 
+**Pacing pass (owner, 2026-11-11: "way too quick", the whole journey in 1:30).** The parts in the table above are
+the modelled parts; each is now cut into 1–8 **pieces**, one unit each, landing bottom-up, so one unit still adds
+one visible piece. Trees, boulders and bamboo clumps hold 3 units and regrow more slowly. Costs today (in
+`src/data/buildings.ts`): shelter 20 wood; gravel garden 12 wood, 24 stone; hall 56 wood, 28 stone; bell tower
+34 wood, 19 stone; wind shrine 7 stone, 39 bamboo; tea house 20 wood, 20 bamboo (one satchel of bamboo, so
+one trip home). The bots: about 11 min for everything playing perfectly, about 15 min "relaxed".
+
 ---
 
 ## 10. Phases

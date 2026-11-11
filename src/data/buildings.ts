@@ -41,6 +41,19 @@ export interface PartDef {
   material: MaterialId;
   /** The earlier part (same material) this one rests on; omitted = it stands on the ground. */
   on?: string;
+  /**
+   * Pacing pass (2026-11-11, owner: "way too quick"): how many units the part takes. The part's model is
+   * cut into this many pieces, bottom-up (src/render/kits.ts), and each unit delivered lands one piece, so
+   * every unit still shows (plan 3.3: one visible piece per unit). Default 1.
+   */
+  pieces?: number;
+}
+
+/** One unit of cost: one piece of an authored part. `parts` on a building is a list of these. */
+export interface UnitPart extends PartDef {
+  /** Which piece of the part this is (0-based), and how many it has. Piece k > 0 rests on piece k - 1. */
+  piece: number;
+  pieces: number;
 }
 
 export interface BuildingDef {
@@ -51,8 +64,13 @@ export interface BuildingDef {
   kit: string;
   /** Buildings that must be complete before this site reveals itself (plan 3.3). */
   requires: BuildingId[];
-  /** Build order. The cost is derived from it: one unit of the part's material per part. */
-  parts: PartDef[];
+  /**
+   * Build order, one entry per unit (each authored part expanded into its pieces). The cost is derived
+   * from it: one unit of the part's material per entry.
+   */
+  parts: UnitPart[];
+  /** The parts as authored (one per model), before they are cut into pieces. */
+  authored: PartDef[];
   /** How much this building adds to its place's restoration level (0..1) once complete. */
   restoration: number;
   /** Collision radius of the finished footprint, metres. */
@@ -61,7 +79,9 @@ export interface BuildingDef {
   siteRadius: number;
 }
 
-export const BUILDINGS: Record<BuildingId, BuildingDef> = {
+type AuthoredBuilding = Omit<BuildingDef, 'parts' | 'authored'> & { parts: PartDef[] };
+
+const AUTHORED: Record<BuildingId, AuthoredBuilding> = {
   // Plan 9.6: 6 wood, ~30 s of gathering. Response: mist lifts from the clearing.
   shelter: {
     id: 'shelter',
@@ -70,12 +90,12 @@ export const BUILDINGS: Record<BuildingId, BuildingDef> = {
     kit: 'shelter_kit',
     requires: [],
     parts: [
-      { id: 'deck', material: 'wood' },
-      { id: 'post_back_left', material: 'wood', on: 'deck' },
-      { id: 'post_back_right', material: 'wood', on: 'deck' },
-      { id: 'post_front_left', material: 'wood', on: 'deck' },
-      { id: 'post_front_right', material: 'wood', on: 'deck' },
-      { id: 'roof', material: 'wood', on: 'post_front_right' },
+      { id: 'deck', material: 'wood', pieces: 5 },
+      { id: 'post_back_left', material: 'wood', on: 'deck', pieces: 3 },
+      { id: 'post_back_right', material: 'wood', on: 'deck', pieces: 3 },
+      { id: 'post_front_left', material: 'wood', on: 'deck', pieces: 2 },
+      { id: 'post_front_right', material: 'wood', on: 'deck', pieces: 2 },
+      { id: 'roof', material: 'wood', on: 'post_front_right', pieces: 5 },
     ],
     restoration: 0.2,
     solidRadius: 1.55,
@@ -89,16 +109,16 @@ export const BUILDINGS: Record<BuildingId, BuildingDef> = {
     kit: 'garden_kit',
     requires: ['shelter'],
     parts: [
-      { id: 'gravel_bed', material: 'stone' },
-      { id: 'border_left', material: 'wood' },
-      { id: 'border_right', material: 'wood' },
-      { id: 'rock_tall', material: 'stone', on: 'gravel_bed' },
-      { id: 'edging_front', material: 'stone' },
-      { id: 'edging_back', material: 'stone' },
-      { id: 'rock_low', material: 'stone', on: 'gravel_bed' },
-      { id: 'bench', material: 'wood' },
-      { id: 'rock_flat', material: 'stone', on: 'gravel_bed' },
-      { id: 'rake', material: 'wood', on: 'border_right' },
+      { id: 'gravel_bed', material: 'stone', pieces: 6 },
+      { id: 'border_left', material: 'wood', pieces: 3 },
+      { id: 'border_right', material: 'wood', pieces: 3 },
+      { id: 'rock_tall', material: 'stone', on: 'gravel_bed', pieces: 2 },
+      { id: 'edging_front', material: 'stone', pieces: 6 },
+      { id: 'edging_back', material: 'stone', pieces: 6 },
+      { id: 'rock_low', material: 'stone', on: 'gravel_bed', pieces: 2 },
+      { id: 'bench', material: 'wood', pieces: 2 },
+      { id: 'rock_flat', material: 'stone', on: 'gravel_bed', pieces: 2 },
+      { id: 'rake', material: 'wood', on: 'border_right', pieces: 4 },
     ],
     restoration: 0.25,
     solidRadius: 2.2,
@@ -112,12 +132,12 @@ export const BUILDINGS: Record<BuildingId, BuildingDef> = {
     kit: 'hall_kit',
     requires: ['gravel_garden'],
     parts: [
-      { id: 'plinth_back', material: 'stone' },
-      { id: 'plinth_left', material: 'stone' },
-      { id: 'plinth_right', material: 'stone' },
-      { id: 'plinth_front', material: 'stone' },
-      { id: 'floor_back', material: 'wood' },
-      { id: 'floor_front', material: 'wood' },
+      { id: 'plinth_back', material: 'stone', pieces: 6 },
+      { id: 'plinth_left', material: 'stone', pieces: 4 },
+      { id: 'plinth_right', material: 'stone', pieces: 4 },
+      { id: 'plinth_front', material: 'stone', pieces: 6 },
+      { id: 'floor_back', material: 'wood', pieces: 6 },
+      { id: 'floor_front', material: 'wood', pieces: 6 },
       { id: 'step_lower', material: 'stone' },
       { id: 'step_upper', material: 'stone', on: 'step_lower' },
       { id: 'post_back_left', material: 'wood', on: 'floor_back' },
@@ -126,14 +146,14 @@ export const BUILDINGS: Record<BuildingId, BuildingDef> = {
       { id: 'post_mid_right', material: 'wood', on: 'floor_back' },
       { id: 'post_front_left', material: 'wood', on: 'floor_front' },
       { id: 'post_front_right', material: 'wood', on: 'floor_front' },
-      { id: 'wall_back', material: 'wood', on: 'post_back_right' },
-      { id: 'wall_left', material: 'wood', on: 'post_front_left' },
-      { id: 'wall_right', material: 'wood', on: 'post_front_right' },
-      { id: 'roof_back', material: 'wood', on: 'post_front_right' },
-      { id: 'roof_front', material: 'wood', on: 'post_front_right' },
-      { id: 'ridge', material: 'wood', on: 'roof_front' },
-      { id: 'path_near', material: 'stone' },
-      { id: 'path_far', material: 'stone' },
+      { id: 'wall_back', material: 'wood', on: 'post_back_right', pieces: 7 },
+      { id: 'wall_left', material: 'wood', on: 'post_front_left', pieces: 6 },
+      { id: 'wall_right', material: 'wood', on: 'post_front_right', pieces: 6 },
+      { id: 'roof_back', material: 'wood', on: 'post_front_right', pieces: 8 },
+      { id: 'roof_front', material: 'wood', on: 'post_front_right', pieces: 8 },
+      { id: 'ridge', material: 'wood', on: 'roof_front', pieces: 3 },
+      { id: 'path_near', material: 'stone', pieces: 2 },
+      { id: 'path_far', material: 'stone', pieces: 2 },
       { id: 'lantern_left', material: 'stone' },
       { id: 'lantern_right', material: 'stone' },
     ],
@@ -149,23 +169,23 @@ export const BUILDINGS: Record<BuildingId, BuildingDef> = {
     kit: 'tower_kit',
     requires: ['meditation_hall'],
     parts: [
-      { id: 'paving_back', material: 'stone' },
-      { id: 'paving_left', material: 'stone' },
-      { id: 'paving_right', material: 'stone' },
-      { id: 'paving_front', material: 'stone' },
-      { id: 'sill', material: 'wood' },
+      { id: 'paving_back', material: 'stone', pieces: 4 },
+      { id: 'paving_left', material: 'stone', pieces: 3 },
+      { id: 'paving_right', material: 'stone', pieces: 3 },
+      { id: 'paving_front', material: 'stone', pieces: 4 },
+      { id: 'sill', material: 'wood', pieces: 6 },
       { id: 'post_back_left', material: 'wood', on: 'sill' },
       { id: 'post_back_right', material: 'wood', on: 'sill' },
       { id: 'post_front_left', material: 'wood', on: 'sill' },
       { id: 'post_front_right', material: 'wood', on: 'sill' },
-      { id: 'braces', material: 'wood', on: 'post_front_right' },
-      { id: 'beam_bell', material: 'wood', on: 'braces' },
+      { id: 'braces', material: 'wood', on: 'post_front_right', pieces: 4 },
+      { id: 'beam_bell', material: 'wood', on: 'braces', pieces: 4 },
       { id: 'striker', material: 'wood', on: 'beam_bell' },
-      { id: 'roof_back', material: 'wood', on: 'beam_bell' },
-      { id: 'roof_front', material: 'wood', on: 'beam_bell' },
+      { id: 'roof_back', material: 'wood', on: 'beam_bell', pieces: 7 },
+      { id: 'roof_front', material: 'wood', on: 'beam_bell', pieces: 8 },
       { id: 'step_a', material: 'stone' },
       { id: 'step_b', material: 'stone' },
-      { id: 'basin', material: 'stone' },
+      { id: 'basin', material: 'stone', pieces: 2 },
       { id: 'lantern', material: 'stone' },
     ],
     restoration: 0.25,
@@ -183,17 +203,17 @@ export const BUILDINGS: Record<BuildingId, BuildingDef> = {
     kit: 'shrine_kit',
     requires: [],
     parts: [
-      { id: 'platform_back', material: 'stone' },
-      { id: 'post_back_left', material: 'bamboo' },
-      { id: 'post_back_right', material: 'bamboo' },
-      { id: 'platform_front', material: 'stone' },
-      { id: 'post_front_left', material: 'bamboo' },
-      { id: 'post_front_right', material: 'bamboo' },
+      { id: 'platform_back', material: 'stone', pieces: 2 },
+      { id: 'post_back_left', material: 'bamboo', pieces: 3 },
+      { id: 'post_back_right', material: 'bamboo', pieces: 5 },
+      { id: 'platform_front', material: 'stone', pieces: 2 },
+      { id: 'post_front_left', material: 'bamboo', pieces: 5 },
+      { id: 'post_front_right', material: 'bamboo', pieces: 6 },
       { id: 'step', material: 'stone' },
-      { id: 'roof_back', material: 'bamboo', on: 'post_front_right' },
-      { id: 'roof_front', material: 'bamboo', on: 'post_front_right' },
-      { id: 'basin', material: 'stone', on: 'platform_front' },
-      { id: 'ridge', material: 'bamboo', on: 'roof_front' },
+      { id: 'roof_back', material: 'bamboo', on: 'post_front_right', pieces: 8 },
+      { id: 'roof_front', material: 'bamboo', on: 'post_front_right', pieces: 8 },
+      { id: 'basin', material: 'stone', on: 'platform_front', pieces: 2 },
+      { id: 'ridge', material: 'bamboo', on: 'roof_front', pieces: 3 },
       { id: 'chimes', material: 'bamboo', on: 'roof_front' },
     ],
     restoration: 1,
@@ -210,19 +230,19 @@ export const BUILDINGS: Record<BuildingId, BuildingDef> = {
     kit: 'teahouse_kit',
     requires: ['wind_shrine'],
     parts: [
-      { id: 'deck', material: 'wood' },
-      { id: 'wall_back', material: 'bamboo' },
+      { id: 'deck', material: 'wood', pieces: 6 },
+      { id: 'wall_back', material: 'bamboo', pieces: 4 },
       { id: 'post_back_left', material: 'wood', on: 'deck' },
-      { id: 'post_back_right', material: 'wood', on: 'deck' },
-      { id: 'wall_left', material: 'bamboo' },
-      { id: 'wall_right', material: 'bamboo' },
-      { id: 'post_front_left', material: 'wood', on: 'deck' },
-      { id: 'post_front_right', material: 'wood', on: 'deck' },
-      { id: 'fence_left', material: 'bamboo' },
-      { id: 'roof', material: 'wood', on: 'post_front_right' },
-      { id: 'fence_right', material: 'bamboo' },
-      { id: 'water_pipe', material: 'bamboo' },
-      { id: 'bench', material: 'bamboo' },
+      { id: 'post_back_right', material: 'wood', on: 'deck', pieces: 2 },
+      { id: 'wall_left', material: 'bamboo', pieces: 3 },
+      { id: 'wall_right', material: 'bamboo', pieces: 3 },
+      { id: 'post_front_left', material: 'wood', on: 'deck', pieces: 2 },
+      { id: 'post_front_right', material: 'wood', on: 'deck', pieces: 2 },
+      { id: 'fence_left', material: 'bamboo', pieces: 3 },
+      { id: 'roof', material: 'wood', on: 'post_front_right', pieces: 7 },
+      { id: 'fence_right', material: 'bamboo', pieces: 2 },
+      { id: 'water_pipe', material: 'bamboo', pieces: 2 },
+      { id: 'bench', material: 'bamboo', pieces: 2 },
       { id: 'tea_set', material: 'bamboo', on: 'bench' },
     ],
     restoration: 0,
@@ -230,6 +250,34 @@ export const BUILDINGS: Record<BuildingId, BuildingDef> = {
     siteRadius: 3.4,
   },
 };
+
+/** Expands each authored part into its pieces; piece k > 0 rests on the piece before it. */
+function expand(parts: PartDef[]): UnitPart[] {
+  const out: UnitPart[] = [];
+  for (const p of parts) {
+    const n = Math.max(1, Math.round(p.pieces ?? 1));
+    for (let k = 0; k < n; k++) out.push({ ...p, on: k === 0 ? p.on : p.id, piece: k, pieces: n });
+  }
+  return out;
+}
+
+export const BUILDINGS: Record<BuildingId, BuildingDef> = Object.fromEntries(
+  Object.entries(AUTHORED).map(([k, b]) => [k, { ...b, parts: expand(b.parts), authored: b.parts }]),
+) as Record<BuildingId, BuildingDef>;
+
+/**
+ * Save v6: before the pacing pass every part took one unit. Turns an old count of `material` delivered to
+ * `building` into the new count that shows the same parts whole.
+ */
+export function unitsForOldParts(b: BuildingDef, material: MaterialId, oldCount: number): number {
+  let seen = 0, units = 0;
+  for (const p of b.authored) {
+    if (p.material !== material) continue;
+    if (seen++ >= oldCount) break;
+    units += Math.max(1, Math.round(p.pieces ?? 1));
+  }
+  return units;
+}
 
 /** Units of each material the building needs in total (derived from its part list). */
 export function buildingCost(b: BuildingDef): Partial<Record<MaterialId, number>> {

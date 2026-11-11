@@ -226,6 +226,8 @@ export class MB {
   /** Merges the parts. `ao` says how to bake occlusion (ground plane, occluders) when the look uses it. */
   build(ao: AOOptions = {}): THREE.BufferGeometry {
     const merged = mergeGeometries(this.parts, false);
+    // Vertex count of each primitive, in order: building parts are cut into pieces along these (kits.ts).
+    merged.userData.prims = this.parts.map((p) => p.getAttribute('position').count);
     for (const p of this.parts) p.dispose();
     this.parts = [];
     merged.computeBoundingSphere();

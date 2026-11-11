@@ -3,7 +3,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { blendPresets, clockLabel, dayFraction, inkRef, lightLevel, presetAt, timeOfDay } from '../src/core/daylight';
 import { ANIMALS } from '../src/data/animals';
-import { BUILDINGS } from '../src/data/buildings';
+import { BUILDINGS, buildingCost } from '../src/data/buildings';
 import { CARETAKER, CARETAKER_HEIGHT, CHARACTER_STYLES, caretakerHeight } from '../src/data/characters';
 import { LOOKS, lookById } from '../src/data/looks';
 import { PLACES } from '../src/data/places';
@@ -63,8 +63,9 @@ test('the chibi caretaker stands ~1.8 m tall (A3) and under 3 heads tall (A4)', 
 
 test('the deer arrives with restoration, wanders near home, and steps away from a moving caretaker', () => {
   // Plan 4.2 / 9.6: the gravel garden brings the deer (not the shelter alone).
-  assert.equal(animalsPresent(place, { shelter: { wood: 6, stone: 0 } }).length, 0);
-  assert.deepEqual(animalsPresent(place, { shelter: { wood: 6, stone: 0 }, gravel_garden: { wood: 4, stone: 6 } }).map((a) => a.id), ['deer']);
+  const sh = { stone: 0, ...buildingCost(BUILDINGS.shelter) }, gg = { wood: 0, stone: 0, ...buildingCost(BUILDINGS.gravel_garden) };
+  assert.equal(animalsPresent(place, { shelter: sh }).length, 0);
+  assert.deepEqual(animalsPresent(place, { shelter: sh, gravel_garden: gg }).map((a) => a.id), ['deer']);
   const world = new IslandWorld(place);
   const walk = (x: number, z: number) => world.walkable(x, z);
   const d = new Wanderer(ANIMALS.deer, walk, 5, true);

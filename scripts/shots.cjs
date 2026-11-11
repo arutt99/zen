@@ -30,6 +30,10 @@ const SHOTS = {
   'grove-dusk': { place: 'bamboo_grove', pre: 'mb.restoreAll(true);', js: `mb.setTime('dusk'); mb.teleport(-0.6, 3.0); mb.zoom(1); mb.settle();` },
   'map': { pre: HOME_BUILT + ` mb.discover('bamboo_grove');`, js: `mb.setTime('day'); mb.teleport(14.7, -14.4); mb.settle(); mb.openMap();` },
   'teahouse-half': { pre: HOME_BUILT + ` mb.deliver('wind_shrine', 0, 4, 8); mb.deliver('tea_house', 4, 0, 3);`, js: `mb.setTime('day'); mb.teleport(-16.0, 13.6); mb.closeup(4.0, 7.5, 4.8, 1.2); mb.settle();` },
+  // Pacing pass (2026-11-11): parts cut into pieces, caught half assembled.
+  'pieces-shelter': { pre: '', js: `mb.deliverUnits('shelter', 17); mb.setTime('day'); mb.teleport(9.5, 0.5); mb.closeup(3.2, 6.4, 4.2, 1.2); mb.settle();` },
+  'pieces-hall': { pre: `mb.deliver('shelter', 6); mb.deliver('gravel_garden', 4, 6); mb.deliverUnits('meditation_hall', 33, 20);`, js: `mb.setTime('day'); mb.teleport(-1.8, -6.4); mb.closeup(3.3, 8.5, 5.2, 1.4); mb.settle();` },
+  'pieces-teahouse': { pre: HOME_BUILT + ` mb.deliver('wind_shrine', 0, 4, 8); mb.deliverUnits('tea_house', 15, 0, 8);`, js: `mb.setTime('day'); mb.teleport(-16.0, 13.6); mb.closeup(4.0, 7.5, 4.8, 1.2); mb.settle();` },
   'teahouse': { pre: 'mb.restoreAll(true);', js: `mb.setTime('golden'); mb.teleport(-16.0, 13.6); mb.closeup(4.0, 7.5, 4.8, 1.2); mb.settle();` },
   'tea-ritual': { pre: 'mb.restoreAll(true);', js: `mb.setTime('day'); mb.teleport(-17.75, 12.47); mb.settle(); mb.ritual('make_tea'); mb.closeup(3.2, 5.0, 3.0, 0.8);` },
 };
@@ -43,7 +47,7 @@ async function shot(browser, name, js) {
   page.on('console', (m) => { if (m.type() === 'error') errors.push(m.text()); });
   // Every shot but the opening starts from a save that has already seen the opening.
   // Every shot starts from a save that has seen the opening and knows the grove (the map works).
-  await page.addInitScript(() => { try { localStorage.setItem('moss-and-bell/save', JSON.stringify({ v: 5, opened: true, places: ['home_valley', 'bamboo_grove'], at: { place: '', x: 0, z: 0 } })); } catch { /* fine */ } });
+  await page.addInitScript(() => { try { localStorage.setItem('moss-and-bell/save', JSON.stringify({ v: 6, opened: true, places: ['home_valley', 'bamboo_grove'], at: { place: '', x: 0, z: 0 } })); } catch { /* fine */ } });
   await page.goto(`${file}?look=lanternfallplus`);
   await page.waitForFunction(() => window.__mb && window.__mb.fps > 0, null, { timeout: 240000 });
   if (js.pre) await page.evaluate((code) => { const mb = window.__mb; eval(code); }, js.pre);

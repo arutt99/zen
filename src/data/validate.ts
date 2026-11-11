@@ -147,7 +147,8 @@ export function validateData(): string[] {
     if (!PLACES[b.place]) problems.push(`building ${key}: unknown place "${b.place}"`);
     if (b.parts.length === 0) problems.push(`building ${key}: needs at least one part`);
     const partIds = new Set<string>();
-    for (const part of b.parts) {
+    for (const part of b.authored) {
+      if (part.pieces !== undefined && !(Number.isInteger(part.pieces) && part.pieces >= 1 && part.pieces <= 12)) problems.push(`building ${key}: part "${part.id}" needs 1–12 whole pieces`);
       if (partIds.has(part.id)) problems.push(`building ${key}: duplicate part "${part.id}"`);
       partIds.add(part.id);
       if (!MATERIALS.includes(part.material)) problems.push(`building ${key}: part "${part.id}" uses unknown material "${part.material}"`);

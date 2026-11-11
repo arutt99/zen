@@ -1,6 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { clamp, damp, hashString, makeRng } from '../src/core/util';
+import { BUILDINGS, unitsForOldParts } from '../src/data/buildings';
 import { freshSave, loadSave, parseSave, SAVE_KEY, SAVE_VERSION, serializeSave, writeSave, type KeyValueStore } from '../src/core/save';
 import { defaultTier } from '../src/data/quality';
 
@@ -71,7 +72,8 @@ test('partially bad fields are repaired field by field', () => {
   assert.equal(data.settings.quality, 'auto');
   assert.equal(data.settings.camera, 'a');
   assert.deepEqual(data.satchel, { stone: 2 });
-  assert.deepEqual(data.deposits, { shelter: { wood: 4 } });
+  // Four old parts (one unit each before the v6 pacing pass) are now the units of those four parts' pieces.
+  assert.deepEqual(data.deposits, { shelter: { wood: unitsForOldParts(BUILDINGS.shelter, 'wood', 4) } });
 });
 
 test('a Phase 0 (v1) save migrates: position and settings kept, empty satchel and deposits', () => {
@@ -105,7 +107,7 @@ test('a Phase 1 (v2) save migrates to v4 with default look, character, kit and c
   const { data, recovered } = parseSave(JSON.stringify(v2));
   assert.equal(recovered, null);
   assert.equal(data.v, SAVE_VERSION);
-  assert.deepEqual(data.deposits, v2.deposits);
+  assert.deepEqual(data.deposits, { shelter: { wood: unitsForOldParts(BUILDINGS.shelter, 'wood', 3) } });
   assert.deepEqual(data.collection, []);
   assert.equal(data.opened, true, 'someone who already played has seen the opening');
   assert.deepEqual(data.satchel, v2.satchel);

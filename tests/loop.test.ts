@@ -37,9 +37,9 @@ test('gathering takes one unit per beat, starting after the first swing', () => 
   assert.equal(state.satchel.wood, 0, 'nothing before the first swing lands');
   run(loop, 0.1);
   assert.equal(state.satchel.wood, 1);
-  run(loop, BEAT_SECONDS * 2);
-  assert.equal(state.satchel.wood, 3);
-  assert.deepEqual(events.filter((e) => e.type === 'gathered').map((e) => e.type === 'gathered' && e.unit), [0, 1, 2]);
+  run(loop, BEAT_SECONDS);
+  assert.equal(state.satchel.wood, 2);
+  assert.deepEqual(events.filter((e) => e.type === 'gathered').map((e) => e.type === 'gathered' && e.unit), [0, 1]);
   assert.equal(loop.work?.kind, 'chop');
 });
 
@@ -92,11 +92,11 @@ test('deposits flow one per beat and never exceed the cost', () => {
   const loop = new CoreLoop(testPlace, flat, state, { x: 20 + 2, z: 0 });
   run(loop, FIRST_BEAT_SECONDS + 0.05);
   assert.equal(state.deposits.shelter!.wood, 1);
-  run(loop, BEAT_SECONDS * 20);
+  run(loop, BEAT_SECONDS * (shelter.parts.length + 4));
   assert.equal(state.deposits.shelter!.wood, shelter.parts.length);
   assert.equal(state.satchel.wood, SATCHEL_CAP - shelter.parts.length);
   assert.equal(events.filter((e) => e.type === 'completed').length, 1);
-  assert.deepEqual(events.filter((e) => e.type === 'deposited').map((e) => e.type === 'deposited' && e.part), [0, 1, 2, 3, 4, 5]);
+  assert.deepEqual(events.filter((e) => e.type === 'deposited').map((e) => e.type === 'deposited' && e.part), shelter.parts.map((_, i) => i));
   assert.equal(state.deposit('shelter', 'wood'), false, 'a complete building takes nothing more');
   assert.equal(state.deposit('shelter', 'stone'), false, 'nor a material it does not use');
   assert.equal(state.deposit('nowhere', 'wood'), false);
@@ -109,15 +109,16 @@ test('a partial deposit leaves the building partly built and the rest of the cos
   run(loop, 10);
   const d = state.deposits.shelter!;
   assert.equal(d.wood, 4);
-  assert.deepEqual(partsBuilt(shelter, d), [true, true, true, true, false, false]);
-  assert.deepEqual(remaining(shelter, d), { wood: 2, stone: 0, bamboo: 0 });
+  assert.deepEqual(partsBuilt(shelter, d), shelter.parts.map((_, i) => i < 4));
+  assert.deepEqual(remaining(shelter, d), { wood: shelter.parts.length - 4, stone: 0, bamboo: 0 });
   assert.equal(isComplete(shelter, d), false);
   assert.equal(loop.work, null, 'no work animation with nothing left to give');
   assert.equal(nextDeposit(shelter, d, state.satchel), null);
 });
 
 test('mixed-material buildings take parts in order, per material', () => {
-  const mixed = { ...shelter, parts: [{ id: 'a', material: 'stone' as const }, { id: 'b', material: 'wood' as const }, { id: 'c', material: 'stone' as const }] };
+  const u = { piece: 0, pieces: 1 };
+  const mixed = { ...shelter, parts: [{ id: 'a', material: 'stone' as const, ...u }, { id: 'b', material: 'wood' as const, ...u }, { id: 'c', material: 'stone' as const, ...u }] };
   assert.deepEqual(partsBuilt(mixed, { wood: 1, stone: 1 }), [true, true, false]);
   assert.equal(nextDeposit(mixed, { wood: 0, stone: 0 }, { wood: 3, stone: 0 }), 'wood');
   assert.equal(nextDeposit(mixed, { wood: 0, stone: 0 }, { wood: 3, stone: 3 }), 'stone');
@@ -181,9 +182,10 @@ test('pacing bot: the whole home valley gets built from a fresh start, in order,
   assert.deepEqual(order, ['shelter', 'gravel_garden', 'meditation_hall', 'bell_tower']);
   const total = r.completedAt.bell_tower!;
   console.log(`  pacing (perfect): ${order.map((id) => `${id} ${r.completedAt[id]!.toFixed(0)} s`).join(', ')}; cycles ${r.cycles.map((c) => c.toFixed(0)).join(', ')} s; ${r.gathered} units`);
-  assert.ok(r.completedAt.shelter! > 5 && r.completedAt.shelter! < 90, `shelter at ${r.completedAt.shelter!.toFixed(1)} s`);
+  assert.ok(r.completedAt.shelter! > 20 && r.completedAt.shelter! < 90, `shelter at ${r.completedAt.shelter!.toFixed(1)} s`);
   for (const c of r.cycles) assert.ok(c < 90, `cycle of ${c.toFixed(1)} s is over the 90 s target`);
-  assert.ok(total < 300, `a perfect run takes ${total.toFixed(0)} s`);
+  // Pacing pass (2026-11-11, owner: "way too quick"): even a perfect run takes several minutes now.
+  assert.ok(total > 360 && total < 900, `a perfect run takes ${total.toFixed(0)} s`);
 });
 
 test('pacing bot (relaxed player): the valley takes several minutes, never a soft-lock', () => {
@@ -191,5 +193,5 @@ test('pacing bot (relaxed player): the valley takes several minutes, never a sof
   assert.equal(r.timedOut, false);
   const total = r.completedAt.bell_tower!;
   console.log(`  pacing (relaxed): shelter ${r.completedAt.shelter!.toFixed(0)} s, garden ${r.completedAt.gravel_garden!.toFixed(0)} s, hall ${r.completedAt.meditation_hall!.toFixed(0)} s, bell tower ${total.toFixed(0)} s (${(total / 60).toFixed(1)} min); cycles ${r.cycles.map((c) => c.toFixed(0)).join(', ')} s`);
-  assert.ok(total > 150 && total < 900, `relaxed run ${total.toFixed(0)} s`);
+  assert.ok(total > 480 && total < 1500, `relaxed run ${total.toFixed(0)} s`);
 });
